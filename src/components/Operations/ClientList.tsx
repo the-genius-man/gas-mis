@@ -40,6 +40,19 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'actif';
+      case 'inactive':
+        return 'inactif';
+      case 'pending':
+        return 'en attente';
+      default:
+        return status;
+    }
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'corporate':
@@ -55,8 +68,23 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
     }
   };
 
+  const getTypeText = (type: string) => {
+    switch (type) {
+      case 'corporate':
+        return 'entreprise';
+      case 'residential':
+        return 'résidentiel';
+      case 'event':
+        return 'événement';
+      case 'government':
+        return 'gouvernement';
+      default:
+        return type;
+    }
+  };
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
   };
 
   const getDaysUntilExpiry = (endDate: string) => {
@@ -72,15 +100,15 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Client Management</h2>
-          <p className="text-gray-600 mt-1">Manage your security service clients and contracts</p>
+          <h2 className="text-2xl font-bold text-gray-900">Gestion des Clients</h2>
+          <p className="text-gray-600 mt-1">Gérez vos clients de services de sécurité et leurs contrats</p>
         </div>
         <button
           onClick={onAddClient}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
-          <span>Add Client</span>
+          <span>Ajouter un Client</span>
         </button>
       </div>
 
@@ -91,7 +119,7 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search clients..."
+              placeholder="Rechercher des clients..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -105,11 +133,11 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
               onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">All Types</option>
-              <option value="corporate">Corporate</option>
-              <option value="residential">Residential</option>
-              <option value="event">Event</option>
-              <option value="government">Government</option>
+              <option value="all">Tous les Types</option>
+              <option value="corporate">Entreprise</option>
+              <option value="residential">Résidentiel</option>
+              <option value="event">Événement</option>
+              <option value="government">Gouvernement</option>
             </select>
             
             <select
@@ -117,10 +145,10 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
               onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="pending">Pending</option>
+              <option value="all">Tous les Statuts</option>
+              <option value="active">Actif</option>
+              <option value="inactive">Inactif</option>
+              <option value="pending">En Attente</option>
             </select>
           </div>
         </div>
@@ -147,10 +175,10 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
                 </div>
                 <div className="flex flex-col items-end space-y-1">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(client.status)}`}>
-                    {client.status}
+                    {getStatusText(client.status)}
                   </span>
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(client.type)}`}>
-                    {client.type}
+                    {getTypeText(client.type)}
                   </span>
                 </div>
               </div>
@@ -159,7 +187,7 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-sm text-gray-600">
                     <DollarSign className="h-4 w-4 mr-2" />
-                    <span>Contract Value</span>
+                    <span>Valeur du Contrat</span>
                   </div>
                   <span className="text-sm font-semibold text-gray-900">
                     {formatCurrency(client.totalValue)}
@@ -169,12 +197,12 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-sm text-gray-600">
                     <Calendar className="h-4 w-4 mr-2" />
-                    <span>Contract Expires</span>
+                    <span>Contrat Expire le</span>
                   </div>
                   <span className={`text-sm font-medium ${
                     isExpired ? 'text-red-600' : isExpiringSoon ? 'text-yellow-600' : 'text-gray-900'
                   }`}>
-                    {new Date(client.contract.endDate).toLocaleDateString()}
+                    {new Date(client.contract.endDate).toLocaleDateString('fr-FR')}
                   </span>
                 </div>
                 
@@ -184,7 +212,7 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
                     <span>Sites</span>
                   </div>
                   <span className="text-sm font-semibold text-gray-900">
-                    {client.sites.length} location{client.sites.length !== 1 ? 's' : ''}
+                    {client.sites.length} site{client.sites.length !== 1 ? 's' : ''}
                   </span>
                 </div>
               </div>
@@ -196,8 +224,8 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
                     : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
                 }`}>
                   {isExpired 
-                    ? 'Contract has expired!' 
-                    : `Contract expires in ${daysUntilExpiry} days`}
+                    ? 'Le contrat a expiré !' 
+                    : `Le contrat expire dans ${daysUntilExpiry} jour${daysUntilExpiry > 1 ? 's' : ''}`}
                 </div>
               )}
 
@@ -207,14 +235,14 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
                   className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center space-x-1"
                 >
                   <Eye className="h-4 w-4" />
-                  <span>View</span>
+                  <span>Voir</span>
                 </button>
                 <button
                   onClick={() => onEditClient(client)}
                   className="flex-1 bg-blue-100 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center space-x-1"
                 >
                   <Edit className="h-4 w-4" />
-                  <span>Edit</span>
+                  <span>Modifier</span>
                 </button>
               </div>
             </div>
@@ -227,18 +255,18 @@ export default function ClientList({ onAddClient, onViewClient, onEditClient }: 
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Building2 className="h-8 w-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun client trouvé</h3>
           <p className="text-gray-600 mb-4">
             {searchTerm || typeFilter !== 'all' || statusFilter !== 'all'
-              ? 'Try adjusting your search or filter criteria.'
-              : 'Get started by adding your first client.'}
+              ? 'Essayez d\'ajuster vos critères de recherche ou de filtre.'
+              : 'Commencez par ajouter votre premier client.'}
           </p>
           {!searchTerm && typeFilter === 'all' && statusFilter === 'all' && (
             <button
               onClick={onAddClient}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Add First Client
+              Ajouter le Premier Client
             </button>
           )}
         </div>

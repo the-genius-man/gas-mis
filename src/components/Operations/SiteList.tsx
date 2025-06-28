@@ -40,6 +40,19 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'actif';
+      case 'inactive':
+        return 'inactif';
+      case 'setup':
+        return 'configuration';
+      default:
+        return status;
+    }
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'office':
@@ -57,9 +70,28 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
     }
   };
 
+  const getTypeText = (type: string) => {
+    switch (type) {
+      case 'office':
+        return 'bureau';
+      case 'warehouse':
+        return 'entrepôt';
+      case 'retail':
+        return 'commerce de détail';
+      case 'residential':
+        return 'résidentiel';
+      case 'event':
+        return 'événement';
+      case 'other':
+        return 'autre';
+      default:
+        return type;
+    }
+  };
+
   const getClientName = (clientId: string) => {
     const client = state.clients.find(c => c.id === clientId);
-    return client?.name || 'Unknown Client';
+    return client?.name || 'Client Inconnu';
   };
 
   return (
@@ -67,15 +99,15 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Site Management</h2>
-          <p className="text-gray-600 mt-1">Manage security locations and deployment sites</p>
+          <h2 className="text-2xl font-bold text-gray-900">Gestion des Sites</h2>
+          <p className="text-gray-600 mt-1">Gérez les emplacements de sécurité et les sites de déploiement</p>
         </div>
         <button
           onClick={onAddSite}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
-          <span>Add Site</span>
+          <span>Ajouter un Site</span>
         </button>
       </div>
 
@@ -86,7 +118,7 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search sites..."
+              placeholder="Rechercher des sites..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -100,13 +132,13 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
               onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">All Types</option>
-              <option value="office">Office</option>
-              <option value="warehouse">Warehouse</option>
-              <option value="retail">Retail</option>
-              <option value="residential">Residential</option>
-              <option value="event">Event</option>
-              <option value="other">Other</option>
+              <option value="all">Tous les Types</option>
+              <option value="office">Bureau</option>
+              <option value="warehouse">Entrepôt</option>
+              <option value="retail">Commerce de Détail</option>
+              <option value="residential">Résidentiel</option>
+              <option value="event">Événement</option>
+              <option value="other">Autre</option>
             </select>
             
             <select
@@ -114,10 +146,10 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
               onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="setup">Setup</option>
+              <option value="all">Tous les Statuts</option>
+              <option value="active">Actif</option>
+              <option value="inactive">Inactif</option>
+              <option value="setup">Configuration</option>
             </select>
           </div>
         </div>
@@ -139,10 +171,10 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
               </div>
               <div className="flex flex-col items-end space-y-1">
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(site.status)}`}>
-                  {site.status}
+                  {getStatusText(site.status)}
                 </span>
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(site.siteDetails.type)}`}>
-                  {site.siteDetails.type}
+                  {getTypeText(site.siteDetails.type)}
                 </span>
               </div>
             </div>
@@ -158,7 +190,7 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
               <div className="flex items-center justify-between">
                 <div className="flex items-center text-sm text-gray-600">
                   <Users className="h-4 w-4 mr-2" />
-                  <span>Guards Required</span>
+                  <span>Gardes Requis</span>
                 </div>
                 <span className="text-sm font-semibold text-gray-900">
                   {site.securityRequirements.guardsRequired}
@@ -168,7 +200,7 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
               <div className="flex items-center justify-between">
                 <div className="flex items-center text-sm text-gray-600">
                   <Shield className="h-4 w-4 mr-2" />
-                  <span>Assigned Guards</span>
+                  <span>Gardes Assignés</span>
                 </div>
                 <span className="text-sm font-semibold text-gray-900">
                   {site.assignedGuards.length}
@@ -178,7 +210,7 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
               <div className="flex items-center justify-between">
                 <div className="flex items-center text-sm text-gray-600">
                   <Building2 className="h-4 w-4 mr-2" />
-                  <span>Patrol Routes</span>
+                  <span>Routes de Patrouille</span>
                 </div>
                 <span className="text-sm font-semibold text-gray-900">
                   {site.siteDetails.patrolRoutes.length}
@@ -188,7 +220,7 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
 
             {site.siteDetails.specialInstructions && (
               <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-700 font-medium mb-1">Special Instructions</p>
+                <p className="text-sm text-blue-700 font-medium mb-1">Instructions Spéciales</p>
                 <p className="text-sm text-blue-600 truncate">
                   {site.siteDetails.specialInstructions}
                 </p>
@@ -201,14 +233,14 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
                 className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center space-x-1"
               >
                 <Eye className="h-4 w-4" />
-                <span>View</span>
+                <span>Voir</span>
               </button>
               <button
                 onClick={() => onEditSite(site)}
                 className="flex-1 bg-blue-100 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center space-x-1"
               >
                 <Edit className="h-4 w-4" />
-                <span>Edit</span>
+                <span>Modifier</span>
               </button>
             </div>
           </div>
@@ -220,18 +252,18 @@ export default function SiteList({ onAddSite, onViewSite, onEditSite }: SiteList
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <MapPin className="h-8 w-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No sites found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun site trouvé</h3>
           <p className="text-gray-600 mb-4">
             {searchTerm || typeFilter !== 'all' || statusFilter !== 'all'
-              ? 'Try adjusting your search or filter criteria.'
-              : 'Get started by adding your first security site.'}
+              ? 'Essayez d\'ajuster vos critères de recherche ou de filtre.'
+              : 'Commencez par ajouter votre premier site de sécurité.'}
           </p>
           {!searchTerm && typeFilter === 'all' && statusFilter === 'all' && (
             <button
               onClick={onAddSite}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Add First Site
+              Ajouter le Premier Site
             </button>
           )}
         </div>

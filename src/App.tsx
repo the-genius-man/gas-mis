@@ -24,83 +24,83 @@ function AppContent() {
   const getModuleTitle = () => {
     switch (activeModule) {
       case 'dashboard':
-        return 'Dashboard';
+        return 'Tableau de Bord';
       case 'hr':
-        return 'Human Resources';
+        return 'Ressources Humaines';
       case 'operations':
-        return 'Operations';
+        return 'Opérations';
       case 'sites':
-        return 'Site Management';
+        return 'Gestion des Sites';
       case 'finance':
-        return 'Finance & Billing';
+        return 'Finance et Facturation';
       case 'mobile':
-        return 'Field Operations';
+        return 'Opérations sur le Terrain';
       case 'analytics':
-        return 'Analytics';
+        return 'Analytiques';
       case 'settings':
-        return 'Settings';
+        return 'Paramètres';
       default:
-        return 'Dashboard';
+        return 'Tableau de Bord';
     }
   };
 
   const getModuleSubtitle = () => {
     switch (activeModule) {
       case 'dashboard':
-        return 'Overview of your security operations';
+        return 'Aperçu de vos opérations de sécurité';
       case 'hr':
-        return 'Manage personnel and employee information';
+        return 'Gérez le personnel et les informations des employés';
       case 'operations':
-        return 'Client management and service operations';
+        return 'Gestion des clients et opérations de service';
       case 'sites':
-        return 'Security locations and deployment sites';
+        return 'Emplacements de sécurité et sites de déploiement';
       case 'finance':
-        return 'Billing, invoicing, and financial management';
+        return 'Facturation, facturation et gestion financière';
       case 'mobile':
-        return 'Mobile app and field operations';
+        return 'Application mobile et opérations sur le terrain';
       case 'analytics':
-        return 'Reports and business analytics';
+        return 'Rapports et analyses commerciales';
       case 'settings':
-        return 'System configuration and preferences';
+        return 'Configuration du système et préférences';
       default:
         return '';
     }
   };
 
   const handleAddEmployee = () => {
-    console.log('Add employee functionality to be implemented');
+    console.log('Fonctionnalité d\'ajout d\'employé à implémenter');
   };
 
   const handleViewEmployee = (employee: Employee) => {
-    console.log('View employee:', employee);
+    console.log('Voir employé:', employee);
   };
 
   const handleEditEmployee = (employee: Employee) => {
-    console.log('Edit employee:', employee);
+    console.log('Modifier employé:', employee);
   };
 
   const handleAddClient = () => {
-    console.log('Add client functionality to be implemented');
+    console.log('Fonctionnalité d\'ajout de client à implémenter');
   };
 
   const handleViewClient = (client: Client) => {
-    console.log('View client:', client);
+    console.log('Voir client:', client);
   };
 
   const handleEditClient = (client: Client) => {
-    console.log('Edit client:', client);
+    console.log('Modifier client:', client);
   };
 
   const handleAddSite = () => {
-    console.log('Add site functionality to be implemented');
+    console.log('Fonctionnalité d\'ajout de site à implémenter');
   };
 
   const handleViewSite = (site: Site) => {
-    console.log('View site:', site);
+    console.log('Voir site:', site);
   };
 
   const handleEditSite = (site: Site) => {
-    console.log('Edit site:', site);
+    console.log('Modifier site:', site);
   };
 
   const renderContent = () => {
@@ -135,8 +135,8 @@ function AppContent() {
         return (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Finance & Billing</h3>
-              <p className="text-gray-600">Coming in Phase 3 - Financial Integration</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Finance et Facturation</h3>
+              <p className="text-gray-600">À venir dans la Phase 3 - Intégration Financière</p>
             </div>
           </div>
         );
@@ -144,8 +144,8 @@ function AppContent() {
         return (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Field Operations</h3>
-              <p className="text-gray-600">Coming in Phase 4 - Mobile App Features</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Opérations sur le Terrain</h3>
+              <p className="text-gray-600">À venir dans la Phase 4 - Fonctionnalités de l'Application Mobile</p>
             </div>
           </div>
         );
@@ -153,8 +153,8 @@ function AppContent() {
         return (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Analytics Dashboard</h3>
-              <p className="text-gray-600">Coming in Phase 4 - Advanced Analytics</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Tableau de Bord Analytique</h3>
+              <p className="text-gray-600">À venir dans la Phase 4 - Analyses Avancées</p>
             </div>
           </div>
         );
@@ -162,8 +162,8 @@ function AppContent() {
         return (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">System Settings</h3>
-              <p className="text-gray-600">Configuration options coming soon</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Paramètres du Système</h3>
+              <p className="text-gray-600">Options de configuration à venir bientôt</p>
             </div>
           </div>
         );

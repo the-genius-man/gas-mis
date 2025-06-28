@@ -39,6 +39,19 @@ export default function EmployeeList({ onAddEmployee, onViewEmployee, onEditEmpl
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'actif';
+      case 'inactive':
+        return 'inactif';
+      case 'terminated':
+        return 'terminé';
+      default:
+        return status;
+    }
+  };
+
   const getExpiringCertifications = (employee: Employee) => {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
@@ -54,15 +67,15 @@ export default function EmployeeList({ onAddEmployee, onViewEmployee, onEditEmpl
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Employee Management</h2>
-          <p className="text-gray-600 mt-1">Manage your security personnel and their information</p>
+          <h2 className="text-2xl font-bold text-gray-900">Gestion des Employés</h2>
+          <p className="text-gray-600 mt-1">Gérez votre personnel de sécurité et leurs informations</p>
         </div>
         <button
           onClick={onAddEmployee}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
-          <span>Add Employee</span>
+          <span>Ajouter un Employé</span>
         </button>
       </div>
 
@@ -73,7 +86,7 @@ export default function EmployeeList({ onAddEmployee, onViewEmployee, onEditEmpl
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search employees..."
+              placeholder="Rechercher des employés..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -87,9 +100,9 @@ export default function EmployeeList({ onAddEmployee, onViewEmployee, onEditEmpl
               onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">Tous les Statuts</option>
+              <option value="active">Actif</option>
+              <option value="inactive">Inactif</option>
             </select>
           </div>
         </div>
@@ -117,7 +130,7 @@ export default function EmployeeList({ onAddEmployee, onViewEmployee, onEditEmpl
                   </div>
                 </div>
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(employee.employment.status)}`}>
-                  {employee.employment.status}
+                  {getStatusText(employee.employment.status)}
                 </span>
               </div>
 
@@ -143,7 +156,7 @@ export default function EmployeeList({ onAddEmployee, onViewEmployee, onEditEmpl
                 </div>
                 {expiringCerts > 0 && (
                   <div className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                    {expiringCerts} cert(s) expiring
+                    {expiringCerts} cert{expiringCerts > 1 ? 's' : ''} expirant{expiringCerts > 1 ? 's' : ''}
                   </div>
                 )}
               </div>
@@ -154,14 +167,14 @@ export default function EmployeeList({ onAddEmployee, onViewEmployee, onEditEmpl
                   className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center space-x-1"
                 >
                   <Eye className="h-4 w-4" />
-                  <span>View</span>
+                  <span>Voir</span>
                 </button>
                 <button
                   onClick={() => onEditEmployee(employee)}
                   className="flex-1 bg-blue-100 text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center justify-center space-x-1"
                 >
                   <Edit className="h-4 w-4" />
-                  <span>Edit</span>
+                  <span>Modifier</span>
                 </button>
               </div>
             </div>
@@ -174,18 +187,18 @@ export default function EmployeeList({ onAddEmployee, onViewEmployee, onEditEmpl
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search className="h-8 w-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No employees found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun employé trouvé</h3>
           <p className="text-gray-600 mb-4">
             {searchTerm || statusFilter !== 'all' 
-              ? 'Try adjusting your search or filter criteria.'
-              : 'Get started by adding your first employee.'}
+              ? 'Essayez d\'ajuster vos critères de recherche ou de filtre.'
+              : 'Commencez par ajouter votre premier employé.'}
           </p>
           {!searchTerm && statusFilter === 'all' && (
             <button
               onClick={onAddEmployee}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Add First Employee
+              Ajouter le Premier Employé
             </button>
           )}
         </div>

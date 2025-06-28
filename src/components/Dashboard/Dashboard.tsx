@@ -39,7 +39,7 @@ function StatCard({ title, value, icon, trend, color }: StatCardProps) {
               trend.isPositive ? 'text-green-600' : 'text-red-600'
             }`}>
               <TrendingUp className={`h-4 w-4 mr-1 ${!trend.isPositive ? 'rotate-180' : ''}`} />
-              <span>{Math.abs(trend.value)}% from last month</span>
+              <span>{Math.abs(trend.value)}% par rapport au mois dernier</span>
             </div>
           )}
         </div>
@@ -59,29 +59,29 @@ export default function Dashboard() {
     {
       id: 1,
       type: 'employee',
-      message: 'New employee John Smith added to the system',
-      time: '2 hours ago',
+      message: 'Nouvel employé John Smith ajouté au système',
+      time: 'il y a 2 heures',
       icon: <Users className="h-4 w-4" />,
     },
     {
       id: 2,
       type: 'client',
-      message: 'Client contract renewed for Downtown Mall',
-      time: '4 hours ago',
+      message: 'Contrat client renouvelé pour Centre Commercial Downtown',
+      time: 'il y a 4 heures',
       icon: <Building2 className="h-4 w-4" />,
     },
     {
       id: 3,
       type: 'alert',
-      message: 'Security certificate expiring soon for 3 guards',
-      time: '6 hours ago',
+      message: 'Certificat de sécurité expirant bientôt pour 3 gardes',
+      time: 'il y a 6 heures',
       icon: <AlertTriangle className="h-4 w-4" />,
     },
     {
       id: 4,
       type: 'site',
-      message: 'New site location added: Corporate Plaza',
-      time: '1 day ago',
+      message: 'Nouveau site ajouté : Plaza Corporative',
+      time: 'il y a 1 jour',
       icon: <MapPin className="h-4 w-4" />,
     },
   ];
@@ -89,27 +89,27 @@ export default function Dashboard() {
   const upcomingTasks = [
     {
       id: 1,
-      task: 'Review monthly performance reports',
-      dueDate: 'Today',
-      priority: 'high',
+      task: 'Examiner les rapports de performance mensuels',
+      dueDate: 'Aujourd\'hui',
+      priority: 'élevée',
     },
     {
       id: 2,
-      task: 'Process payroll for guard staff',
-      dueDate: 'Tomorrow',
-      priority: 'high',
+      task: 'Traiter la paie du personnel de garde',
+      dueDate: 'Demain',
+      priority: 'élevée',
     },
     {
       id: 3,
-      task: 'Client meeting: Metro Shopping Center',
-      dueDate: 'Dec 15',
-      priority: 'medium',
+      task: 'Réunion client : Centre Commercial Metro',
+      dueDate: '15 Déc',
+      priority: 'moyenne',
     },
     {
       id: 4,
-      task: 'Update security protocols documentation',
-      dueDate: 'Dec 18',
-      priority: 'low',
+      task: 'Mettre à jour la documentation des protocoles de sécurité',
+      dueDate: '18 Déc',
+      priority: 'faible',
     },
   ];
 
@@ -118,14 +118,14 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Total Employees"
+          title="Total Employés"
           value={dashboardStats.totalEmployees}
           icon={<Users className="h-6 w-6" />}
           trend={{ value: 12, isPositive: true }}
           color="blue"
         />
         <StatCard
-          title="Active Guards"
+          title="Gardes Actifs"
           value={dashboardStats.activeGuards}
           icon={<Shield className="h-6 w-6" />}
           trend={{ value: 8, isPositive: true }}
@@ -139,7 +139,7 @@ export default function Dashboard() {
           color="purple"
         />
         <StatCard
-          title="Active Sites"
+          title="Sites Actifs"
           value={dashboardStats.activeSites}
           icon={<MapPin className="h-6 w-6" />}
           trend={{ value: 3, isPositive: false }}
@@ -150,26 +150,26 @@ export default function Dashboard() {
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Monthly Revenue"
-          value={`$${dashboardStats.monthlyRevenue.toLocaleString()}`}
+          title="Revenus Mensuels"
+          value={`${dashboardStats.monthlyRevenue.toLocaleString('fr-FR')} €`}
           icon={<DollarSign className="h-6 w-6" />}
           trend={{ value: 15, isPositive: true }}
           color="green"
         />
         <StatCard
-          title="Pending Incidents"
+          title="Incidents en Attente"
           value={dashboardStats.pendingIncidents}
           icon={<AlertTriangle className="h-6 w-6" />}
           color="red"
         />
         <StatCard
-          title="Expiring Certifications"
+          title="Certifications Expirant"
           value={dashboardStats.expiringCertifications}
           icon={<Shield className="h-6 w-6" />}
           color="yellow"
         />
         <StatCard
-          title="Upcoming Shifts"
+          title="Équipes à Venir"
           value={dashboardStats.upcomingShifts}
           icon={<Calendar className="h-6 w-6" />}
           color="blue"
@@ -180,7 +180,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Activité Récente</h3>
           <div className="space-y-4">
             {recentActivities.map((activity) => (
               <div key={activity.id} className="flex items-start space-x-3">
@@ -198,18 +198,18 @@ export default function Dashboard() {
 
         {/* Upcoming Tasks */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Tasks</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tâches à Venir</h3>
           <div className="space-y-3">
             {upcomingTasks.map((task) => (
               <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">{task.task}</p>
-                  <p className="text-xs text-gray-500 mt-1">Due: {task.dueDate}</p>
+                  <p className="text-xs text-gray-500 mt-1">Échéance : {task.dueDate}</p>
                 </div>
                 <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  task.priority === 'high' 
+                  task.priority === 'élevée' 
                     ? 'bg-red-100 text-red-800'
-                    : task.priority === 'medium'
+                    : task.priority === 'moyenne'
                     ? 'bg-yellow-100 text-yellow-800'
                     : 'bg-green-100 text-green-800'
                 }`}>
