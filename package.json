@@ -12,8 +12,10 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && electron-builder",
-    "build:dir": "vite build && electron-builder --dir",
+    "dev:electron": "ELECTRON=true vite",
+    "build": "vite build",
+    "build:electron": "ELECTRON=true vite build && electron-builder",
+    "build:electron:dir": "ELECTRON=true vite build && electron-builder --dir",
     "lint": "eslint .",
     "preview": "vite preview"
   },

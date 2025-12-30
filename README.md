@@ -1,6 +1,6 @@
-# Go Ahead Security - Desktop Application
+# Go Ahead Security
 
-A comprehensive security company management system built as an Electron desktop application.
+A comprehensive security company management system that runs both as a web application and as a cross-platform desktop application.
 
 ## Features
 
@@ -8,28 +8,46 @@ A comprehensive security company management system built as an Electron desktop 
 - Client Management
 - Site Management & Patrol Routes
 - Dashboard with Real-time Statistics
-- Cross-platform Desktop Application (Windows, Mac, Linux)
+- Runs as Web App or Desktop Application (Windows, Mac, Linux)
 
 ## Development
 
-Start the development server:
+### Web Application Mode
+Start the web development server:
 
 ```bash
 npm run dev
+```
+
+The application will be available at `http://localhost:5173`
+
+### Desktop Application Mode
+Start in Electron desktop mode:
+
+```bash
+npm run dev:electron
 ```
 
 The application will open in an Electron window with hot-reload enabled.
 
 ## Building
 
-### Build for current platform (unpacked):
-```bash
-npm run build:dir
-```
-
-### Build distributables for current platform:
+### Web Application
+Build for web deployment:
 ```bash
 npm run build
+```
+
+### Desktop Application
+
+Build for current platform (unpacked):
+```bash
+npm run build:electron:dir
+```
+
+Build distributables for current platform:
+```bash
+npm run build:electron
 ```
 
 This will create installers in the `release/` directory:
