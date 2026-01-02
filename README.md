@@ -1,158 +1,177 @@
 # Go Ahead Security - Management Information System (GAS-MIS)
 
-A comprehensive security company management system built with React, TypeScript, Electron, and SQLite for offline operation.
+Système de gestion ERP complet pour entreprise de sécurité privée. Fonctionne comme application web avec Supabase et application desktop offline avec SQLite.
 
-## Features
+## Modes de Fonctionnement
 
-- **Employee Management**: Complete HR system with certifications, performance tracking
-- **Client Management**: Contract management and billing information
-- **Site Management**: Security site locations with patrol routes and assignments
-- **Dashboard Analytics**: Real-time statistics and KPIs
-- **Offline Operation**: Local SQLite database for complete offline functionality
-- **Desktop Application**: Cross-platform Electron app for Windows, Mac, and Linux
+### Mode Web (Supabase)
+- Application web avec authentification
+- Base de données PostgreSQL via Supabase
+- Module Finance complet (Phases 1 & 2)
+- Déploiement cloud
 
-## Technology Stack
+### Mode Desktop (Electron + SQLite)
+- Application desktop multi-plateformes
+- Base de données SQLite locale
+- Fonctionnement 100% offline
+- Modules HR, Operations, Sites complets
+
+## Fonctionnalités
+
+### Phase 1 & 2 - Module Finance (Web)
+- **Gestion des Clients**: Personnes Morales et Physiques
+- **Gestion des Sites**: Sites de sécurité avec tarification
+- **Facturation**: Création et gestion des factures
+- **Tableau de Bord**: Statistiques en temps réel
+
+### Modules Complets (Desktop)
+- **Employee Management**: Système RH complet avec certifications
+- **Client Management**: Gestion des contrats et facturation
+- **Site Management**: Emplacements avec routes de patrouille
+- **Dashboard Analytics**: Statistiques et KPIs en temps réel
+
+## Stack Technologique
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS
-- **Desktop**: Electron with secure IPC communication
-- **Database**: SQLite with better-sqlite3
+- **Desktop**: Electron avec communication IPC sécurisée
+- **Web Backend**: Supabase (PostgreSQL + Auth + API REST)
+- **Desktop Database**: SQLite avec better-sqlite3
 - **Build Tools**: Vite, Electron Builder
 - **Icons**: Lucide React
 
-## Development Setup
+## Installation et Développement
 
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
+### Prérequis
+- Node.js 18+
+- npm ou yarn
 
 ### Installation
-
-1. Clone the repository:
 ```bash
 git clone <repository-url>
 cd gas-mis
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Rebuild native modules for Electron:
-```bash
-npx electron-rebuild
-```
+### Commandes de Développement
 
-### Development Commands
-
+#### Mode Web (Supabase)
 ```bash
-# Start web development server
+# Serveur de développement web
 npm run dev
 
-# Start Electron development (with hot reload)
-npm run electron-dev
+# Application disponible sur http://localhost:5173
+```
 
-# Build for production
+#### Mode Desktop (Electron)
+```bash
+# Reconstruire les modules natifs pour Electron
+npx electron-rebuild
+
+# Développement Electron avec hot-reload
+npm run electron-dev
+```
+
+### Autres Commandes
+```bash
+# Build pour production web
 npm run build
 
-# Build Electron app for distribution
-npm run electron-pack
+# Build application desktop
+npm run build:electron
 
-# Lint code
+# Build non-packagé (développement)
+npm run build:electron:dir
+
+# Lint du code
 npm run lint
 ```
 
-## Database
+## Base de Données
 
-The application uses SQLite for local data storage with the following tables:
+### Mode Web (Supabase)
+- PostgreSQL hébergé
+- Authentification intégrée
+- API REST automatique
+- Migrations dans `supabase/migrations/`
 
-- `employees` - Employee information and HR data
-- `clients` - Client contracts and contact information  
-- `sites` - Security site locations and requirements
-- `certifications` - Employee certifications and expiry tracking
-- `site_assignments` - Guard assignments to sites
-- `attendance_records` - Time tracking and attendance
+### Mode Desktop (SQLite)
+Tables principales:
+- `employees` - Informations RH et employés
+- `clients` - Contrats et informations clients
+- `sites` - Emplacements et exigences de sécurité
+- `certifications` - Certifications et dates d'expiration
+- `site_assignments` - Affectations des gardes
+- `attendance_records` - Suivi du temps et présence
 
-### Sample Data
-
-When running the Electron app for the first time, you can load sample data using the "Charger Données d'Exemple" button on the dashboard.
-
-## Project Structure
+## Structure du Projet
 
 ```
 src/
-├── components/          # React components
-│   ├── Dashboard/       # Dashboard and analytics
-│   ├── HR/             # Employee management
-│   ├── Operations/     # Client and site management
-│   └── Layout/         # Navigation and layout
-├── contexts/           # React Context for state management
-├── services/           # Database and API services
-├── types/              # TypeScript type definitions
-└── utils/              # Utility functions and sample data
+├── components/
+│   ├── Auth/             # Authentification (Web)
+│   ├── Dashboard/        # Tableau de bord (Hybride)
+│   ├── Finance/          # Module Finance (Web)
+│   ├── HR/              # Gestion employés (Desktop)
+│   ├── Operations/      # Gestion clients/sites (Desktop)
+│   └── Layout/          # Navigation et mise en page
+├── contexts/            # Contextes React (Auth + App)
+├── services/            # Services base de données
+├── lib/                 # Bibliothèques (Supabase)
+├── types/               # Définitions TypeScript
+└── utils/               # Utilitaires et données d'exemple
 
 public/
-├── electron.cjs        # Electron main process
-└── preload.cjs         # Electron preload script
+├── electron.cjs         # Processus principal Electron
+└── preload.cjs          # Script de préchargement
 
-scripts/
-└── seed-database.cjs   # Database seeding script
+supabase/
+└── migrations/          # Migrations base de données
 ```
 
-## Building for Production
+## Déploiement
 
-### Web Version
-```bash
-npm run build
-```
+### Application Web
+1. Build: `npm run build`
+2. Déployer le dossier `dist/` sur votre serveur web
+3. Configurer les variables d'environnement Supabase
 
-### Desktop Application
-```bash
-npm run electron-pack
-```
+### Application Desktop
+1. Build: `npm run build:electron`
+2. Installer depuis `release/` directory
+3. Fonctionne complètement offline avec SQLite local
 
-This will create distributables in the `dist-electron` directory for your platform.
-
-### Cross-Platform Builds
-
-To build for multiple platforms, you can use electron-builder with platform-specific commands:
-
+### Builds Multi-Plateformes
 ```bash
 # Windows
-npm run electron-pack -- --win
+npm run build:electron -- --win
 
 # macOS  
-npm run electron-pack -- --mac
+npm run build:electron -- --mac
 
 # Linux
-npm run electron-pack -- --linux
+npm run build:electron -- --linux
 ```
 
-## Deployment
+## Prochaines Phases
 
-### Local Installation
-1. Build the Electron app: `npm run electron-pack`
-2. Install the generated installer from `dist-electron/`
-3. The app will run completely offline with local SQLite database
+- **Phase 3**: Module Ressources Humaines (gestion employés, paie)
+- **Phase 4**: Module Opérations (planning, flotte, matériel)  
+- **Phase 5**: Module Paie & Discipline (moteur de paie, actions disciplinaires)
 
-### Network Deployment
-For multi-user environments, you can:
-1. Deploy the web version to a server
-2. Set up a shared database (PostgreSQL/MySQL)
-3. Update the database service to use network endpoints
+## Sécurité
 
-## Security Features
+- Communication IPC sécurisée (Electron)
+- Isolation de contexte activée
+- Intégration Node désactivée dans le renderer
+- Authentification RBAC (Web)
+- Stockage de données local sans dépendances externes (Desktop)
 
-- Secure IPC communication between Electron processes
-- Context isolation enabled
-- Node integration disabled in renderer
-- Local data storage with no external dependencies
+## Documentation
 
-## License
-
-[Add your license information here]
+- `RESUME_IMPLEMENTATION.md` - Résumé de l'implémentation
+- `GUIDE_MODULE_FINANCE.md` - Guide du module Finance
+- `AUTH_FIX_SUMMARY.md` - Corrections d'authentification
 
 ## Support
 
-For support and questions, contact [your-email@domain.com]
+Pour le support et les questions, contactez l'équipe de développement.
