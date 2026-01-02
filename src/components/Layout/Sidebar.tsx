@@ -1,13 +1,7 @@
 import React from 'react';
-import { 
-  Users, 
-  Building2, 
-  MapPin, 
-  DollarSign, 
-  Smartphone, 
-  BarChart3, 
-  Shield, 
-  Settings,
+import {
+  DollarSign,
+  Shield,
   Home
 } from 'lucide-react';
 
@@ -18,13 +12,7 @@ interface SidebarProps {
 
 const menuItems = [
   { id: 'dashboard', label: 'Tableau de Bord', icon: Home },
-  { id: 'hr', label: 'Ressources Humaines', icon: Users },
-  { id: 'operations', label: 'Opérations', icon: Building2 },
-  { id: 'sites', label: 'Gestion des Sites', icon: MapPin },
-  { id: 'finance', label: 'Finance et Facturation', icon: DollarSign },
-  { id: 'mobile', label: 'Opérations sur le Terrain', icon: Smartphone },
-  { id: 'analytics', label: 'Analytiques', icon: BarChart3 },
-  { id: 'settings', label: 'Paramètres', icon: Settings },
+  { id: 'finance', label: 'Finance', icon: DollarSign },
 ];
 
 export default function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
@@ -37,8 +25,8 @@ export default function Sidebar({ activeModule, onModuleChange }: SidebarProps) 
             <Shield className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Go Ahead Security</h1>
-            <p className="text-sm text-slate-400">Système de Gestion</p>
+            <h1 className="text-xl font-bold">Guardian Command</h1>
+            <p className="text-sm text-slate-400">GO AHEAD SECURITY</p>
           </div>
         </div>
       </div>
@@ -69,17 +57,9 @@ export default function Sidebar({ activeModule, onModuleChange }: SidebarProps) 
         </ul>
       </nav>
 
-      {/* User Info */}
+      {/* Slogan */}
       <div className="p-4 border-t border-slate-700">
-        <div className="flex items-center space-x-3">
-          <div className="bg-slate-700 p-2 rounded-full">
-            <Users className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">Utilisateur Admin</p>
-            <p className="text-xs text-slate-400">Administrateur Système</p>
-          </div>
-        </div>
+        <p className="text-xs text-slate-400 text-center italic">Leading the curve ahead</p>
       </div>
     </div>
   );

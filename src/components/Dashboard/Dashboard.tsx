@@ -1,49 +1,40 @@
-import React from 'react';
-import { useApp } from '../../contexts/AppContext';
-import { 
-  Users, 
-  Building2, 
-  MapPin, 
-  DollarSign, 
-  Shield, 
-  AlertTriangle,
-  TrendingUp,
-  Calendar
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import {
+  Building2,
+  MapPin,
+  DollarSign,
+  FileText,
+  TrendingUp
 } from 'lucide-react';
 
 interface StatCardProps {
   title: string;
   value: string | number;
   icon: React.ReactNode;
-  trend?: { value: number; isPositive: boolean };
-  color: 'blue' | 'green' | 'yellow' | 'red' | 'purple';
+  color: 'blue' | 'green' | 'yellow' | 'slate';
+  subtitle?: string;
 }
 
-function StatCard({ title, value, icon, trend, color }: StatCardProps) {
+function StatCard({ title, value, icon, color, subtitle }: StatCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600 border-blue-200',
-    green: 'bg-green-50 text-green-600 border-green-200',
-    yellow: 'bg-yellow-50 text-yellow-600 border-yellow-200',
-    red: 'bg-red-50 text-red-600 border-red-200',
-    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    blue: 'bg-blue-50 text-blue-600',
+    green: 'bg-green-50 text-green-600',
+    yellow: 'bg-yellow-50 text-yellow-600',
+    slate: 'bg-slate-50 text-slate-600',
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex-1">
           <p className="text-sm font-medium text-gray-600">{title}</p>
           <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-          {trend && (
-            <div className={`flex items-center mt-2 text-sm ${
-              trend.isPositive ? 'text-green-600' : 'text-red-600'
-            }`}>
-              <TrendingUp className={`h-4 w-4 mr-1 ${!trend.isPositive ? 'rotate-180' : ''}`} />
-              <span>{Math.abs(trend.value)}% par rapport au mois dernier</span>
-            </div>
+          {subtitle && (
+            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
           )}
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+        <div className={`p-4 rounded-lg ${colorClasses[color]}`}>
           {icon}
         </div>
       </div>
@@ -51,172 +42,136 @@ function StatCard({ title, value, icon, trend, color }: StatCardProps) {
   );
 }
 
+interface DashboardStats {
+  totalClients: number;
+  activeSites: number;
+  inactiveSites: number;
+  totalRevenuePotential: number;
+}
+
 export default function Dashboard() {
-  const { state } = useApp();
-  const { dashboardStats } = state;
+  const [stats, setStats] = useState<DashboardStats>({
+    totalClients: 0,
+    activeSites: 0,
+    inactiveSites: 0,
+    totalRevenuePotential: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
-  const recentActivities = [
-    {
-      id: 1,
-      type: 'employee',
-      message: 'Nouvel employé John Smith ajouté au système',
-      time: 'il y a 2 heures',
-      icon: <Users className="h-4 w-4" />,
-    },
-    {
-      id: 2,
-      type: 'client',
-      message: 'Contrat client renouvelé pour Centre Commercial Downtown',
-      time: 'il y a 4 heures',
-      icon: <Building2 className="h-4 w-4" />,
-    },
-    {
-      id: 3,
-      type: 'alert',
-      message: 'Certificat de sécurité expirant bientôt pour 3 gardes',
-      time: 'il y a 6 heures',
-      icon: <AlertTriangle className="h-4 w-4" />,
-    },
-    {
-      id: 4,
-      type: 'site',
-      message: 'Nouveau site ajouté : Plaza Corporative',
-      time: 'il y a 1 jour',
-      icon: <MapPin className="h-4 w-4" />,
-    },
-  ];
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  const upcomingTasks = [
-    {
-      id: 1,
-      task: 'Examiner les rapports de performance mensuels',
-      dueDate: 'Aujourd\'hui',
-      priority: 'élevée',
-    },
-    {
-      id: 2,
-      task: 'Traiter la paie du personnel de garde',
-      dueDate: 'Demain',
-      priority: 'élevée',
-    },
-    {
-      id: 3,
-      task: 'Réunion client : Centre Commercial Metro',
-      dueDate: '15 Déc',
-      priority: 'moyenne',
-    },
-    {
-      id: 4,
-      task: 'Mettre à jour la documentation des protocoles de sécurité',
-      dueDate: '18 Déc',
-      priority: 'faible',
-    },
-  ];
+  const loadDashboardData = async () => {
+    try {
+      const [clientsResult, sitesResult] = await Promise.all([
+        supabase.from('clients').select('id', { count: 'exact', head: true }),
+        supabase.from('sites').select('statut, tarif_mensuel_client'),
+      ]);
+
+      const activeSites = sitesResult.data?.filter(s => s.statut === 'ACTIF') || [];
+      const inactiveSites = sitesResult.data?.filter(s => s.statut === 'INACTIF') || [];
+      const totalRevenue = activeSites.reduce((sum, site) => sum + (site.tarif_mensuel_client || 0), 0);
+
+      setStats({
+        totalClients: clientsResult.count || 0,
+        activeSites: activeSites.length,
+        inactiveSites: inactiveSites.length,
+        totalRevenuePotential: totalRevenue,
+      });
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Stats Grid */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white">
+        <h2 className="text-2xl font-bold mb-2">Bienvenue sur Guardian Command</h2>
+        <p className="text-blue-100">Système de gestion pour GO AHEAD SECURITY</p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Total Employés"
-          value={dashboardStats.totalEmployees}
-          icon={<Users className="h-6 w-6" />}
-          trend={{ value: 12, isPositive: true }}
-          color="blue"
-        />
-        <StatCard
-          title="Gardes Actifs"
-          value={dashboardStats.activeGuards}
-          icon={<Shield className="h-6 w-6" />}
-          trend={{ value: 8, isPositive: true }}
-          color="green"
-        />
-        <StatCard
           title="Total Clients"
-          value={dashboardStats.totalClients}
-          icon={<Building2 className="h-6 w-6" />}
-          trend={{ value: 5, isPositive: true }}
-          color="purple"
+          value={stats.totalClients}
+          icon={<Building2 className="h-7 w-7" />}
+          color="blue"
+          subtitle="Clients enregistrés"
         />
         <StatCard
           title="Sites Actifs"
-          value={dashboardStats.activeSites}
-          icon={<MapPin className="h-6 w-6" />}
-          trend={{ value: 3, isPositive: false }}
-          color="yellow"
-        />
-      </div>
-
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Revenus Mensuels"
-          value={`${dashboardStats.monthlyRevenue.toLocaleString('fr-FR')} €`}
-          icon={<DollarSign className="h-6 w-6" />}
-          trend={{ value: 15, isPositive: true }}
+          value={stats.activeSites}
+          icon={<MapPin className="h-7 w-7" />}
           color="green"
+          subtitle="Sites en service"
         />
         <StatCard
-          title="Incidents en Attente"
-          value={dashboardStats.pendingIncidents}
-          icon={<AlertTriangle className="h-6 w-6" />}
-          color="red"
+          title="Sites Inactifs"
+          value={stats.inactiveSites}
+          icon={<MapPin className="h-7 w-7" />}
+          color="slate"
+          subtitle="Sites suspendus"
         />
         <StatCard
-          title="Certifications Expirant"
-          value={dashboardStats.expiringCertifications}
-          icon={<Shield className="h-6 w-6" />}
-          color="yellow"
-        />
-        <StatCard
-          title="Équipes à Venir"
-          value={dashboardStats.upcomingShifts}
-          icon={<Calendar className="h-6 w-6" />}
-          color="blue"
+          title="Revenu Mensuel"
+          value={`$${stats.totalRevenuePotential.toLocaleString()}`}
+          icon={<DollarSign className="h-7 w-7" />}
+          color="green"
+          subtitle="Chiffre d'affaires actif"
         />
       </div>
 
-      {/* Activity and Tasks */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Activité Récente</h3>
-          <div className="space-y-4">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3">
-                <div className="flex-shrink-0 p-2 bg-gray-100 rounded-lg">
-                  {activity.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">{activity.message}</p>
-                  <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Module Finance - Phase 1</h3>
+            <FileText className="h-5 w-5 text-gray-400" />
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-900">Gestion des Clients</span>
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Actif</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-900">Gestion des Sites</span>
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Actif</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-900">Facturation</span>
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">À venir</span>
+            </div>
           </div>
         </div>
 
-        {/* Upcoming Tasks */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tâches à Venir</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Prochaines Phases</h3>
+            <TrendingUp className="h-5 w-5 text-gray-400" />
+          </div>
           <div className="space-y-3">
-            {upcomingTasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{task.task}</p>
-                  <p className="text-xs text-gray-500 mt-1">Échéance : {task.dueDate}</p>
-                </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  task.priority === 'élevée' 
-                    ? 'bg-red-100 text-red-800'
-                    : task.priority === 'moyenne'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-green-100 text-green-800'
-                }`}>
-                  {task.priority}
-                </span>
-              </div>
-            ))}
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm font-medium text-gray-900">Phase 2 - Facturation</p>
+              <p className="text-xs text-gray-500 mt-1">Génération de factures et suivi des paiements</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm font-medium text-gray-900">Phase 3 - Ressources Humaines</p>
+              <p className="text-xs text-gray-500 mt-1">Gestion employés et calcul de paie</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm font-medium text-gray-900">Phase 4 - Opérations</p>
+              <p className="text-xs text-gray-500 mt-1">Planning, flotte, et matériel</p>
+            </div>
           </div>
         </div>
       </div>
