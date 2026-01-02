@@ -2,11 +2,21 @@
 
 Système de gestion ERP pour entreprise de sécurité privée. Fonctionne comme application web et application desktop multi-plateformes.
 
-## Phase 1 - Module Finance (Actuel)
+## Phases 1 & 2 - Module Finance (Actuel)
 
+### Phase 1 - Gestion des Tiers
 - Gestion des Clients (Personnes Morales et Physiques)
 - Gestion des Sites de Sécurité
 - Tableau de Bord avec Statistiques en Temps Réel
+
+### Phase 2 - Facturation
+- Création et Gestion des Factures
+- Lignes de Facturation par Site
+- Suivi du Statut des Paiements (Brouillon, Envoyé, Payé)
+- Gestion des Créances Antérieures
+- Calcul Automatique des Totaux
+
+### Infrastructure
 - Authentification avec Contrôle d'Accès Basé sur les Rôles (RBAC)
 - Base de Données Conforme aux Normes OHADA
 - Application Web et Desktop (Windows, Mac, Linux)
@@ -89,8 +99,8 @@ This will create installers in the `release/` directory:
 
 ## Prochaines Phases
 
-- **Phase 2**: Module Facturation (génération factures, suivi paiements)
 - **Phase 3**: Module Ressources Humaines (gestion employés, paie)
 - **Phase 4**: Module Opérations (planning, flotte, matériel)
+- **Phase 5**: Module Paie & Discipline (moteur de paie, actions disciplinaires)
 
 Pour plus de détails, consultez `RESUME_IMPLEMENTATION.md` et `GUIDE_MODULE_FINANCE.md`.

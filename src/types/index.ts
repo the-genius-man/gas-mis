@@ -1,6 +1,7 @@
 export type TypeClient = 'MORALE' | 'PHYSIQUE';
 export type DeviseClient = 'USD' | 'CDF' | 'EUR';
 export type StatutSite = 'ACTIF' | 'INACTIF';
+export type StatutFacture = 'BROUILLON' | 'ENVOYE' | 'PAYE_PARTIEL' | 'PAYE_TOTAL' | 'ANNULE';
 
 export interface Client {
   id: string;
@@ -39,4 +40,38 @@ export interface Site {
   created_at?: string;
   updated_at?: string;
   clients?: Client;
+}
+
+export interface Facture {
+  id: string;
+  client_id: string;
+  numero_facture: string;
+  date_emission: string;
+  date_echeance: string;
+  periode_mois: number;
+  periode_annee: number;
+  total_gardiens_factures: number;
+  montant_ht_prestation: number;
+  montant_frais_supp: number;
+  motif_frais_supp?: string;
+  creances_anterieures: number;
+  montant_total_ttc: number;
+  montant_total_du_client: number;
+  devise: DeviseClient;
+  statut_paiement: StatutFacture;
+  notes_facture?: string;
+  created_at?: string;
+  updated_at?: string;
+  clients?: Client;
+  factures_details?: FactureDetail[];
+}
+
+export interface FactureDetail {
+  id: string;
+  facture_id: string;
+  site_id: string;
+  nombre_gardiens_site: number;
+  montant_forfaitaire_site: number;
+  description_ligne?: string;
+  sites?: Site;
 }

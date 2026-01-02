@@ -135,7 +135,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Module Finance - Phase 1</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Module Finance - Phases 1 & 2</h3>
             <FileText className="h-5 w-5 text-gray-400" />
           </div>
           <div className="space-y-3">
@@ -147,9 +147,9 @@ export default function Dashboard() {
               <span className="text-sm font-medium text-gray-900">Gestion des Sites</span>
               <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Actif</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
               <span className="text-sm font-medium text-gray-900">Facturation</span>
-              <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">À venir</span>
+              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Actif</span>
             </div>
           </div>
         </div>
@@ -161,16 +161,16 @@ export default function Dashboard() {
           </div>
           <div className="space-y-3">
             <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm font-medium text-gray-900">Phase 2 - Facturation</p>
-              <p className="text-xs text-gray-500 mt-1">Génération de factures et suivi des paiements</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-sm font-medium text-gray-900">Phase 3 - Ressources Humaines</p>
               <p className="text-xs text-gray-500 mt-1">Gestion employés et calcul de paie</p>
             </div>
             <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-sm font-medium text-gray-900">Phase 4 - Opérations</p>
               <p className="text-xs text-gray-500 mt-1">Planning, flotte, et matériel</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm font-medium text-gray-900">Phase 5 - Paie & Discipline</p>
+              <p className="text-xs text-gray-500 mt-1">Moteur de paie automatique et actions disciplinaires</p>
             </div>
           </div>
         </div>

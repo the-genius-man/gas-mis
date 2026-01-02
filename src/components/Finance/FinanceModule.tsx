@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Building2, MapPin, FileText } from 'lucide-react';
 import ClientsManagement from './ClientsManagement';
 import SitesManagement from './SitesManagement';
+import InvoicesManagement from './InvoicesManagement';
 
 type Tab = 'clients' | 'sites' | 'factures';
 
@@ -36,15 +37,7 @@ export default function FinanceModule() {
       case 'sites':
         return <SitesManagement />;
       case 'factures':
-        return (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Module Facturation</h3>
-              <p className="text-gray-600">À venir prochainement</p>
-            </div>
-          </div>
-        );
+        return <InvoicesManagement />;
       default:
         return null;
     }
