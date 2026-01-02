@@ -46,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setUtilisateur(null);
         }
+        setLoading(false);
       })();
     });
 
@@ -77,15 +78,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) throw error;
-    if (data.user) {
-      await loadUtilisateur(data.user.id);
-    }
   };
 
   const signOut = async () => {
