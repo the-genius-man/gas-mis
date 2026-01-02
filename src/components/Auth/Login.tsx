@@ -11,12 +11,15 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔐 [LOGIN] Tentative de connexion pour:', email);
     setError(null);
     setLoading(true);
 
     try {
       await signIn(email, password);
+      console.log('✅ [LOGIN] Connexion réussie');
     } catch (err: any) {
+      console.error('❌ [LOGIN] Erreur de connexion:', err);
       setError(err.message || 'Erreur de connexion. Veuillez vérifier vos identifiants.');
     } finally {
       setLoading(false);
