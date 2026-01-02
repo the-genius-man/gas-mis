@@ -17,6 +17,14 @@ function AppContent() {
   const { utilisateur, loading: authLoading } = useAuth();
   const [activeModule, setActiveModule] = useState('dashboard');
 
+  // Initialize sample data - must be before any early returns
+  useEffect(() => {
+    dispatch({ type: 'SET_EMPLOYEES', payload: sampleEmployees });
+    dispatch({ type: 'SET_CLIENTS', payload: sampleClients });
+    dispatch({ type: 'SET_SITES', payload: sampleSites });
+    dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: sampleDashboardStats });
+  }, [dispatch]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -31,14 +39,6 @@ function AppContent() {
   if (!utilisateur) {
     return <Login />;
   }
-
-  // Initialize sample data
-  useEffect(() => {
-    dispatch({ type: 'SET_EMPLOYEES', payload: sampleEmployees });
-    dispatch({ type: 'SET_CLIENTS', payload: sampleClients });
-    dispatch({ type: 'SET_SITES', payload: sampleSites });
-    dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: sampleDashboardStats });
-  }, [dispatch]);
 
   const getModuleTitle = () => {
     switch (activeModule) {
