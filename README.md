@@ -1,14 +1,15 @@
-# Go Ahead Security
+# Guardian Command - GO AHEAD SECURITY
 
-A comprehensive security company management system that runs both as a web application and as a cross-platform desktop application.
+Système de gestion ERP pour entreprise de sécurité privée. Fonctionne comme application web et application desktop multi-plateformes.
 
-## Features
+## Phase 1 - Module Finance (Actuel)
 
-- Employee Management (HR)
-- Client Management
-- Site Management & Patrol Routes
-- Dashboard with Real-time Statistics
-- Runs as Web App or Desktop Application (Windows, Mac, Linux)
+- Gestion des Clients (Personnes Morales et Physiques)
+- Gestion des Sites de Sécurité
+- Tableau de Bord avec Statistiques en Temps Réel
+- Authentification avec Contrôle d'Accès Basé sur les Rôles (RBAC)
+- Base de Données Conforme aux Normes OHADA
+- Application Web et Desktop (Windows, Mac, Linux)
 
 ## Development
 
@@ -55,23 +56,41 @@ This will create installers in the `release/` directory:
 - **macOS**: `.dmg` disk image
 - **Linux**: `.AppImage` and `.deb` packages
 
-## Project Structure
+## Structure du Projet
 
 ```
 .
-├── electron/          # Electron main process files
-│   ├── main.js       # Main process entry point
-│   └── preload.js    # Preload script for security
-├── src/              # React application source
-├── dist/             # Built web assets
-└── dist-electron/    # Built Electron files
+├── electron/              # Fichiers processus principal Electron
+│   ├── main.js           # Point d'entrée du processus principal
+│   └── preload.js        # Script de préchargement pour la sécurité
+├── src/
+│   ├── components/
+│   │   ├── Auth/         # Authentification
+│   │   ├── Dashboard/    # Tableau de bord
+│   │   ├── Finance/      # Module Finance (Phase 1)
+│   │   └── Layout/       # Composants de mise en page
+│   ├── contexts/         # Contextes React (Auth)
+│   ├── lib/              # Bibliothèques (Supabase)
+│   └── types/            # Définitions TypeScript
+├── supabase/
+│   └── migrations/       # Migrations de base de données
+├── dist/                 # Assets web compilés
+└── dist-electron/        # Fichiers Electron compilés
 ```
 
-## Technology Stack
+## Stack Technologique
 
-- **Electron**: Desktop application framework
-- **React**: UI framework
-- **TypeScript**: Type safety
-- **Vite**: Build tool and dev server
-- **Tailwind CSS**: Styling
-- **Lucide React**: Icons
+- **Electron**: Framework d'application desktop
+- **React 18**: Framework UI avec TypeScript
+- **Vite**: Outil de build et serveur de développement
+- **Tailwind CSS**: Framework CSS
+- **Lucide React**: Bibliothèque d'icônes
+- **Supabase**: Backend (PostgreSQL + Auth + API REST)
+
+## Prochaines Phases
+
+- **Phase 2**: Module Facturation (génération factures, suivi paiements)
+- **Phase 3**: Module Ressources Humaines (gestion employés, paie)
+- **Phase 4**: Module Opérations (planning, flotte, matériel)
+
+Pour plus de détails, consultez `RESUME_IMPLEMENTATION.md` et `GUIDE_MODULE_FINANCE.md`.
