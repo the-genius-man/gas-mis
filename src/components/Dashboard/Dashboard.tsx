@@ -52,8 +52,14 @@ function StatCard({ title, value, icon, trend, color }: StatCardProps) {
 }
 
 export default function Dashboard() {
-  const { state } = useApp();
+  const { state, actions } = useApp();
   const { dashboardStats } = state;
+
+  const handleSeedDatabase = async () => {
+    if (window.confirm('This will replace all existing data with sample data. Continue?')) {
+      await actions.seedDatabase();
+    }
+  };
 
   const recentActivities = [
     {
@@ -115,6 +121,24 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Temporary Seed Button - Remove in production */}
+      {window.electronAPI?.isElectron && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-yellow-800">Base de Données Vide</h3>
+              <p className="text-sm text-yellow-700 mt-1">Charger des données d'exemple pour tester l'application</p>
+            </div>
+            <button
+              onClick={handleSeedDatabase}
+              className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+            >
+              Charger Données d'Exemple
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard

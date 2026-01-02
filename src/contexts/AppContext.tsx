@@ -127,6 +127,7 @@ const AppContext = createContext<{
     addSite: (site: Site) => Promise<void>;
     updateSite: (site: Site) => Promise<void>;
     deleteSite: (id: string) => Promise<void>;
+    seedDatabase: () => Promise<void>;
   };
 } | null>(null);
 
@@ -306,6 +307,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Error deleting site:', error);
         dispatch({ type: 'SET_ERROR', payload: 'Failed to delete site' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    seedDatabase: async () => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.seedDatabase();
+        if (result.success) {
+          // Reload all data after seeding
+          await actions.loadAllData();
+        }
+      } catch (error) {
+        console.error('Error seeding database:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to seed database' });
       } finally {
         dispatch({ type: 'SET_LOADING', payload: false });
       }

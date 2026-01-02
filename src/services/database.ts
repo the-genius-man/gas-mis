@@ -25,6 +25,9 @@ declare global {
       // Dashboard stats
       getDashboardStats: () => Promise<DashboardStats>;
       
+      // Database seeding
+      seedDatabase: () => Promise<{ success: boolean; message: string }>;
+      
       // Utility
       isElectron: boolean;
     };
@@ -155,6 +158,16 @@ class DatabaseService {
     // Fallback to sample data for web version
     const { sampleDashboardStats } = await import('../utils/sampleData');
     return sampleDashboardStats;
+  }
+
+  // Database seeding
+  async seedDatabase(): Promise<{ success: boolean; message: string }> {
+    if (this.isElectron()) {
+      return await window.electronAPI!.seedDatabase();
+    }
+    // Fallback for web version
+    console.log('Web version: Database would be seeded with sample data');
+    return { success: true, message: 'Sample data loaded (web version)' };
   }
 }
 

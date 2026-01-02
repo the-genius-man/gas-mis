@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Dashboard stats
   getDashboardStats: () => ipcRenderer.invoke('db-get-dashboard-stats'),
   
+  // Database seeding
+  seedDatabase: () => ipcRenderer.invoke('db-seed-data'),
+  
   // Utility
   isElectron: true
 });
