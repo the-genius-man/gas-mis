@@ -1,17 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import Dashboard from './components/Dashboard/Dashboard';
 import EmployeeList from './components/HR/EmployeeList';
 import ClientList from './components/Operations/ClientList';
 import SiteList from './components/Operations/SiteList';
+import Login from './components/Auth/Login';
+import FinanceModule from './components/Finance/FinanceModule';
 import { sampleEmployees, sampleClients, sampleSites, sampleDashboardStats } from './utils/sampleData';
 import { Employee, Client, Site } from './types';
 
 function AppContent() {
   const { state, dispatch } = useApp();
+  const { utilisateur, loading: authLoading } = useAuth();
   const [activeModule, setActiveModule] = useState('dashboard');
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!utilisateur) {
+    return <Login />;
+  }
 
   // Initialize sample data
   useEffect(() => {
@@ -132,14 +151,7 @@ function AppContent() {
           />
         );
       case 'finance':
-        return (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Finance et Facturation</h3>
-              <p className="text-gray-600">À venir dans la Phase 3 - Intégration Financière</p>
-            </div>
-          </div>
-        );
+        return <FinanceModule />;
       case 'mobile':
         return (
           <div className="flex items-center justify-center h-64">
@@ -187,9 +199,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </AuthProvider>
   );
 }
 
