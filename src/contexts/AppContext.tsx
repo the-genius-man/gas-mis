@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { Employee, Client, Site, User, DashboardStats } from '../types';
+import { databaseService } from '../services/database';
 
 interface AppState {
   employees: Employee[];
@@ -27,7 +28,8 @@ type AppAction =
   | { type: 'UPDATE_SITE'; payload: Site }
   | { type: 'DELETE_SITE'; payload: string }
   | { type: 'SET_CURRENT_USER'; payload: User }
-  | { type: 'UPDATE_DASHBOARD_STATS'; payload: DashboardStats };
+  | { type: 'UPDATE_DASHBOARD_STATS'; payload: DashboardStats }
+  | { type: 'LOAD_ALL_DATA' };
 
 const initialState: AppState = {
   employees: [],
@@ -114,13 +116,204 @@ function appReducer(state: AppState, action: AppAction): AppState {
 const AppContext = createContext<{
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
+  actions: {
+    loadAllData: () => Promise<void>;
+    addEmployee: (employee: Employee) => Promise<void>;
+    updateEmployee: (employee: Employee) => Promise<void>;
+    deleteEmployee: (id: string) => Promise<void>;
+    addClient: (client: Client) => Promise<void>;
+    updateClient: (client: Client) => Promise<void>;
+    deleteClient: (id: string) => Promise<void>;
+    addSite: (site: Site) => Promise<void>;
+    updateSite: (site: Site) => Promise<void>;
+    deleteSite: (id: string) => Promise<void>;
+  };
 } | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
+  const actions = {
+    loadAllData: async () => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        dispatch({ type: 'SET_ERROR', payload: null });
+
+        const [employees, clients, sites, dashboardStats] = await Promise.all([
+          databaseService.getEmployees(),
+          databaseService.getClients(),
+          databaseService.getSites(),
+          databaseService.getDashboardStats()
+        ]);
+
+        dispatch({ type: 'SET_EMPLOYEES', payload: employees });
+        dispatch({ type: 'SET_CLIENTS', payload: clients });
+        dispatch({ type: 'SET_SITES', payload: sites });
+        dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: dashboardStats });
+      } catch (error) {
+        console.error('Error loading data:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    addEmployee: async (employee: Employee) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.addEmployee(employee);
+        if (result.success) {
+          dispatch({ type: 'ADD_EMPLOYEE', payload: employee });
+          // Refresh dashboard stats
+          const stats = await databaseService.getDashboardStats();
+          dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: stats });
+        }
+      } catch (error) {
+        console.error('Error adding employee:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to add employee' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    updateEmployee: async (employee: Employee) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.updateEmployee(employee);
+        if (result.success) {
+          dispatch({ type: 'UPDATE_EMPLOYEE', payload: employee });
+        }
+      } catch (error) {
+        console.error('Error updating employee:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to update employee' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    deleteEmployee: async (id: string) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.deleteEmployee(id);
+        if (result.success) {
+          dispatch({ type: 'DELETE_EMPLOYEE', payload: id });
+          // Refresh dashboard stats
+          const stats = await databaseService.getDashboardStats();
+          dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: stats });
+        }
+      } catch (error) {
+        console.error('Error deleting employee:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to delete employee' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    addClient: async (client: Client) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.addClient(client);
+        if (result.success) {
+          dispatch({ type: 'ADD_CLIENT', payload: client });
+          // Refresh dashboard stats
+          const stats = await databaseService.getDashboardStats();
+          dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: stats });
+        }
+      } catch (error) {
+        console.error('Error adding client:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to add client' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    updateClient: async (client: Client) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.updateClient(client);
+        if (result.success) {
+          dispatch({ type: 'UPDATE_CLIENT', payload: client });
+        }
+      } catch (error) {
+        console.error('Error updating client:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to update client' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    deleteClient: async (id: string) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.deleteClient(id);
+        if (result.success) {
+          dispatch({ type: 'DELETE_CLIENT', payload: id });
+          // Refresh dashboard stats
+          const stats = await databaseService.getDashboardStats();
+          dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: stats });
+        }
+      } catch (error) {
+        console.error('Error deleting client:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to delete client' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    addSite: async (site: Site) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.addSite(site);
+        if (result.success) {
+          dispatch({ type: 'ADD_SITE', payload: site });
+          // Refresh dashboard stats
+          const stats = await databaseService.getDashboardStats();
+          dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: stats });
+        }
+      } catch (error) {
+        console.error('Error adding site:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to add site' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    updateSite: async (site: Site) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.updateSite(site);
+        if (result.success) {
+          dispatch({ type: 'UPDATE_SITE', payload: site });
+        }
+      } catch (error) {
+        console.error('Error updating site:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to update site' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    },
+
+    deleteSite: async (id: string) => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const result = await databaseService.deleteSite(id);
+        if (result.success) {
+          dispatch({ type: 'DELETE_SITE', payload: id });
+          // Refresh dashboard stats
+          const stats = await databaseService.getDashboardStats();
+          dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: stats });
+        }
+      } catch (error) {
+        console.error('Error deleting site:', error);
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to delete site' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    }
+  };
+
   return (
-    <AppContext.Provider value={{ state, dispatch }}>
+    <AppContext.Provider value={{ state, dispatch, actions }}>
       {children}
     </AppContext.Provider>
   );

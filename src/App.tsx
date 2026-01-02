@@ -6,20 +6,16 @@ import Dashboard from './components/Dashboard/Dashboard';
 import EmployeeList from './components/HR/EmployeeList';
 import ClientList from './components/Operations/ClientList';
 import SiteList from './components/Operations/SiteList';
-import { sampleEmployees, sampleClients, sampleSites, sampleDashboardStats } from './utils/sampleData';
 import { Employee, Client, Site } from './types';
 
 function AppContent() {
-  const { state, dispatch } = useApp();
+  const { state, actions } = useApp();
   const [activeModule, setActiveModule] = useState('dashboard');
 
-  // Initialize sample data
+  // Load all data on app start
   useEffect(() => {
-    dispatch({ type: 'SET_EMPLOYEES', payload: sampleEmployees });
-    dispatch({ type: 'SET_CLIENTS', payload: sampleClients });
-    dispatch({ type: 'SET_SITES', payload: sampleSites });
-    dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: sampleDashboardStats });
-  }, [dispatch]);
+    actions.loadAllData();
+  }, []);
 
   const getModuleTitle = () => {
     switch (activeModule) {
@@ -104,6 +100,36 @@ function AppContent() {
   };
 
   const renderContent = () => {
+    if (state.loading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Chargement des données...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (state.error) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              <p className="font-bold">Erreur</p>
+              <p>{state.error}</p>
+            </div>
+            <button
+              onClick={() => actions.loadAllData()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Réessayer
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     switch (activeModule) {
       case 'dashboard':
         return <Dashboard />;
