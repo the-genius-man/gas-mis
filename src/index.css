@@ -1,3 +1,214 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Reset default margins */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* ============================================================================
+   Print Styles for Invoice Templates
+   ============================================================================ */
+
+/* Page break utilities */
+.page-break-after {
+  page-break-after: always;
+  break-after: page;
+}
+
+.page-break-before {
+  page-break-before: always;
+  break-before: page;
+}
+
+.avoid-page-break {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Print-specific styles */
+@media print {
+  /* Reset body for printing */
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide non-printable elements */
+  .no-print,
+  .print-hide,
+  header:not(.invoice-header),
+  nav,
+  aside,
+  footer:not(.invoice-footer),
+  .modal-backdrop,
+  .wizard-navigation,
+  button:not(.print-button),
+  .sidebar,
+  .navigation,
+  .toast,
+  .notification {
+    display: none !important;
+  }
+
+  /* Hide everything except print-only content when printing */
+  body > *:not(.print-only),
+  #root > *:not(.print-only) {
+    display: none !important;
+  }
+
+  /* Show print-only container */
+  .print-only {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  /* Show only print container */
+  .print-container {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Invoice page styling */
+  .invoice-page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 0;
+    margin: 0 auto;
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  /* Page break between invoices */
+  .invoice-page.page-break-after {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  /* Ensure content fits on page */
+  .invoice-content {
+    padding: 15mm 20mm;
+    box-sizing: border-box;
+  }
+
+  /* Table styling for print */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th, td {
+    border: 1px solid #d1d5db !important;
+    padding: 8px 12px;
+  }
+
+  thead {
+    background-color: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Preserve background colors */
+  .bg-blue-600,
+  .bg-blue-50,
+  .bg-gray-50,
+  .bg-gray-100,
+  .bg-yellow-50 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Text colors for print */
+  .text-blue-600 {
+    color: #2563eb !important;
+  }
+
+  .text-gray-600 {
+    color: #4b5563 !important;
+  }
+
+  .text-gray-800 {
+    color: #1f2937 !important;
+  }
+
+  /* Border colors */
+  .border-blue-600 {
+    border-color: #2563eb !important;
+  }
+
+  /* Logo placeholder styling */
+  .invoice-header .bg-blue-600 {
+    background-color: #2563eb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Payment section styling */
+  .payment-section {
+    background-color: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Avoid breaking inside important sections */
+  .invoice-header,
+  .payment-section,
+  .financial-summary,
+  table thead,
+  table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Page margins */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* First page specific */
+  @page :first {
+    margin-top: 0;
+  }
+}
+
+/* Screen-only styles for print preview */
+@media screen {
+  /* Hide print-only content on screen by default */
+  .print-only {
+    display: none !important;
+  }
+
+  /* When print-only is visible (during print preview), show it */
+  .print-only.visible,
+  .print-only:not([style*="display: none"]) {
+    display: block !important;
+  }
+
+  .print-container {
+    background-color: #e5e7eb;
+    padding: 20px;
+  }
+
+  .invoice-page {
+    background: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+
+  .invoice-page:last-child {
+    margin-bottom: 0;
+  }
+}

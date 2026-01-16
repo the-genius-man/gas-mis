@@ -1,8 +1,15 @@
-import React from 'react';
 import {
-  DollarSign,
   Shield,
-  Home
+  Home,
+  FileText,
+  Building2,
+  Wallet,
+  Users,
+  Truck,
+  Package,
+  DollarSign,
+  Settings,
+  BarChart3
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -12,27 +19,35 @@ interface SidebarProps {
 
 const menuItems = [
   { id: 'dashboard', label: 'Tableau de Bord', icon: Home },
-  { id: 'finance', label: 'Finance', icon: DollarSign },
+  { id: 'hr-module', label: 'Ressources Humaines', icon: Users },
+  { id: 'operations-module', label: 'Opérations', icon: Truck },
+  { id: 'logistics-module', label: 'Logistique', icon: Package },
+  { id: 'clients', label: 'Clients', icon: Building2 },
+  { id: 'facturation', label: 'Facturation', icon: FileText },
+  { id: 'finance', label: 'Finance', icon: Wallet },
+  { id: 'payroll-module', label: 'Paie', icon: DollarSign },
+  { id: 'reports', label: 'Rapports', icon: BarChart3 },
+  { id: 'settings', label: 'Paramètres', icon: Settings },
 ];
 
 export default function Sidebar({ activeModule, onModuleChange }: SidebarProps) {
   return (
-    <div className="bg-slate-900 text-white w-64 min-h-screen flex flex-col">
+    <div className="bg-slate-900 text-white w-64 h-screen flex flex-col fixed left-0 top-0 z-40">
       {/* Logo */}
-      <div className="p-6 border-b border-slate-700">
+      <div className="p-6 border-b border-slate-700 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="bg-blue-600 p-2 rounded-lg">
             <Shield className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Guardian Command</h1>
-            <p className="text-sm text-slate-400">GO AHEAD SECURITY</p>
+            <h1 className="text-xl font-bold">Go Ahead Security</h1>
+            <p className="text-sm text-slate-400">Leading the curve ahead</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -57,9 +72,9 @@ export default function Sidebar({ activeModule, onModuleChange }: SidebarProps) 
         </ul>
       </nav>
 
-      {/* Slogan */}
-      <div className="p-4 border-t border-slate-700">
-        <p className="text-xs text-slate-400 text-center italic">Leading the curve ahead</p>
+      {/* Footer */}
+      <div className="p-4 border-t border-slate-700 flex-shrink-0">
+        <p className="text-xs text-slate-400 text-center italic">Version 1.1.0</p>
       </div>
     </div>
   );

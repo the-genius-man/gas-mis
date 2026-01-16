@@ -1,13 +1,23 @@
-import React, { useState } from 'react';
-import { Building2, MapPin, FileText } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Building2, MapPin } from 'lucide-react';
 import ClientsManagement from './ClientsManagement';
 import SitesManagement from './SitesManagement';
-import InvoicesManagement from './InvoicesManagement';
 
-type Tab = 'clients' | 'sites' | 'factures';
+type Tab = 'clients' | 'sites';
+
+// Check if running in Electron
+const isElectron = () => {
+  if (typeof window !== 'undefined') {
+    return !!(window.electronAPI?.isElectron || window.require || (window as any).process?.versions?.electron);
+  }
+  return false;
+};
 
 export default function FinanceModule() {
   const [activeTab, setActiveTab] = useState<Tab>('clients');
+  
+  // Memoize electron detection
+  const electronMode = useMemo(() => isElectron(), []);
 
   const tabs = [
     {
@@ -22,22 +32,25 @@ export default function FinanceModule() {
       icon: MapPin,
       description: 'Emplacements de sécurité',
     },
-    {
-      id: 'factures' as Tab,
-      label: 'Facturation',
-      icon: FileText,
-      description: 'Factures et paiements',
-    },
   ];
 
   const renderContent = () => {
+    if (!electronMode) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Module Finance</h3>
+            <p className="text-gray-600">Ce module nécessite le mode Electron avec base de données locale</p>
+          </div>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'clients':
         return <ClientsManagement />;
       case 'sites':
         return <SitesManagement />;
-      case 'factures':
-        return <InvoicesManagement />;
       default:
         return null;
     }
@@ -55,8 +68,10 @@ export default function FinanceModule() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                disabled={!electronMode}
                 className={`
                   flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                  ${!electronMode ? 'opacity-50 cursor-not-allowed' : ''}
                   ${
                     isActive
                       ? 'border-blue-600 text-blue-600'

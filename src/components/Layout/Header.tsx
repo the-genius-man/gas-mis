@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Bell, Search, User, Calendar, AlertTriangle, LogOut, ChevronDown } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import AlertsPanel from '../Alerts/AlertsPanel';
 
 interface HeaderProps {
   title: string;
@@ -8,14 +8,69 @@ interface HeaderProps {
 }
 
 export default function Header({ title, subtitle }: HeaderProps) {
-  const { utilisateur, signOut } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showAlertsPanel, setShowAlertsPanel] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
+  
+  // Memoize electron detection to prevent re-computation
+  const electronMode = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return !!(window.electronAPI?.isElectron || window.require || (window as any).process?.versions?.electron);
+    }
+    return false;
+  }, []);
+
+  // Load alert counts
+  useEffect(() => {
+    const loadAlertCounts = async () => {
+      if (window.electronAPI?.getAlertCounts) {
+        try {
+          const counts = await window.electronAPI.getAlertCounts();
+          setAlertCount(counts.active);
+        } catch (error) {
+          console.error('Error loading alert counts:', error);
+        }
+      }
+    };
+
+    loadAlertCounts();
+    
+    // Run alert check on startup
+    if (window.electronAPI?.runAlertCheck) {
+      window.electronAPI.runAlertCheck().then(() => {
+        loadAlertCounts();
+      }).catch(console.error);
+    }
+
+    // Refresh counts periodically
+    const interval = setInterval(loadAlertCounts, 60000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Only use auth in web mode
+  let utilisateur = null;
+  let signOut = null;
+  
+  if (!electronMode) {
+    try {
+      // Dynamically import and use auth only in web mode
+      const { useAuth } = require('../../contexts/AuthContext');
+      const authContext = useAuth();
+      utilisateur = authContext.utilisateur;
+      signOut = authContext.signOut;
+    } catch (error) {
+      // Auth context not available, continue without it
+      console.log('Auth context not available in this mode');
+    }
+  }
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Erreur de déconnexion:', error);
+    if (signOut) {
+      try {
+        await signOut();
+      } catch (error) {
+        console.error('Erreur de déconnexion:', error);
+      }
     }
   };
 
@@ -29,6 +84,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -56,55 +112,74 @@ export default function Header({ title, subtitle }: HeaderProps) {
               <Calendar className="h-5 w-5" />
             </button>
             
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative">
+            <button 
+              onClick={() => setShowAlertsPanel(true)}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors relative"
+            >
               <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                3
-              </span>
+              {alertCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {alertCount > 99 ? '99+' : alertCount}
+                </span>
+              )}
             </button>
 
             <button className="p-2 text-amber-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors">
               <AlertTriangle className="h-5 w-5" />
             </button>
 
-            <div className="relative">
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <User className="h-5 w-5" />
-                <span className="text-sm font-medium">{utilisateur?.nom_complet}</span>
-                <ChevronDown className="h-4 w-4" />
-              </button>
+            {/* User Menu - only show in web mode with auth */}
+            {!electronMode && utilisateur && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center gap-2 p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <User className="h-5 w-5" />
+                  <span className="text-sm font-medium">{utilisateur?.nom_complet}</span>
+                  <ChevronDown className="h-4 w-4" />
+                </button>
 
-              {showUserMenu && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setShowUserMenu(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                    <div className="px-4 py-3 border-b border-gray-200">
-                      <p className="text-sm font-medium text-gray-900">{utilisateur?.nom_complet}</p>
-                      <p className="text-xs text-gray-500 mt-1">@{utilisateur?.nom_utilisateur}</p>
-                      <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded ${getRoleBadgeColor(utilisateur?.role || '')}`}>
-                        {utilisateur?.role}
-                      </span>
+                {showUserMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowUserMenu(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                      <div className="px-4 py-3 border-b border-gray-200">
+                        <p className="text-sm font-medium text-gray-900">{utilisateur?.nom_complet}</p>
+                        <p className="text-xs text-gray-500 mt-1">@{utilisateur?.nom_utilisateur}</p>
+                        <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded ${getRoleBadgeColor(utilisateur?.role || '')}`}>
+                          {utilisateur?.role}
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Se déconnecter
+                      </button>
                     </div>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Se déconnecter
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Simple user icon for Electron mode */}
+            {electronMode && (
+              <div className="flex items-center gap-2 p-2 text-gray-700">
+                <User className="h-5 w-5" />
+                <span className="text-sm font-medium">Admin</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
+      
+      {/* Alerts Panel */}
+      <AlertsPanel isOpen={showAlertsPanel} onClose={() => setShowAlertsPanel(false)} />
     </header>
   );
 }

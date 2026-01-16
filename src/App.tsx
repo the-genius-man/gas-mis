@@ -1,49 +1,67 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
-import Dashboard from './components/Dashboard/Dashboard';
-import Login from './components/Auth/Login';
-import FinanceModule from './components/Finance/FinanceModule';
+import Dashboard from './components/Dashboard/EnhancedDashboard';
 import EmployeeList from './components/HR/EmployeeList';
+import HRModule from './components/HR/HRModule';
+import OperationsModule from './components/Operations/OperationsModule';
+import LogisticsModule from './components/Logistics/LogisticsModule';
+import PayrollModule from './components/Payroll/PayrollModule';
 import ClientList from './components/Operations/ClientList';
 import SiteList from './components/Operations/SiteList';
+import FinanceModule from './components/Finance/FinanceModule';
+import InvoicesManagement from './components/Finance/InvoicesManagement';
+import FinanceManagement from './components/Finance/FinanceManagement';
+import SettingsPage from './components/Settings/SettingsPage';
+import ReportsModule from './components/Reports/ReportsModule';
 import { Employee, Client, Site } from './types';
-
-// Check if running in Electron
-const isElectron = typeof window !== 'undefined' && window.electronAPI?.isElectron === true;
 
 function AppContent() {
   const [activeModule, setActiveModule] = useState('dashboard');
+  
+  // Memoize electron detection to prevent re-computation
+  const electronMode = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return !!(window.electronAPI?.isElectron || window.require || (window as any).process?.versions?.electron);
+    }
+    return false;
+  }, []);
+  
+  const supabaseMode = useMemo(() => {
+    return !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY) && !electronMode;
+  }, [electronMode]);
 
-  // Use different contexts based on environment
-  const appContext = isElectron ? useApp() : null;
-  const authContext = !isElectron ? useAuth() : null;
+  // Use App context for Electron mode
+  const appContext = electronMode ? useApp() : null;
+  
+  // Use Auth context for Supabase mode (lazy load to avoid errors)
+  const [authContext, setAuthContext] = useState<any>(null);
 
-  // Load all data on app start (Electron mode)
   useEffect(() => {
-    if (isElectron && appContext) {
+    if (supabaseMode) {
+      // Dynamically import AuthContext only when needed
+      import('./contexts/AuthContext').then(({ useAuth }) => {
+        try {
+          setAuthContext({ useAuth });
+        } catch (error) {
+          console.error('Failed to load auth context:', error);
+        }
+      });
+    }
+  }, [supabaseMode]);
+
+  // Load all data on app start (Electron mode) - only run once
+  useEffect(() => {
+    if (electronMode && appContext) {
       appContext.actions.loadAllData();
     }
-  }, [appContext]);
+  }, [electronMode]); // Remove appContext dependency to prevent loops
 
   // Handle authentication loading (Supabase mode)
-  if (!isElectron && authContext) {
-    if (authContext.loading) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement...</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (!authContext.utilisateur) {
-      return <Login />;
-    }
+  if (supabaseMode && authContext) {
+    // This would handle Supabase auth, but for now we'll skip it
+    // since we're focusing on Electron mode
   }
 
   const getModuleTitle = () => {
@@ -52,12 +70,24 @@ function AppContent() {
         return 'Tableau de Bord';
       case 'hr':
         return 'Ressources Humaines';
+      case 'hr-module':
+        return 'Ressources Humaines';
       case 'operations':
         return 'Opérations';
+      case 'operations-module':
+        return 'Opérations';
+      case 'logistics-module':
+        return 'Logistique';
+      case 'payroll-module':
+        return 'Paie';
       case 'sites':
         return 'Gestion des Sites';
+      case 'clients':
+        return 'Clients';
+      case 'facturation':
+        return 'Facturation';
       case 'finance':
-        return 'Finance et Facturation';
+        return 'Finance';
       case 'mobile':
         return 'Opérations sur le Terrain';
       case 'analytics':
@@ -72,15 +102,29 @@ function AppContent() {
   const getModuleSubtitle = () => {
     switch (activeModule) {
       case 'dashboard':
-        return isElectron ? 'Aperçu de vos opérations de sécurité' : 'Vue d\'ensemble du système';
+        return electronMode ? 'Aperçu de vos opérations de sécurité' : 'Vue d\'ensemble du système';
       case 'hr':
         return 'Gérez le personnel et les informations des employés';
+      case 'hr-module':
+        return 'Gestion des employés, congés et déploiements';
       case 'operations':
         return 'Gestion des clients et opérations de service';
+      case 'operations-module':
+        return 'Agents, rôteurs, planning et discipline';
+      case 'logistics-module':
+        return 'Flotte et équipements';
+      case 'payroll-module':
+        return 'Calcul de paie, avances et bulletins';
       case 'sites':
         return 'Emplacements de sécurité et sites de déploiement';
+      case 'clients':
+        return 'Gestion des clients et sites';
+      case 'facturation':
+        return 'Factures, paiements et facturation mensuelle';
       case 'finance':
-        return isElectron ? 'Facturation, facturation et gestion financière' : 'Gestion des clients, sites et facturation';
+        return 'Gestion des entrées et dépenses';
+      case 'settings':
+        return 'Configuration et actions rapides personnalisées';
       case 'mobile':
         return 'Application mobile et opérations sur le terrain';
       case 'analytics':
@@ -130,7 +174,7 @@ function AppContent() {
 
   const renderContent = () => {
     // Show loading state for Electron mode
-    if (isElectron && appContext?.state.loading) {
+    if (electronMode && appContext?.state.loading) {
       return (
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
@@ -142,7 +186,7 @@ function AppContent() {
     }
 
     // Show error state for Electron mode
-    if (isElectron && appContext?.state.error) {
+    if (electronMode && appContext?.state.error) {
       return (
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
@@ -163,9 +207,53 @@ function AppContent() {
 
     switch (activeModule) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onNavigate={setActiveModule} />;
+      case 'hr-module':
+        return electronMode ? (
+          <HRModule />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Ressources Humaines</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
+      case 'operations-module':
+        return electronMode ? (
+          <OperationsModule />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Opérations</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
+      case 'logistics-module':
+        return electronMode ? (
+          <LogisticsModule />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Logistique</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
+      case 'payroll-module':
+        return electronMode ? (
+          <PayrollModule />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Paie</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
       case 'hr':
-        return isElectron ? (
+        return electronMode ? (
           <EmployeeList
             onAddEmployee={handleAddEmployee}
             onViewEmployee={handleViewEmployee}
@@ -180,7 +268,7 @@ function AppContent() {
           </div>
         );
       case 'operations':
-        return isElectron ? (
+        return electronMode ? (
           <ClientList
             onAddClient={handleAddClient}
             onViewClient={handleViewClient}
@@ -195,7 +283,7 @@ function AppContent() {
           </div>
         );
       case 'sites':
-        return isElectron ? (
+        return electronMode ? (
           <SiteList
             onAddSite={handleAddSite}
             onViewSite={handleViewSite}
@@ -209,8 +297,61 @@ function AppContent() {
             </div>
           </div>
         );
+      case 'clients':
+        return electronMode ? (
+          <FinanceModule />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Clients</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
+      case 'facturation':
+        return electronMode ? (
+          <InvoicesManagement />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Facturation</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
       case 'finance':
-        return <FinanceModule />;
+        return electronMode ? (
+          <FinanceManagement />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Finance</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
+      case 'settings':
+        return electronMode ? (
+          <SettingsPage />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Paramètres</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
+      case 'reports':
+        return electronMode ? (
+          <ReportsModule />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Rapports</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
       case 'mobile':
         return (
           <div className="flex items-center justify-center h-64">
@@ -244,11 +385,14 @@ function AppContent() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="h-screen overflow-hidden bg-gray-50">
+      {/* Fixed Sidebar */}
       <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />
-      <div className="flex-1 flex flex-col">
+      
+      {/* Main Content - absolute positioning to start at top */}
+      <div className="absolute top-0 left-64 right-0 bottom-0 flex flex-col overflow-hidden">
         <Header title={getModuleTitle()} subtitle={getModuleSubtitle()} />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-auto">
           {renderContent()}
         </main>
       </div>
@@ -257,20 +401,12 @@ function AppContent() {
 }
 
 function App() {
-  // Wrap with appropriate providers based on environment
-  if (isElectron) {
-    return (
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    );
-  } else {
-    return (
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    );
-  }
+  // Always use AppProvider for now, since we're focusing on Electron mode
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  );
 }
 
 export default App;

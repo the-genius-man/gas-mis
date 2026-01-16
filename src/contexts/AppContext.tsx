@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { Employee, Client, Site, User, DashboardStats } from '../types';
+import { EmployeeGASFull, ElectronClient, Site, User, DashboardStats } from '../types';
 import { databaseService } from '../services/database';
 
 interface AppState {
-  employees: Employee[];
-  clients: Client[];
+  employees: EmployeeGASFull[];
+  clients: ElectronClient[];
   sites: Site[];
   currentUser: User | null;
   dashboardStats: DashboardStats;
@@ -15,13 +15,13 @@ interface AppState {
 type AppAction = 
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_EMPLOYEES'; payload: Employee[] }
-  | { type: 'ADD_EMPLOYEE'; payload: Employee }
-  | { type: 'UPDATE_EMPLOYEE'; payload: Employee }
+  | { type: 'SET_EMPLOYEES'; payload: EmployeeGASFull[] }
+  | { type: 'ADD_EMPLOYEE'; payload: EmployeeGASFull }
+  | { type: 'UPDATE_EMPLOYEE'; payload: EmployeeGASFull }
   | { type: 'DELETE_EMPLOYEE'; payload: string }
-  | { type: 'SET_CLIENTS'; payload: Client[] }
-  | { type: 'ADD_CLIENT'; payload: Client }
-  | { type: 'UPDATE_CLIENT'; payload: Client }
+  | { type: 'SET_CLIENTS'; payload: ElectronClient[] }
+  | { type: 'ADD_CLIENT'; payload: ElectronClient }
+  | { type: 'UPDATE_CLIENT'; payload: ElectronClient }
   | { type: 'DELETE_CLIENT'; payload: string }
   | { type: 'SET_SITES'; payload: Site[] }
   | { type: 'ADD_SITE'; payload: Site }
@@ -118,11 +118,11 @@ const AppContext = createContext<{
   dispatch: React.Dispatch<AppAction>;
   actions: {
     loadAllData: () => Promise<void>;
-    addEmployee: (employee: Employee) => Promise<void>;
-    updateEmployee: (employee: Employee) => Promise<void>;
+    addEmployee: (employee: EmployeeGASFull) => Promise<void>;
+    updateEmployee: (employee: EmployeeGASFull) => Promise<void>;
     deleteEmployee: (id: string) => Promise<void>;
-    addClient: (client: Client) => Promise<void>;
-    updateClient: (client: Client) => Promise<void>;
+    addClient: (client: ElectronClient) => Promise<void>;
+    updateClient: (client: ElectronClient) => Promise<void>;
     deleteClient: (id: string) => Promise<void>;
     addSite: (site: Site) => Promise<void>;
     updateSite: (site: Site) => Promise<void>;
@@ -134,32 +134,34 @@ const AppContext = createContext<{
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
+  const loadAllData = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      dispatch({ type: 'SET_ERROR', payload: null });
+
+      const [employees, clients, sites, dashboardStats] = await Promise.all([
+        databaseService.getEmployees(),
+        databaseService.getClients(),
+        databaseService.getSites(),
+        databaseService.getDashboardStats()
+      ]);
+
+      dispatch({ type: 'SET_EMPLOYEES', payload: employees });
+      dispatch({ type: 'SET_CLIENTS', payload: clients });
+      dispatch({ type: 'SET_SITES', payload: sites });
+      dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: dashboardStats });
+    } catch (error) {
+      console.error('Error loading data:', error);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
   const actions = {
-    loadAllData: async () => {
-      try {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        dispatch({ type: 'SET_ERROR', payload: null });
+    loadAllData,
 
-        const [employees, clients, sites, dashboardStats] = await Promise.all([
-          databaseService.getEmployees(),
-          databaseService.getClients(),
-          databaseService.getSites(),
-          databaseService.getDashboardStats()
-        ]);
-
-        dispatch({ type: 'SET_EMPLOYEES', payload: employees });
-        dispatch({ type: 'SET_CLIENTS', payload: clients });
-        dispatch({ type: 'SET_SITES', payload: sites });
-        dispatch({ type: 'UPDATE_DASHBOARD_STATS', payload: dashboardStats });
-      } catch (error) {
-        console.error('Error loading data:', error);
-        dispatch({ type: 'SET_ERROR', payload: 'Failed to load data' });
-      } finally {
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
-    },
-
-    addEmployee: async (employee: Employee) => {
+    addEmployee: async (employee: EmployeeGASFull) => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         const result = await databaseService.addEmployee(employee);
@@ -177,7 +179,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     },
 
-    updateEmployee: async (employee: Employee) => {
+    updateEmployee: async (employee: EmployeeGASFull) => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         const result = await databaseService.updateEmployee(employee);
@@ -210,7 +212,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     },
 
-    addClient: async (client: Client) => {
+    addClient: async (client: ElectronClient) => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         const result = await databaseService.addClient(client);
@@ -228,7 +230,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     },
 
-    updateClient: async (client: Client) => {
+    updateClient: async (client: ElectronClient) => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         const result = await databaseService.updateClient(client);
@@ -318,7 +320,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const result = await databaseService.seedDatabase();
         if (result.success) {
           // Reload all data after seeding
-          await actions.loadAllData();
+          await loadAllData();
         }
       } catch (error) {
         console.error('Error seeding database:', error);

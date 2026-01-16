@@ -3,11 +3,31 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+// Only create client if environment variables are available
+let supabase: any = null;
+
+if (supabaseUrl && supabaseAnonKey) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
+} else {
+  console.warn('Supabase environment variables not found. Running in offline mode.');
+  // Create a mock client for development
+  supabase = {
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: null } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: () => Promise.reject(new Error('Supabase not configured')),
+      signOut: () => Promise.reject(new Error('Supabase not configured'))
+    },
+    from: () => ({
+      select: () => Promise.reject(new Error('Supabase not configured')),
+      insert: () => Promise.reject(new Error('Supabase not configured')),
+      update: () => Promise.reject(new Error('Supabase not configured')),
+      delete: () => Promise.reject(new Error('Supabase not configured'))
+    })
+  };
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export { supabase };
 
 export interface Database {
   public: {
@@ -59,8 +79,8 @@ export interface Database {
           longitude: number | null;
           effectif_jour_requis: number;
           effectif_nuit_requis: number;
+          cout_unitaire_garde: number;
           tarif_mensuel_client: number;
-          taux_journalier_garde: number;
           consignes_specifiques: string | null;
           est_actif: boolean;
         };
