@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Users, UserCheck, Filter, Eye, Edit, MapPin } from 'lucide-react';
 import { EmployeeGASFull } from '../../types';
 import DeploymentForm from '../HR/DeploymentForm';
+import EmployeeDetailModal from '../HR/EmployeeDetailModal';
 
 const AgentsManagement: React.FC = () => {
   const [employees, setEmployees] = useState<EmployeeGASFull[]>([]);
@@ -11,6 +12,8 @@ const AgentsManagement: React.FC = () => {
   const [filterStatut, setFilterStatut] = useState('');
   const [showDeploymentForm, setShowDeploymentForm] = useState(false);
   const [deployingEmployee, setDeployingEmployee] = useState<EmployeeGASFull | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeGASFull | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -240,7 +243,12 @@ const AgentsManagement: React.FC = () => {
                         <Users className="w-5 h-5 text-gray-500" />
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{employee.nom_complet}</div>
+                        <button
+                          onClick={() => setSelectedEmployee(employee)}
+                          className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer transition-colors"
+                        >
+                          {employee.nom_complet}
+                        </button>
                         <div className="text-sm text-gray-500">{employee.matricule}</div>
                       </div>
                     </div>
@@ -307,6 +315,20 @@ const AgentsManagement: React.FC = () => {
           employee={deployingEmployee}
           onClose={() => { setShowDeploymentForm(false); setDeployingEmployee(null); }}
           onSave={() => { setShowDeploymentForm(false); setDeployingEmployee(null); loadData(); }}
+        />
+      )}
+
+      {/* Employee Detail Modal */}
+      {selectedEmployee && (
+        <EmployeeDetailModal
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+          onEdit={() => {
+            setShowEditForm(true);
+            setSelectedEmployee(null);
+          }}
+          onRefresh={loadData}
+          showPayments={false}
         />
       )}
     </div>

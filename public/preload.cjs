@@ -199,6 +199,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPayslipDetail: (bulletinId) => ipcRenderer.invoke('db-get-payslip-detail', bulletinId),
   validatePayslips: (data) => ipcRenderer.invoke('db-validate-payslips', data),
   lockPayrollPeriod: (data) => ipcRenderer.invoke('db-lock-payroll-period', data),
+  flushPayroll: () => ipcRenderer.invoke('db-flush-payroll'),
   updatePayslip: (data) => ipcRenderer.invoke('db-update-payslip', data),
   getEmployeeAdvances: (filters) => ipcRenderer.invoke('db-get-employee-advances', filters),
   createAdvance: (data) => ipcRenderer.invoke('db-create-advance', data),

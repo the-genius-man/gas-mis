@@ -17,6 +17,7 @@ interface ElectronAPI {
   getPayslipDetail: (bulletinId: string) => Promise<any>;
   validatePayslips: (data: any) => Promise<any>;
   lockPayrollPeriod: (data: any) => Promise<any>;
+  flushPayroll: () => Promise<any>;
   updatePayslip: (data: any) => Promise<any>;
   getEmployeeAdvances: (filters?: any) => Promise<any[]>;
   createAdvance: (data: any) => Promise<any>;

@@ -135,3 +135,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   returnEquipment: (returnData) => ipcRenderer.invoke('db-return-equipment', returnData),
   getEmployeeEquipment: (employeId) => ipcRenderer.invoke('db-get-employee-equipment', employeId)
 });
+,
+
+  // ============================================================================
+  // PAYROLL MODULE - Additional Functions
+  // ============================================================================
+
+  flushPayroll: () => ipcRenderer.invoke('db-flush-payroll')

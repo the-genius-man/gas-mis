@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Calculator, Check, Lock, Eye, RefreshCw, Edit2, FileText } from 'lucide-react';
+import { Plus, Calculator, Check, Lock, Eye, RefreshCw, Edit2, FileText, Trash2 } from 'lucide-react';
 import { PeriodePaie, BulletinPaie } from '../../types';
 import PayslipDetail from './PayslipDetail';
 import PayslipEditForm from './PayslipEditForm';
@@ -111,7 +111,14 @@ export default function PayrollManagement() {
         calculePar: 'current_user' // TODO: get from auth context
       });
       
-      loadPeriods();
+      // Reload periods and update selected period with new status
+      const updatedPeriods = await window.electronAPI.getPayrollPeriods();
+      setPeriods(updatedPeriods);
+      const updatedPeriod = updatedPeriods.find(p => p.id === selectedPeriod.id);
+      if (updatedPeriod) {
+        setSelectedPeriod(updatedPeriod);
+      }
+      
       loadPayslips(selectedPeriod.id);
       alert('Paie calculée avec succès');
     } catch (error: any) {
@@ -135,7 +142,14 @@ export default function PayrollManagement() {
         valideePar: 'current_user' // TODO: get from auth context
       });
       
-      loadPeriods();
+      // Reload periods and update selected period with new status
+      const updatedPeriods = await window.electronAPI.getPayrollPeriods();
+      setPeriods(updatedPeriods);
+      const updatedPeriod = updatedPeriods.find(p => p.id === selectedPeriod.id);
+      if (updatedPeriod) {
+        setSelectedPeriod(updatedPeriod);
+      }
+      
       loadPayslips(selectedPeriod.id);
       alert('Bulletins validés avec succès');
     } catch (error: any) {
@@ -157,11 +171,42 @@ export default function PayrollManagement() {
         verrouilleePar: 'current_user' // TODO: get from auth context
       });
       
-      loadPeriods();
+      // Reload periods and update selected period with new status
+      const updatedPeriods = await window.electronAPI.getPayrollPeriods();
+      setPeriods(updatedPeriods);
+      const updatedPeriod = updatedPeriods.find(p => p.id === selectedPeriod.id);
+      if (updatedPeriod) {
+        setSelectedPeriod(updatedPeriod);
+      }
+      
       alert('Période verrouillée avec succès');
     } catch (error: any) {
       console.error('Error locking period:', error);
       alert(error.message || 'Erreur lors du verrouillage');
+    }
+  };
+
+  const handleFlushPayroll = async () => {
+    if (!window.electronAPI) return;
+    
+    if (!confirm('⚠️ ATTENTION: Cette action supprimera TOUTES les périodes de paie et bulletins.\n\nCela inclut:\n- Toutes les périodes de paie\n- Tous les bulletins de paie\n- Tous les salaires impayés\n- Tous les paiements de salaires\n\nCette action est IRRÉVERSIBLE!\n\nÊtes-vous absolument sûr?')) {
+      return;
+    }
+    
+    // Double confirmation
+    if (!confirm('Dernière confirmation: Supprimer TOUTES les données de paie?')) {
+      return;
+    }
+    
+    try {
+      await window.electronAPI.flushPayroll();
+      setSelectedPeriod(null);
+      setPayslips([]);
+      loadPeriods();
+      alert('✅ Toutes les données de paie ont été supprimées avec succès');
+    } catch (error: any) {
+      console.error('Error flushing payroll:', error);
+      alert(error.message || 'Erreur lors de la suppression des données');
     }
   };
 
@@ -253,9 +298,24 @@ export default function PayrollManagement() {
           
           // Filter only previous periods with unpaid amounts
           return salairesImpayes.filter((s: any) => {
-            const salaireDate = new Date(s.date_echeance);
-            const currentDate = new Date(selectedPeriod.annee, selectedPeriod.mois - 1);
-            return salaireDate < currentDate && 
+            // date_echeance is set to 15th of the month AFTER the payroll period
+            // So January 2026 payroll has date_echeance = Feb 15, 2026
+            // We need to check if this unpaid salary is from a period BEFORE the current one
+            const echeanceDate = new Date(s.date_echeance);
+            const echeanceYear = echeanceDate.getFullYear();
+            const echeanceMonth = echeanceDate.getMonth() + 1; // 1-12
+            
+            // The payroll period is one month before the due date
+            // So if due date is Feb 15, the period is January
+            const salairePeriodYear = echeanceMonth === 1 ? echeanceYear - 1 : echeanceYear;
+            const salairePeriodMonth = echeanceMonth === 1 ? 12 : echeanceMonth - 1;
+            
+            // Compare with current period
+            const isPreviousPeriod = 
+              (salairePeriodYear < selectedPeriod.annee) ||
+              (salairePeriodYear === selectedPeriod.annee && salairePeriodMonth < selectedPeriod.mois);
+            
+            return isPreviousPeriod && 
                    (s.statut === 'IMPAYE' || s.statut === 'PAYE_PARTIEL') &&
                    s.montant_restant > 0;
           });
@@ -318,8 +378,17 @@ export default function PayrollManagement() {
         }
 
         const months = employeeArrieres.map((s: any) => {
-          const date = new Date(s.date_echeance);
-          return `${getMonthNameFr(date.getMonth() + 1)} ${date.getFullYear()}`;
+          // date_echeance is 15th of month AFTER the payroll period
+          // So we need to subtract 1 month to get the actual payroll period
+          const echeanceDate = new Date(s.date_echeance);
+          const echeanceMonth = echeanceDate.getMonth() + 1; // 1-12
+          const echeanceYear = echeanceDate.getFullYear();
+          
+          // Calculate the actual payroll period (one month before due date)
+          const periodMonth = echeanceMonth === 1 ? 12 : echeanceMonth - 1;
+          const periodYear = echeanceMonth === 1 ? echeanceYear - 1 : echeanceYear;
+          
+          return `${getMonthNameFr(periodMonth)} ${periodYear}`;
         }).join(', ');
 
         return `$${payslip.arrieres.toFixed(2)} (${months})`;
@@ -363,6 +432,8 @@ export default function PayrollManagement() {
           const siteName = deployment?.nom_site || 'Non affecté';
           console.log(`  Table row for ${payslip.nom_complet}: index=${payslipIndex}, site="${siteName}"`);
 
+          const totalAPayer = payslip.salaire_net + payslip.arrieres;
+
           return [
             payslip.nom_complet,
             siteName,
@@ -371,7 +442,8 @@ export default function PayrollManagement() {
             `$${payslip.salaire_brut.toFixed(2)}`,
             `$${payslip.retenues_disciplinaires.toFixed(2)}`,
             `$${payslip.autres_retenues.toFixed(2)}`,
-            `$${payslip.salaire_net.toFixed(2)}`
+            `$${payslip.salaire_net.toFixed(2)}`,
+            `$${totalAPayer.toFixed(2)}`
           ];
         });
 
@@ -384,7 +456,8 @@ export default function PayrollManagement() {
           `$${categoryPayslips.reduce((sum, p) => sum + p.salaire_brut, 0).toFixed(2)}`,
           `$${categoryPayslips.reduce((sum, p) => sum + p.retenues_disciplinaires, 0).toFixed(2)}`,
           `$${categoryPayslips.reduce((sum, p) => sum + p.autres_retenues, 0).toFixed(2)}`,
-          `$${categoryPayslips.reduce((sum, p) => sum + p.salaire_net, 0).toFixed(2)}`
+          `$${categoryPayslips.reduce((sum, p) => sum + p.salaire_net, 0).toFixed(2)}`,
+          `$${categoryPayslips.reduce((sum, p) => sum + p.salaire_net + p.arrieres, 0).toFixed(2)}`
         ];
 
         autoTable(doc, {
@@ -397,7 +470,8 @@ export default function PayrollManagement() {
             'Salaire Brut',
             'Ret. Disciplinaires',
             'Autres Retenues',
-            'Salaire Net'
+            'Salaire Net',
+            'Total à Payer'
           ]],
           body: [...tableData, totals],
           theme: 'grid',
@@ -413,14 +487,15 @@ export default function PayrollManagement() {
             halign: 'center'
           },
           columnStyles: {
-            0: { cellWidth: 45 }, // Nom
-            1: { cellWidth: 40 }, // Site
-            2: { cellWidth: 25, halign: 'right' }, // Salaire de Base
-            3: { cellWidth: 50 }, // Arriérés
-            4: { cellWidth: 25, halign: 'right' }, // Brut
-            5: { cellWidth: 25, halign: 'right' }, // Ret. Disc
-            6: { cellWidth: 25, halign: 'right' }, // Autres
-            7: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } // Net
+            0: { cellWidth: 40 }, // Nom
+            1: { cellWidth: 35 }, // Site
+            2: { cellWidth: 22, halign: 'right' }, // Salaire de Base
+            3: { cellWidth: 45 }, // Arriérés
+            4: { cellWidth: 22, halign: 'right' }, // Brut
+            5: { cellWidth: 22, halign: 'right' }, // Ret. Disc
+            6: { cellWidth: 22, halign: 'right' }, // Autres
+            7: { cellWidth: 22, halign: 'right', fontStyle: 'bold' }, // Net
+            8: { cellWidth: 25, halign: 'right', fontStyle: 'bold' } // Total à Payer
           },
           didParseCell: (data) => {
             // Highlight totals row
@@ -462,7 +537,8 @@ export default function PayrollManagement() {
         `$${payslips.reduce((sum, p) => sum + p.salaire_brut, 0).toFixed(2)}`,
         `$${payslips.reduce((sum, p) => sum + p.retenues_disciplinaires, 0).toFixed(2)}`,
         `$${payslips.reduce((sum, p) => sum + p.autres_retenues, 0).toFixed(2)}`,
-        `$${payslips.reduce((sum, p) => sum + p.salaire_net, 0).toFixed(2)}`
+        `$${payslips.reduce((sum, p) => sum + p.salaire_net, 0).toFixed(2)}`,
+        `$${payslips.reduce((sum, p) => sum + p.salaire_net + p.arrieres, 0).toFixed(2)}`
       ]];
 
       autoTable(doc, {
@@ -476,14 +552,15 @@ export default function PayrollManagement() {
           textColor: 255
         },
         columnStyles: {
-          0: { cellWidth: 45 },
-          1: { cellWidth: 40 },
-          2: { cellWidth: 25, halign: 'right' },
-          3: { cellWidth: 50 },
-          4: { cellWidth: 25, halign: 'right' },
-          5: { cellWidth: 25, halign: 'right' },
-          6: { cellWidth: 25, halign: 'right' },
-          7: { cellWidth: 25, halign: 'right' }
+          0: { cellWidth: 40 },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 22, halign: 'right' },
+          3: { cellWidth: 45 },
+          4: { cellWidth: 22, halign: 'right' },
+          5: { cellWidth: 22, halign: 'right' },
+          6: { cellWidth: 22, halign: 'right' },
+          7: { cellWidth: 22, halign: 'right' },
+          8: { cellWidth: 25, halign: 'right' }
         },
         margin: { left: margin, right: margin }
       });
@@ -563,13 +640,26 @@ export default function PayrollManagement() {
           <h2 className="text-2xl font-bold text-gray-900">Gestion de la Paie</h2>
           <p className="text-gray-600 mt-1">Calcul et gestion des salaires mensuels</p>
         </div>
-        <button
-          onClick={() => setShowNewPeriodForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nouvelle Période
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Only show flush button in development */}
+          {import.meta.env.DEV && (
+            <button
+              onClick={handleFlushPayroll}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              title="Supprimer toutes les données de paie (DEV ONLY)"
+            >
+              <Trash2 className="w-5 h-5" />
+              Réinitialiser
+            </button>
+          )}
+          <button
+            onClick={() => setShowNewPeriodForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Nouvelle Période
+          </button>
+        </div>
       </div>
 
       {/* New Period Form */}

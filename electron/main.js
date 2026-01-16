@@ -3126,3 +3126,26 @@ ipcMain.handle('db-get-employee-equipment', async (event, employeId) => {
     throw error;
   }
 });
+
+
+// ============================================================================
+// PAYROLL MODULE - Flush and Lock Validation
+// ============================================================================
+
+// Flush all payroll data (delete all periods and payslips)
+ipcMain.handle('db-flush-payroll', async (event) => {
+  try {
+    // Delete all related data in correct order (due to foreign keys)
+    db.prepare('DELETE FROM remboursements_avances').run();
+    db.prepare('DELETE FROM paiements_salaires').run();
+    db.prepare('DELETE FROM salaires_impayes').run();
+    db.prepare('DELETE FROM bulletins_paie').run();
+    db.prepare('DELETE FROM periodes_paie').run();
+    
+    console.log('All payroll data flushed successfully');
+    return { success: true, message: 'Toutes les données de paie ont été supprimées' };
+  } catch (error) {
+    console.error('Error flushing payroll data:', error);
+    throw error;
+  }
+});

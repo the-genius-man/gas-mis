@@ -222,7 +222,12 @@ const EmployeesManagement: React.FC = () => {
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
                         {emp.nom_complet.charAt(0)}
                       </div>
-                      <span className="ml-3 text-sm text-gray-900">{emp.nom_complet}</span>
+                      <button
+                        onClick={() => setSelectedEmployee(emp)}
+                        className="ml-3 text-sm text-gray-900 hover:text-blue-600 hover:underline cursor-pointer transition-colors"
+                      >
+                        {emp.nom_complet}
+                      </button>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -311,7 +316,12 @@ const EmployeesManagement: React.FC = () => {
                     {emp.nom_complet.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="font-medium text-gray-900">{emp.nom_complet}</h3>
+                    <button
+                      onClick={() => setSelectedEmployee(emp)}
+                      className="font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer transition-colors text-left"
+                    >
+                      {emp.nom_complet}
+                    </button>
                     <p className="text-sm text-gray-500">{emp.matricule}</p>
                   </div>
                 </div>

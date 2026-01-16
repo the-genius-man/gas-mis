@@ -221,8 +221,31 @@ export default function PayslipDetail({ payslip, onClose }: PayslipDetailProps) 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text('SALAIRE NET A PAYER', 20, yPos + 10);
+    doc.text('SALAIRE NET DU MOIS', 20, yPos + 10);
     doc.text(`$${payslip.salaire_net.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} ${payslip.devise}`, pageWidth - 20, yPos + 10, { align: 'right' });
+
+    yPos += 20;
+
+    // Arriérés and total to pay
+    if (payslip.arrieres > 0) {
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text('Arriérés (salaires impayés des mois précédents)', 14, yPos);
+      doc.text(`+ $${payslip.arrieres.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} ${payslip.devise}`, pageWidth - 14, yPos, { align: 'right' });
+      yPos += 10;
+
+      // Total to pay
+      const totalAPayer = payslip.salaire_net + payslip.arrieres;
+      doc.setFillColor(22, 163, 74);
+      doc.rect(14, yPos, pageWidth - 28, 15, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('MONTANT TOTAL À PAYER', 20, yPos + 10);
+      doc.text(`$${totalAPayer.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} ${payslip.devise}`, pageWidth - 20, yPos + 10, { align: 'right' });
+      yPos += 20;
+    }
 
     // Footer
     doc.setTextColor(100, 100, 100);
@@ -441,13 +464,31 @@ export default function PayslipDetail({ payslip, onClose }: PayslipDetailProps) 
           <div className="bg-green-50 rounded-lg p-4 border-2 border-green-500">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-green-700">Salaire Net à Payer</p>
+                <p className="text-sm text-green-700">Salaire Net du Mois</p>
                 <p className="text-xs text-green-600 mt-1">Devise: {payslip.devise}</p>
               </div>
               <p className="text-3xl font-bold text-green-700">
                 ${payslip.salaire_net.toLocaleString('fr-FR')}
               </p>
             </div>
+            
+            {/* Arriérés and Total */}
+            {payslip.arrieres > 0 && (
+              <div className="mt-3 pt-3 border-t border-green-200">
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-green-700">Arriérés (mois précédents)</span>
+                  <span className="font-semibold text-green-700">
+                    + ${payslip.arrieres.toLocaleString('fr-FR')}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-green-300">
+                  <span className="text-base font-bold text-green-800">MONTANT TOTAL À PAYER</span>
+                  <span className="text-2xl font-bold text-green-800">
+                    ${(payslip.salaire_net + payslip.arrieres).toLocaleString('fr-FR')}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Summary */}

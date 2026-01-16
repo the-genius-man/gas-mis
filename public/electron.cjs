@@ -1248,6 +1248,24 @@ ipcMain.handle('db-create-payroll-period', async (event, data) => {
       throw new Error('Une période de paie existe déjà pour ce mois');
     }
     
+    // Check if there are any previous periods that are not locked
+    const previousPeriod = db.prepare(`
+      SELECT id, mois, annee, statut 
+      FROM periodes_paie 
+      WHERE (annee < ? OR (annee = ? AND mois < ?))
+      AND statut != 'VERROUILLEE'
+      ORDER BY annee DESC, mois DESC
+      LIMIT 1
+    `).get(data.annee, data.annee, data.mois);
+    
+    if (previousPeriod) {
+      const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
+                          'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+      throw new Error(
+        `Impossible de créer une nouvelle période. La période ${monthNames[previousPeriod.mois - 1]} ${previousPeriod.annee} doit être verrouillée d'abord (statut actuel: ${previousPeriod.statut}).`
+      );
+    }
+    
     db.prepare(`
       INSERT INTO periodes_paie (id, mois, annee, statut, notes, calculee_par)
       VALUES (?, ?, ?, 'BROUILLON', ?, ?)
@@ -1627,6 +1645,24 @@ ipcMain.handle('db-lock-payroll-period', async (event, { periodeId, verrouilleeP
     return { success: true };
   } catch (error) {
     console.error('Error locking payroll period:', error);
+    throw error;
+  }
+});
+
+// Flush all payroll data (delete all periods and payslips)
+ipcMain.handle('db-flush-payroll', async (event) => {
+  try {
+    // Delete all related data in correct order (due to foreign keys)
+    db.prepare('DELETE FROM remboursements_avances').run();
+    db.prepare('DELETE FROM paiements_salaires').run();
+    db.prepare('DELETE FROM salaires_impayes').run();
+    db.prepare('DELETE FROM bulletins_paie').run();
+    db.prepare('DELETE FROM periodes_paie').run();
+    
+    console.log('All payroll data flushed successfully');
+    return { success: true, message: 'Toutes les données de paie ont été supprimées' };
+  } catch (error) {
+    console.error('Error flushing payroll data:', error);
     throw error;
   }
 });
