@@ -1355,18 +1355,39 @@ ipcMain.handle('db-calculate-payroll', async (event, { periodeId, mois, annee, c
       // 4. Calculate IPR
       const ipr = calculateIPR(salaireImposable);
       
-      // 5. Get disciplinary deductions
+      // 5. Get disciplinary deductions for this period
       const disciplinaires = db.prepare(`
-        SELECT COALESCE(SUM(montant_deduction), 0) as total
+        SELECT id, montant_deduction
         FROM actions_disciplinaires
         WHERE employe_id = ?
-        AND periode_paie_mois = ?
-        AND periode_paie_annee = ?
-        AND applique_paie = 0
         AND statut = 'VALIDE'
-      `).get(emp.id, mois, annee);
+        AND impact_financier = 1
+        AND montant_deduction > 0
+        AND (periode_paie_mois IS NULL OR periode_paie_mois = ?)
+        AND (periode_paie_annee IS NULL OR periode_paie_annee = ?)
+        AND applique_paie = 0
+      `).all(emp.id, mois, annee);
       
-      const retenuesDisciplinaires = disciplinaires?.total || 0;
+      let retenuesDisciplinaires = 0;
+      const disciplinaryIds = [];
+      
+      for (const disc of disciplinaires) {
+        retenuesDisciplinaires += disc.montant_deduction;
+        disciplinaryIds.push(disc.id);
+      }
+      
+      // Mark disciplinary actions as applied to this payroll period
+      if (disciplinaryIds.length > 0) {
+        const updateDisciplinaryStmt = db.prepare(`
+          UPDATE actions_disciplinaires 
+          SET periode_paie_mois = ?, periode_paie_annee = ?, applique_paie = 1
+          WHERE id = ?
+        `);
+        
+        for (const discId of disciplinaryIds) {
+          updateDisciplinaryStmt.run(mois, annee, discId);
+        }
+      }
       
       // 6. Get advances to repay
       const avances = db.prepare(`
@@ -5513,6 +5534,90 @@ ipcMain.handle('db-submit-disciplinary-for-signature', async (event, id) => {
     return { success: true };
   } catch (error) {
     console.error('Error submitting disciplinary action for validation:', error);
+    throw error;
+  }
+});
+
+// Get disciplinary deductions for a payroll period
+ipcMain.handle('db-get-payroll-deductions', async (event, { periode_paie_id, mois, annee }) => {
+  try {
+    let query = `
+      SELECT 
+        ad.id,
+        ad.employe_id,
+        ad.type_action,
+        ad.date_incident,
+        ad.description_incident,
+        ad.montant_deduction,
+        ad.applique_paie,
+        eg.nom_complet,
+        eg.matricule
+      FROM actions_disciplinaires ad
+      JOIN employees_gas eg ON ad.employe_id = eg.id
+      WHERE ad.statut = 'VALIDE' 
+        AND ad.impact_financier = 1 
+        AND ad.montant_deduction > 0
+    `;
+    
+    const params = [];
+    
+    if (periode_paie_id) {
+      // Get deductions for specific period
+      query += ` AND (ad.periode_paie_mois IS NULL OR ad.periode_paie_annee IS NULL OR 
+                      (ad.periode_paie_mois = ? AND ad.periode_paie_annee = ?))`;
+      
+      // Get period details to extract month/year
+      const period = db.prepare('SELECT mois, annee FROM periodes_paie WHERE id = ?').get(periode_paie_id);
+      if (period) {
+        params.push(period.mois, period.annee);
+      }
+    } else if (mois && annee) {
+      // Get deductions for specific month/year
+      query += ` AND (ad.periode_paie_mois IS NULL OR ad.periode_paie_annee IS NULL OR 
+                      (ad.periode_paie_mois = ? AND ad.periode_paie_annee = ?))`;
+      params.push(mois, annee);
+    }
+    
+    query += ` ORDER BY ad.date_incident DESC`;
+    
+    const deductions = db.prepare(query).all(...params);
+    
+    return deductions;
+  } catch (error) {
+    console.error('Error getting payroll deductions:', error);
+    throw error;
+  }
+});
+
+// Apply disciplinary deductions to payroll period
+ipcMain.handle('db-apply-disciplinary-deductions', async (event, { periode_paie_id, deduction_ids }) => {
+  try {
+    // Get period details
+    const period = db.prepare('SELECT mois, annee FROM periodes_paie WHERE id = ?').get(periode_paie_id);
+    if (!period) {
+      throw new Error('Période de paie non trouvée');
+    }
+    
+    // Update disciplinary actions to mark them as applied
+    const updateStmt = db.prepare(`
+      UPDATE actions_disciplinaires 
+      SET periode_paie_mois = ?, 
+          periode_paie_annee = ?, 
+          applique_paie = 1
+      WHERE id = ? AND statut = 'VALIDE' AND impact_financier = 1
+    `);
+    
+    let appliedCount = 0;
+    for (const deductionId of deduction_ids) {
+      const result = updateStmt.run(period.mois, period.annee, deductionId);
+      if (result.changes > 0) {
+        appliedCount++;
+      }
+    }
+    
+    return { success: true, appliedCount };
+  } catch (error) {
+    console.error('Error applying disciplinary deductions:', error);
     throw error;
   }
 });

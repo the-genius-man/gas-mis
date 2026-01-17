@@ -31,6 +31,8 @@ interface ElectronAPI {
   getPaiementsChargesSociales: (chargeSocialeId: string) => Promise<any[]>;
   payerChargeSociale: (paiement: any) => Promise<any>;
   getOhadaPayrollSummary: (filters?: any) => Promise<any>;
+  getPayrollDeductions: (filters?: any) => Promise<any[]>;
+  applyDisciplinaryDeductions: (data: any) => Promise<any>;
   
   // Deployment Management
   getCurrentDeployment: (employeId: string) => Promise<any>;

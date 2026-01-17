@@ -139,6 +139,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   rejectDisciplinaryAction: (data) => ipcRenderer.invoke('db-reject-disciplinary-action', data),
   getEmployeeDisciplinaryHistory: (employeId) => ipcRenderer.invoke('db-get-employee-disciplinary-history', employeId),
   submitDisciplinaryForSignature: (id) => ipcRenderer.invoke('db-submit-disciplinary-for-signature', id),
+  getPayrollDeductions: (filters) => ipcRenderer.invoke('db-get-payroll-deductions', filters),
+  applyDisciplinaryDeductions: (data) => ipcRenderer.invoke('db-apply-disciplinary-deductions', data),
   
   // ============================================================================
   // ALERTS SYSTEM

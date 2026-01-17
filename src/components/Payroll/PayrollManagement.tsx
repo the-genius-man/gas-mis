@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Calculator, Check, Lock, Eye, RefreshCw, Edit2, FileText, Trash2 } from 'lucide-react';
+import { Plus, Calculator, Check, Lock, Eye, RefreshCw, Edit2, FileText, Trash2, AlertTriangle } from 'lucide-react';
 import { PeriodePaie, BulletinPaie } from '../../types';
 import PayslipDetail from './PayslipDetail';
 import PayslipEditForm from './PayslipEditForm';
+import PayrollDeductionsModal from './PayrollDeductionsModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -16,6 +17,7 @@ export default function PayrollManagement() {
   const [editingPayslip, setEditingPayslip] = useState<BulletinPaie | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [showDeductionsModal, setShowDeductionsModal] = useState(false);
 
   // Form state for new period
   const [newPeriod, setNewPeriod] = useState({
@@ -801,13 +803,22 @@ export default function PayrollManagement() {
                       </button>
                     )}
                     {selectedPeriod.statut === 'CALCULEE' && (
-                      <button
-                        onClick={handleValidatePayslips}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      >
-                        <Check className="w-4 h-4" />
-                        Valider
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setShowDeductionsModal(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          <AlertTriangle className="w-4 h-4" />
+                          Déductions
+                        </button>
+                        <button
+                          onClick={handleValidatePayslips}
+                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <Check className="w-4 h-4" />
+                          Valider
+                        </button>
+                      </>
                     )}
                     {selectedPeriod.statut === 'VALIDEE' && (
                       <button
@@ -921,6 +932,16 @@ export default function PayrollManagement() {
           )}
         </div>
       </div>
+
+      {/* Disciplinary Deductions Modal */}
+      {showDeductionsModal && selectedPeriod && (
+        <PayrollDeductionsModal
+          periodeId={selectedPeriod.id}
+          mois={selectedPeriod.mois}
+          annee={selectedPeriod.annee}
+          onClose={() => setShowDeductionsModal(false)}
+        />
+      )}
     </div>
   );
 }
