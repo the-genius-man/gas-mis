@@ -28,9 +28,28 @@ const ActionDropdown: React.FC<ActionDropdownProps> = ({
   onEdit,
   onCancel
 }) => {
+  const [dropdownPosition, setDropdownPosition] = React.useState<'bottom' | 'top'>('bottom');
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      
+      // If there's less than 100px below but more than 100px above, position on top
+      if (spaceBelow < 100 && spaceAbove > 100) {
+        setDropdownPosition('top');
+      } else {
+        setDropdownPosition('bottom');
+      }
+    }
+  }, [isOpen]);
+
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={onToggle}
         className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded hover:bg-gray-100 hover:border-gray-300 transition-colors"
       >
@@ -40,7 +59,9 @@ const ActionDropdown: React.FC<ActionDropdownProps> = ({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={onToggle}></div>
-          <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+          <div className={`absolute right-0 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-50 ${
+            dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}>
             <div className="py-1">
               <button
                 onClick={onEdit}
