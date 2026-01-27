@@ -8,7 +8,7 @@
   },
   "then": {
     "type": "runCommand",
-    "command": "git add . && git commit -m \"Auto-commit: Changes made by Kiro agent\" && git push origin main"
+    "command": "git add .; git commit -m \"Auto-commit: Changes made by Kiro agent\"; git push origin main"
   },
   "workspaceFolderName": "gas-mis",
   "shortName": "auto-git-push"
