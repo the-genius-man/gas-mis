@@ -1712,8 +1712,13 @@ ipcMain.handle('db-create-roteur-assignment', async (event, assignment) => {
 // Update rôteur assignment
 ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
   try {
+    console.log('🔍 Update assignment data:', assignment);
+    console.log('🔍 Keys:', Object.keys(assignment));
+    
     // If only updating status (like canceling), do a partial update
-    if (assignment.statut && Object.keys(assignment).length === 2) { // id and statut only
+    // Check if we only have id and statut, or if roteur_id is missing/null
+    if (assignment.statut && (!assignment.roteur_id || Object.keys(assignment).length <= 3)) {
+      console.log('🔍 Doing partial update (status only)');
       const stmt = db.prepare(`
         UPDATE affectations_roteur SET
           statut = ?
@@ -1722,6 +1727,7 @@ ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
 
       stmt.run(assignment.statut, assignment.id);
     } else {
+      console.log('🔍 Doing full update');
       // Full update with all fields
       const stmt = db.prepare(`
         UPDATE affectations_roteur SET

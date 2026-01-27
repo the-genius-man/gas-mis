@@ -283,219 +283,224 @@ const RoteurManagement: React.FC = () => {
           </nav>
         </div>
 
-        <div className="p-6">
-          {/* Search */}
-          {activeTab === 'roteurs' && (
-            <div className="mb-6">
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Rechercher un rôteur..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
+        {/* Content for Roteurs and Coverage tabs (with padding) */}
+        {(activeTab === 'roteurs' || activeTab === 'coverage') && (
+          <div className="p-6">
+            {/* Search */}
+            {activeTab === 'roteurs' && (
+              <div className="mb-6">
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher un rôteur..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Roteurs Tab */}
-          {activeTab === 'roteurs' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredRoteurs.map((roteur) => {
-                const currentAssignment = activeAssignments.find(a => a.roteur_id === roteur.id);
-                const isAvailable = !currentAssignment;
-                
-                return (
-                  <div key={roteur.id} className="bg-gray-50 rounded-lg border border-gray-200 p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-semibold overflow-hidden">
-                          {roteur.photo_url ? (
-                            <img
-                              src={roteur.photo_url}
-                              alt={`Photo de ${roteur.nom_complet}`}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            roteur.nom_complet.charAt(0)
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900">{roteur.nom_complet}</h3>
-                          <p className="text-sm text-gray-500">{roteur.matricule}</p>
-                        </div>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatutBadge(roteur.statut)}`}>
-                        {roteur.statut}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 text-sm text-gray-500">
-                      {roteur.telephone && (
-                        <p>{roteur.telephone}</p>
-                      )}
-                      {currentAssignment ? (
-                        <div className="flex items-center gap-1 text-blue-600">
-                          <Clock className="w-3 h-3" />
-                          <span>Affecté: {currentAssignment.site_nom}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-green-600">
-                          <Users className="w-3 h-3" />
-                          <span>Disponible</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-gray-200 space-y-2">
-                      <button
-                        onClick={() => { setSelectedRoteur(roteur); setEditingAssignment(null); setShowAssignForm(true); }}
-                        disabled={!isAvailable}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Calendar className="w-4 h-4" />
-                        {isAvailable ? 'Affecter' : 'Déjà affecté'}
-                      </button>
-                      
-                      <button
-                        onClick={() => handleConvertToGuard(roteur)}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-orange-600 hover:bg-orange-50 rounded-lg border border-orange-200"
-                        title="Convertir en garde normal"
-                      >
-                        <User className="w-4 h-4" />
-                        Convertir en Garde
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Assignments Tab */}
-          {activeTab === 'assignments' && (
-            <div className="space-y-4">
-              {activeAssignments.length > 0 ? (
-                <div className="bg-white rounded-lg border border-gray-200">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rôteur</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Site</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Période</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Poste</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {activeAssignments.map((assignment) => (
-                        <tr key={assignment.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {assignment.roteur_nom}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{assignment.site_nom}</div>
-                            {assignment.client_nom && (
-                              <div className="text-xs text-gray-500">{assignment.client_nom}</div>
+            {/* Roteurs Tab */}
+            {activeTab === 'roteurs' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredRoteurs.map((roteur) => {
+                  const currentAssignment = activeAssignments.find(a => a.roteur_id === roteur.id);
+                  const isAvailable = !currentAssignment;
+                  
+                  return (
+                    <div key={roteur.id} className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-semibold overflow-hidden">
+                            {roteur.photo_url ? (
+                              <img
+                                src={roteur.photo_url}
+                                alt={`Photo de ${roteur.nom_complet}`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              roteur.nom_complet.charAt(0)
                             )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(assignment.date_debut).toLocaleDateString('fr-FR')} - {new Date(assignment.date_fin).toLocaleDateString('fr-FR')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              assignment.poste === 'JOUR' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
-                            }`}>
-                              {assignment.poste}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              assignment.statut === 'EN_COURS' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                            }`}>
-                              {assignment.statut}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
-                            <ActionDropdown
-                              assignment={assignment}
-                              isOpen={openDropdown === assignment.id}
-                              onToggle={() => setOpenDropdown(openDropdown === assignment.id ? null : assignment.id)}
-                              onEdit={() => {
-                                handleEditAssignment(assignment);
-                                setOpenDropdown(null);
-                              }}
-                              onCancel={() => {
-                                handleCancelAssignment(assignment.id);
-                                setOpenDropdown(null);
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>Aucune affectation active</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Coverage Tab */}
-          {activeTab === 'coverage' && (
-            <div className="space-y-4">
-              {sitesNeedingRoteur.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {sitesNeedingRoteur.map((site) => (
-                    <div key={site.id} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900">{site.nom_site}</h3>
-                          {site.client_nom && (
-                            <p className="text-sm text-gray-600">{site.client_nom}</p>
-                          )}
-                          <p className="text-sm text-orange-700 mt-1">
-                            {site.guard_count} garde(s) - Nécessite un rôteur
-                          </p>
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-gray-900">{roteur.nom_complet}</h3>
+                            <p className="text-sm text-gray-500">{roteur.matricule}</p>
+                          </div>
                         </div>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatutBadge(roteur.statut)}`}>
+                          {roteur.statut}
+                        </span>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-orange-200">
+
+                      <div className="space-y-2 text-sm text-gray-500">
+                        {roteur.telephone && (
+                          <p>{roteur.telephone}</p>
+                        )}
+                        {currentAssignment ? (
+                          <div className="flex items-center gap-1 text-blue-600">
+                            <Clock className="w-3 h-3" />
+                            <span>Affecté: {currentAssignment.site_nom}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <Users className="w-3 h-3" />
+                            <span>Disponible</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-gray-200 space-y-2">
                         <button
-                          onClick={() => {
-                            setSelectedRoteur(null);
-                            setEditingAssignment(null);
-                            setShowAssignForm(true);
-                          }}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-orange-700 hover:bg-orange-100 rounded-lg"
+                          onClick={() => { setSelectedRoteur(roteur); setEditingAssignment(null); setShowAssignForm(true); }}
+                          disabled={!isAvailable}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <Plus className="w-4 h-4" />
-                          Affecter un rôteur
+                          <Calendar className="w-4 h-4" />
+                          {isAvailable ? 'Affecter' : 'Déjà affecté'}
+                        </button>
+                        
+                        <button
+                          onClick={() => handleConvertToGuard(roteur)}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-orange-600 hover:bg-orange-50 rounded-lg border border-orange-200"
+                          title="Convertir en garde normal"
+                        >
+                          <User className="w-4 h-4" />
+                          Convertir en Garde
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>Tous les sites ont une couverture adéquate</p>
-                  <p className="text-sm mt-1">Aucun site ne nécessite actuellement de rôteur</p>
-                </div>
-              )}
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Coverage Tab */}
+            {activeTab === 'coverage' && (
+              <div className="space-y-4">
+                {sitesNeedingRoteur.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {sitesNeedingRoteur.map((site) => (
+                      <div key={site.id} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h3 className="font-medium text-gray-900">{site.nom_site}</h3>
+                            {site.client_nom && (
+                              <p className="text-sm text-gray-600">{site.client_nom}</p>
+                            )}
+                            <p className="text-sm text-orange-700 mt-1">
+                              {site.guard_count} garde(s) - Nécessite un rôteur
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-orange-200">
+                          <button
+                            onClick={() => {
+                              setSelectedRoteur(null);
+                              setEditingAssignment(null);
+                              setShowAssignForm(true);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-orange-700 hover:bg-orange-100 rounded-lg"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Affecter un rôteur
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>Tous les sites ont une couverture adéquate</p>
+                    <p className="text-sm mt-1">Aucun site ne nécessite actuellement de rôteur</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Assignments Tab - Full width table outside container */}
+      {activeTab === 'assignments' && (
+        <div className="space-y-4">
+          {activeAssignments.length > 0 ? (
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rôteur</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Site</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Période</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Poste</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {activeAssignments.map((assignment) => (
+                      <tr key={assignment.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {assignment.roteur_nom}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{assignment.site_nom}</div>
+                          {assignment.client_nom && (
+                            <div className="text-xs text-gray-500">{assignment.client_nom}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(assignment.date_debut).toLocaleDateString('fr-FR')} - {new Date(assignment.date_fin).toLocaleDateString('fr-FR')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            assignment.poste === 'JOUR' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {assignment.poste}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            assignment.statut === 'EN_COURS' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {assignment.statut}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
+                          <ActionDropdown
+                            assignment={assignment}
+                            isOpen={openDropdown === assignment.id}
+                            onToggle={() => setOpenDropdown(openDropdown === assignment.id ? null : assignment.id)}
+                            onEdit={() => {
+                              handleEditAssignment(assignment);
+                              setOpenDropdown(null);
+                            }}
+                            onCancel={() => {
+                              handleCancelAssignment(assignment.id);
+                              setOpenDropdown(null);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+              <div className="text-center py-12 text-gray-500">
+                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>Aucune affectation active</p>
+              </div>
             </div>
           )}
         </div>
-      </div>
+      )}
 
       {filteredRoteurs.length === 0 && activeTab === 'roteurs' && (
         <div className="text-center py-12 text-gray-500">
