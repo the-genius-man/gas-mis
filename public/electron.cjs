@@ -1712,24 +1712,36 @@ ipcMain.handle('db-create-roteur-assignment', async (event, assignment) => {
 // Update rôteur assignment
 ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
   try {
-    const stmt = db.prepare(`
-      UPDATE affectations_roteur SET
-        roteur_id = ?, site_id = ?, employe_remplace_id = ?,
-        date_debut = ?, date_fin = ?, poste = ?, statut = ?, notes = ?
-      WHERE id = ?
-    `);
+    // If only updating status (like canceling), do a partial update
+    if (assignment.statut && Object.keys(assignment).length === 2) { // id and statut only
+      const stmt = db.prepare(`
+        UPDATE affectations_roteur SET
+          statut = ?
+        WHERE id = ?
+      `);
 
-    stmt.run(
-      assignment.roteur_id,
-      assignment.site_id,
-      assignment.employe_remplace_id || null,
-      assignment.date_debut,
-      assignment.date_fin,
-      assignment.poste,
-      assignment.statut,
-      assignment.notes || null,
-      assignment.id
-    );
+      stmt.run(assignment.statut, assignment.id);
+    } else {
+      // Full update with all fields
+      const stmt = db.prepare(`
+        UPDATE affectations_roteur SET
+          roteur_id = ?, site_id = ?, employe_remplace_id = ?,
+          date_debut = ?, date_fin = ?, poste = ?, statut = ?, notes = ?
+        WHERE id = ?
+      `);
+
+      stmt.run(
+        assignment.roteur_id,
+        assignment.site_id,
+        assignment.employe_remplace_id || null,
+        assignment.date_debut,
+        assignment.date_fin,
+        assignment.poste,
+        assignment.statut,
+        assignment.notes || null,
+        assignment.id
+      );
+    }
 
     return { success: true };
   } catch (error) {
