@@ -1587,75 +1587,122 @@ ipcMain.handle('db-get-sites-eligible-for-roteur', async (event, filters = {}) =
   }
 });
 
-// Create rôteur assignment
+// Create rôteur assignment (can assign to multiple sites)
 ipcMain.handle('db-create-roteur-assignment', async (event, assignment) => {
   try {
-    const id = assignment.id || crypto.randomUUID();
+    const siteIds = Array.isArray(assignment.site_ids) ? assignment.site_ids : [assignment.site_id];
     
-    // Validation 1: Check if roteur has capacity (max 6 sites)
+    // Validation 1: Check if roteur has capacity (max 6 sites total)
     const roteurSiteCount = db.prepare(`
       SELECT COUNT(*) as count 
       FROM affectations_roteur 
       WHERE roteur_id = ? AND statut IN ('PLANIFIE', 'EN_COURS')
     `).get(assignment.roteur_id);
     
-    if (roteurSiteCount.count >= 6) {
-      throw new Error('Ce rôteur a déjà atteint sa capacité maximale de 6 sites');
+    const newSitesCount = siteIds.length;
+    const totalSitesAfterAssignment = roteurSiteCount.count + newSitesCount;
+    
+    if (totalSitesAfterAssignment > 6) {
+      throw new Error(`Ce rôteur ne peut pas être assigné à ${newSitesCount} site(s) supplémentaire(s). Capacité actuelle: ${roteurSiteCount.count}/6. Maximum autorisé: ${6 - roteurSiteCount.count} site(s) supplémentaire(s).`);
     }
     
-    // Validation 2: Check if site has exactly 1 guard
-    const siteGuardCount = db.prepare(`
-      SELECT COUNT(*) as count 
-      FROM employees_gas 
-      WHERE site_affecte_id = ? AND statut = 'ACTIF' AND poste = 'GARDE'
-    `).get(assignment.site_id);
+    // Validation 2: Check if each site has exactly 1 guard
+    const siteValidation = db.prepare(`
+      SELECT s.id, s.nom_site, COUNT(e.id) as guard_count 
+      FROM sites_gas s
+      LEFT JOIN employees_gas e ON e.site_affecte_id = s.id AND e.statut = 'ACTIF' AND e.poste = 'GARDE'
+      WHERE s.id IN (${siteIds.map(() => '?').join(',')})
+      GROUP BY s.id
+    `).all(...siteIds);
     
-    if (siteGuardCount.count !== 1) {
-      throw new Error('Seuls les sites avec exactement 1 garde peuvent avoir un rôteur assigné');
+    const invalidSites = siteValidation.filter(site => site.guard_count !== 1);
+    if (invalidSites.length > 0) {
+      const siteNames = invalidSites.map(s => `${s.nom_site} (${s.guard_count} garde(s))`).join(', ');
+      throw new Error(`Seuls les sites avec exactement 1 garde peuvent avoir un rôteur assigné. Sites invalides: ${siteNames}`);
     }
     
-    // Validation 3: Check if site already has a roteur
-    const existingRoteur = db.prepare(`
-      SELECT id FROM affectations_roteur 
-      WHERE site_id = ? AND statut IN ('PLANIFIE', 'EN_COURS')
-    `).get(assignment.site_id);
+    // Validation 3: Check if any site already has a roteur
+    const existingRoteurs = db.prepare(`
+      SELECT s.nom_site, ar.id 
+      FROM affectations_roteur ar
+      JOIN sites_gas s ON ar.site_id = s.id
+      WHERE ar.site_id IN (${siteIds.map(() => '?').join(',')}) AND ar.statut IN ('PLANIFIE', 'EN_COURS')
+    `).all(...siteIds);
     
-    if (existingRoteur) {
-      throw new Error('Ce site a déjà un rôteur assigné');
+    if (existingRoteurs.length > 0) {
+      const siteNames = existingRoteurs.map(s => s.nom_site).join(', ');
+      throw new Error(`Ces sites ont déjà un rôteur assigné: ${siteNames}`);
     }
     
-    // Validation 4: Check if roteur is already assigned to this day of week
-    if (assignment.jour_semaine) {
-      const dayConflict = db.prepare(`
-        SELECT id FROM affectations_roteur 
-        WHERE roteur_id = ? AND jour_semaine = ? AND statut IN ('PLANIFIE', 'EN_COURS')
-      `).get(assignment.roteur_id, assignment.jour_semaine);
-      
-      if (dayConflict) {
-        throw new Error(`Ce rôteur est déjà assigné le ${assignment.jour_semaine}`);
+    // Validation 4: Check day of week conflicts for roteur
+    const daysOfWeek = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI'];
+    const availableDays = [];
+    
+    // Get roteur's current day assignments
+    const currentDayAssignments = db.prepare(`
+      SELECT jour_semaine FROM affectations_roteur 
+      WHERE roteur_id = ? AND statut IN ('PLANIFIE', 'EN_COURS') AND jour_semaine IS NOT NULL
+    `).all(assignment.roteur_id);
+    
+    const usedDays = currentDayAssignments.map(a => a.jour_semaine);
+    
+    // Find available days
+    for (const day of daysOfWeek) {
+      if (!usedDays.includes(day)) {
+        availableDays.push(day);
       }
     }
     
-    const stmt = db.prepare(`
-      INSERT INTO affectations_roteur (
-        id, roteur_id, site_id, jour_semaine,
-        date_debut, date_fin, poste, statut, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      id,
-      assignment.roteur_id,
-      assignment.site_id,
-      assignment.jour_semaine || null,
-      assignment.date_debut,
-      assignment.date_fin,
-      assignment.poste || 'JOUR',
-      assignment.statut || 'PLANIFIE',
-      assignment.notes || null
-    );
-
-    return { success: true, id };
+    if (availableDays.length < newSitesCount) {
+      throw new Error(`Ce rôteur n'a que ${availableDays.length} jour(s) disponible(s) dans la semaine, mais vous essayez d'assigner ${newSitesCount} site(s).`);
+    }
+    
+    // Create assignments for each site
+    const results = [];
+    const transaction = db.transaction(() => {
+      const stmt = db.prepare(`
+        INSERT INTO affectations_roteur (
+          id, roteur_id, site_id, jour_semaine,
+          date_debut, date_fin, poste, statut, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      siteIds.forEach((siteId, index) => {
+        const assignmentId = crypto.randomUUID();
+        const assignedDay = availableDays[index]; // Assign to next available day
+        
+        stmt.run(
+          assignmentId,
+          assignment.roteur_id,
+          siteId,
+          assignedDay,
+          assignment.date_debut,
+          assignment.date_fin,
+          assignment.poste || 'JOUR',
+          assignment.statut || 'PLANIFIE',
+          assignment.notes || null
+        );
+        
+        results.push({
+          id: assignmentId,
+          site_id: siteId,
+          jour_semaine: assignedDay
+        });
+      });
+      
+      return results;
+    });
+    
+    const assignmentResults = transaction();
+    
+    console.log(`✅ Created ${assignmentResults.length} roteur assignments:`, assignmentResults);
+    
+    return { 
+      success: true, 
+      assignments: assignmentResults,
+      totalSitesAssigned: newSitesCount,
+      roteurCapacityUsed: totalSitesAfterAssignment
+    };
   } catch (error) {
     console.error('Error creating rôteur assignment:', error);
     throw error;

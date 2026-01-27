@@ -547,7 +547,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     roteurId: assignment?.roteur_id || roteur?.id || '',
-    siteId: assignment?.site_id || '',
+    siteIds: assignment?.site_id ? [assignment.site_id] : [] as string[],
     dateDebut: assignment?.date_debut?.split('T')[0] || new Date().toISOString().split('T')[0],
     dateFin: assignment?.date_fin?.split('T')[0] || '',
     poste: (assignment?.poste || 'JOUR') as 'JOUR' | 'NUIT',
@@ -560,8 +560,13 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.roteurId || !formData.siteId || !formData.dateDebut || !formData.dateFin) {
-      alert('Veuillez remplir tous les champs obligatoires');
+    if (!formData.roteurId || formData.siteIds.length === 0 || !formData.dateDebut || !formData.dateFin) {
+      alert('Veuillez remplir tous les champs obligatoires et sélectionner au moins un site');
+      return;
+    }
+
+    if (formData.siteIds.length > 6) {
+      alert('Un rôteur ne peut être assigné qu\'à un maximum de 6 sites');
       return;
     }
 
@@ -570,27 +575,43 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       alert('La date de fin doit être postérieure à la date de début');
       return;
     }
+      return;
+    }
 
     try {
       setSaving(true);
       
       if (isEditing && window.electronAPI?.updateRoteurAssignment) {
+        // For editing, we still work with single site (existing functionality)
         await window.electronAPI.updateRoteurAssignment({
           id: assignment!.id,
           ...formData,
+          site_id: formData.siteIds[0], // Use first site for editing
           statut: 'EN_COURS'
         });
       } else if (window.electronAPI?.createRoteurAssignment) {
-        // Generate unique ID for new assignment
-        const assignmentId = 'rot-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        
-        await window.electronAPI.createRoteurAssignment({
-          id: assignmentId,
+        const result = await window.electronAPI.createRoteurAssignment({
           roteur_id: formData.roteurId,
-          site_id: formData.siteId,
+          site_ids: formData.siteIds, // Pass array of site IDs
           date_debut: formData.dateDebut,
           date_fin: formData.dateFin,
           poste: formData.poste,
+          notes: formData.notes,
+          statut: 'PLANIFIE'
+        });
+        
+        // Show success message with assignment details
+        if (result.success && result.assignments) {
+          const assignmentDetails = result.assignments.map(a => 
+            `• Site assigné le ${a.jour_semaine}`
+          ).join('\n');
+          
+          alert(`Affectation créée avec succès!\n\n` +
+                `Rôteur assigné à ${result.totalSitesAssigned} site(s)\n` +
+                `Capacité utilisée: ${result.roteurCapacityUsed}/6 sites\n\n` +
+                `Détails des affectations:\n${assignmentDetails}`);
+        }
+      }
           notes: formData.notes,
           statut: 'EN_COURS'
         });
@@ -651,28 +672,51 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
           {/* Site Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Site nécessitant un rôteur
+              Sites (maximum 6)
             </label>
-            <select
-              value={formData.siteId}
-              onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">Sélectionner un site</option>
-              {availableSites.map((site) => (
-                <option key={site.id} value={site.id}>
-                  {site.nom_site} ({site.guard_count} garde)
-                  {site.client_nom && ` - ${site.client_nom}`}
-                </option>
-              ))}
-            </select>
-            <div className="bg-blue-50 border border-blue-200 rounded p-2 mt-2">
-              <p className="text-xs text-blue-700">
-                <strong>Principe:</strong> Les rôteurs couvrent les jours de repos des gardes sur les sites avec 1 seul garde.
-                Cela évite de laisser un site sans surveillance pendant les congés.
-              </p>
+            <div className="border border-gray-300 rounded-lg p-2 max-h-40 overflow-y-auto">
+              {availableSites.length > 0 ? (
+                availableSites.map((site) => (
+                  <label key={site.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.siteIds.includes(site.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          if (formData.siteIds.length < 6) {
+                            setFormData({ 
+                              ...formData, 
+                              siteIds: [...formData.siteIds, site.id] 
+                            });
+                          } else {
+                            alert('Maximum 6 sites autorisés par rôteur');
+                          }
+                        } else {
+                          setFormData({ 
+                            ...formData, 
+                            siteIds: formData.siteIds.filter(id => id !== site.id) 
+                          });
+                        }
+                      }}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm">
+                      {site.nom_site} ({site.guard_count} garde)
+                      {site.client_nom && (
+                        <span className="text-gray-500"> - {site.client_nom}</span>
+                      )}
+                    </span>
+                  </label>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 p-2">Aucun site disponible pour affectation</p>
+              )}
             </div>
+            {formData.siteIds.length > 0 && (
+              <p className="text-xs text-blue-600 mt-1">
+                {formData.siteIds.length} site(s) sélectionné(s) sur 6 maximum
+              </p>
+            )}
           </div>
 
           {/* Date Range */}
