@@ -7,6 +7,11 @@ const crypto = require('crypto');
 let mainWindow;
 let db;
 
+// Hash password using crypto
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
 // Initialize SQLite database
 function initDatabase() {
   const dbPath = isDev 
@@ -212,6 +217,34 @@ function createTables() {
     // Column already exists, ignore
   }
 
+  // Add modifie_le column to clients_gas if it doesn't exist (migration)
+  try {
+    db.exec(`ALTER TABLE clients_gas ADD COLUMN modifie_le DATETIME DEFAULT CURRENT_TIMESTAMP`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add modifie_le column to sites_gas if it doesn't exist (migration)
+  try {
+    db.exec(`ALTER TABLE sites_gas ADD COLUMN modifie_le DATETIME DEFAULT CURRENT_TIMESTAMP`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add statut column to clients_gas if it doesn't exist (migration)
+  try {
+    db.exec(`ALTER TABLE clients_gas ADD COLUMN statut TEXT DEFAULT 'ACTIF'`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add jour_semaine column to affectations_roteur if it doesn't exist (migration)
+  try {
+    db.exec(`ALTER TABLE affectations_roteur ADD COLUMN jour_semaine TEXT CHECK(jour_semaine IN ('LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI'))`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   // Add arrieres column to bulletins_paie if it doesn't exist (migration)
   try {
     db.exec(`ALTER TABLE bulletins_paie ADD COLUMN arrieres REAL DEFAULT 0`);
@@ -375,8 +408,7 @@ function createHROperationsTables() {
       id TEXT PRIMARY KEY,
       roteur_id TEXT NOT NULL REFERENCES employees_gas(id),
       site_id TEXT NOT NULL REFERENCES sites_gas(id),
-      employe_remplace_id TEXT REFERENCES employees_gas(id),
-      demande_conge_id TEXT REFERENCES demandes_conge(id),
+      jour_semaine TEXT CHECK(jour_semaine IN ('LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI')) NOT NULL,
       date_debut TEXT NOT NULL,
       date_fin TEXT NOT NULL,
       poste TEXT CHECK(poste IN ('JOUR', 'NUIT')) DEFAULT 'JOUR',
@@ -512,10 +544,30 @@ function createHROperationsTables() {
       periode_paie_mois INTEGER,
       periode_paie_annee INTEGER,
       applique_paie INTEGER DEFAULT 0,
+      deduction_id TEXT,
+      payment_schedule TEXT,
+      installments INTEGER DEFAULT 1,
       cree_par TEXT,
       cree_le TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add new columns to actions_disciplinaires if they don't exist
+  try {
+    db.exec(`ALTER TABLE actions_disciplinaires ADD COLUMN deduction_id TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.exec(`ALTER TABLE actions_disciplinaires ADD COLUMN payment_schedule TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.exec(`ALTER TABLE actions_disciplinaires ADD COLUMN installments INTEGER DEFAULT 1`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   // System Alerts
   db.exec(`
@@ -583,6 +635,11 @@ function createHROperationsTables() {
       retenues_disciplinaires REAL DEFAULT 0,
       avances REAL DEFAULT 0,
       autres_retenues REAL DEFAULT 0,
+      deductions_disciplinaires REAL DEFAULT 0,
+      deductions_uniformes REAL DEFAULT 0,
+      deductions_contributions REAL DEFAULT 0,
+      deductions_autres REAL DEFAULT 0,
+      total_deductions_detail REAL DEFAULT 0,
       total_retenues REAL DEFAULT 0,
       salaire_net REAL NOT NULL DEFAULT 0,
       devise TEXT DEFAULT 'USD' CHECK(devise IN ('USD', 'CDF')),
@@ -597,6 +654,33 @@ function createHROperationsTables() {
       UNIQUE(periode_paie_id, employe_id)
     )
   `);
+
+  // Add detailed deduction columns to bulletins_paie if they don't exist
+  try {
+    db.exec(`ALTER TABLE bulletins_paie ADD COLUMN deductions_disciplinaires REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.exec(`ALTER TABLE bulletins_paie ADD COLUMN deductions_uniformes REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.exec(`ALTER TABLE bulletins_paie ADD COLUMN deductions_contributions REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.exec(`ALTER TABLE bulletins_paie ADD COLUMN deductions_autres REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  try {
+    db.exec(`ALTER TABLE bulletins_paie ADD COLUMN total_deductions_detail REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
 
   // Employee Advances
   db.exec(`
@@ -628,6 +712,22 @@ function createHROperationsTables() {
       cree_le TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (avance_id) REFERENCES avances_employes(id) ON DELETE CASCADE,
       FOREIGN KEY (bulletin_paie_id) REFERENCES bulletins_paie(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Users table (Authentication & RBAC)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      nom_utilisateur TEXT UNIQUE NOT NULL,
+      mot_de_passe_hash TEXT NOT NULL,
+      nom_complet TEXT NOT NULL,
+      email TEXT,
+      role TEXT NOT NULL CHECK (role IN ('ADMIN', 'FINANCE_MANAGER', 'OPERATIONS_MANAGER', 'ASSISTANT_OPERATIONS_MANAGER')) DEFAULT 'ASSISTANT_OPERATIONS_MANAGER',
+      statut TEXT NOT NULL CHECK (statut IN ('ACTIF', 'SUSPENDU')) DEFAULT 'ACTIF',
+      derniere_connexion TEXT,
+      cree_le TEXT DEFAULT CURRENT_TIMESTAMP,
+      modifie_le TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -785,6 +885,101 @@ function createHROperationsTables() {
     )
   `);
 
+  // ============================================================================
+  // ENHANCED DEDUCTIONS SYSTEM - Multi-Period & Multi-Type Deductions
+  // ============================================================================
+
+  // Deduction Types Configuration
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS deduction_types (
+      id TEXT PRIMARY KEY,
+      code TEXT UNIQUE NOT NULL,
+      nom TEXT NOT NULL,
+      description TEXT,
+      calculation_method TEXT NOT NULL CHECK(calculation_method IN ('FIXED_AMOUNT', 'PERCENTAGE', 'CUSTOM')),
+      default_schedule_type TEXT CHECK(default_schedule_type IN ('ONE_TIME', 'INSTALLMENTS', 'RECURRING')),
+      max_percentage_salary REAL,
+      priority_order INTEGER DEFAULT 100,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Employee Deductions Registry
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS employee_deductions (
+      id TEXT PRIMARY KEY,
+      employe_id TEXT NOT NULL,
+      deduction_type_id TEXT NOT NULL,
+      source_type TEXT CHECK(source_type IN ('DISCIPLINARY', 'MANUAL', 'SYSTEM', 'UNIFORM', 'LOAN', 'CONTRIBUTION')),
+      source_id TEXT,
+      
+      title TEXT NOT NULL,
+      total_amount REAL NOT NULL,
+      amount_deducted REAL DEFAULT 0,
+      amount_remaining REAL NOT NULL,
+      
+      schedule_type TEXT NOT NULL CHECK(schedule_type IN ('ONE_TIME', 'INSTALLMENTS', 'RECURRING', 'CUSTOM')),
+      installment_amount REAL,
+      number_of_installments INTEGER,
+      installments_completed INTEGER DEFAULT 0,
+      
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      next_deduction_date TEXT,
+      
+      status TEXT DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'SUSPENDED', 'COMPLETED', 'CANCELLED')),
+      max_per_period REAL,
+      skip_periods TEXT,
+      
+      created_by TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      modified_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      
+      FOREIGN KEY (employe_id) REFERENCES employees_gas(id) ON DELETE CASCADE,
+      FOREIGN KEY (deduction_type_id) REFERENCES deduction_types(id)
+    )
+  `);
+
+  // Custom Payment Schedules
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS deduction_schedule (
+      id TEXT PRIMARY KEY,
+      deduction_id TEXT NOT NULL,
+      period_year INTEGER NOT NULL,
+      period_month INTEGER NOT NULL,
+      scheduled_amount REAL NOT NULL,
+      actual_amount REAL DEFAULT 0,
+      status TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'APPLIED', 'SKIPPED', 'FAILED')),
+      applied_date TEXT,
+      bulletin_paie_id TEXT,
+      notes TEXT,
+      
+      FOREIGN KEY (deduction_id) REFERENCES employee_deductions(id) ON DELETE CASCADE,
+      FOREIGN KEY (bulletin_paie_id) REFERENCES bulletins_paie(id),
+      UNIQUE(deduction_id, period_year, period_month)
+    )
+  `);
+
+  // Payment History Tracking
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS deduction_history (
+      id TEXT PRIMARY KEY,
+      deduction_id TEXT NOT NULL,
+      bulletin_paie_id TEXT NOT NULL,
+      amount_deducted REAL NOT NULL,
+      period_year INTEGER NOT NULL,
+      period_month INTEGER NOT NULL,
+      deduction_date TEXT NOT NULL,
+      status TEXT DEFAULT 'APPLIED' CHECK(status IN ('APPLIED', 'REVERSED', 'ADJUSTED')),
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      
+      FOREIGN KEY (deduction_id) REFERENCES employee_deductions(id) ON DELETE CASCADE,
+      FOREIGN KEY (bulletin_paie_id) REFERENCES bulletins_paie(id) ON DELETE CASCADE
+    )
+  `);
+
   // Initialize default tax settings if not exists
   try {
     const existingSettings = db.prepare('SELECT COUNT(*) as count FROM tax_settings').get();
@@ -831,6 +1026,92 @@ function createHROperationsTables() {
     }
   } catch (e) {
     console.error('Error initializing tax settings:', e.message);
+  }
+
+  // Initialize default deduction types
+  try {
+    const existingDeductionTypes = db.prepare('SELECT COUNT(*) as count FROM deduction_types').get();
+    console.log('Deduction types count:', existingDeductionTypes.count);
+    
+    if (existingDeductionTypes.count === 0) {
+      console.log('Initializing default deduction types...');
+      const defaultDeductionTypes = [
+        { 
+          id: crypto.randomUUID(), 
+          code: 'DISCIPLINARY', 
+          nom: 'Retenues Disciplinaires', 
+          description: 'Déductions liées aux actions disciplinaires',
+          calculation_method: 'FIXED_AMOUNT',
+          default_schedule_type: 'INSTALLMENTS',
+          max_percentage_salary: 0.25,
+          priority_order: 10
+        },
+        { 
+          id: crypto.randomUUID(), 
+          code: 'UNIFORM', 
+          nom: 'Uniformes et Équipements', 
+          description: 'Paiements pour uniformes et équipements',
+          calculation_method: 'FIXED_AMOUNT',
+          default_schedule_type: 'INSTALLMENTS',
+          max_percentage_salary: 0.15,
+          priority_order: 30
+        },
+        { 
+          id: crypto.randomUUID(), 
+          code: 'LOAN', 
+          nom: 'Remboursement Avances', 
+          description: 'Remboursement des avances et prêts',
+          calculation_method: 'FIXED_AMOUNT',
+          default_schedule_type: 'INSTALLMENTS',
+          max_percentage_salary: 0.30,
+          priority_order: 20
+        },
+        { 
+          id: crypto.randomUUID(), 
+          code: 'CONTRIBUTION', 
+          nom: 'Contributions et Cotisations', 
+          description: 'Cotisations syndicales, assurances, etc.',
+          calculation_method: 'FIXED_AMOUNT',
+          default_schedule_type: 'RECURRING',
+          max_percentage_salary: 0.10,
+          priority_order: 40
+        },
+        { 
+          id: crypto.randomUUID(), 
+          code: 'OTHER', 
+          nom: 'Autres Retenues', 
+          description: 'Autres types de retenues diverses',
+          calculation_method: 'FIXED_AMOUNT',
+          default_schedule_type: 'ONE_TIME',
+          max_percentage_salary: 0.20,
+          priority_order: 50
+        }
+      ];
+      
+      const insertDeductionType = db.prepare(`
+        INSERT INTO deduction_types (id, code, nom, description, calculation_method, default_schedule_type, max_percentage_salary, priority_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      for (const type of defaultDeductionTypes) {
+        try {
+          insertDeductionType.run(
+            type.id, type.code, type.nom, type.description, 
+            type.calculation_method, type.default_schedule_type, 
+            type.max_percentage_salary, type.priority_order
+          );
+          console.log(`  ✓ Inserted deduction type: ${type.nom}`);
+        } catch (insertError) {
+          console.error(`  ✗ Error inserting deduction type ${type.nom}:`, insertError.message);
+        }
+      }
+      
+      console.log('Default deduction types initialized successfully');
+    } else {
+      console.log('Deduction types already initialized');
+    }
+  } catch (e) {
+    console.error('Error initializing deduction types:', e.message);
   }
 
   // Migrate data from old employees table to employees_gas
@@ -918,8 +1199,58 @@ function createHROperationsTables() {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_ecritures_type ON ecritures_comptables(type_operation)`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_lignes_ecriture ON lignes_ecritures(ecriture_id)`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_lignes_compte ON lignes_ecritures(compte_comptable)`);
+    
+    // Enhanced Deduction System indexes
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_employee_deductions_employe ON employee_deductions(employe_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_employee_deductions_status ON employee_deductions(status)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_employee_deductions_type ON employee_deductions(deduction_type_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_employee_deductions_source ON employee_deductions(source_type, source_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_deduction_schedule_deduction ON deduction_schedule(deduction_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_deduction_schedule_period ON deduction_schedule(period_year, period_month)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_deduction_schedule_status ON deduction_schedule(status)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_deduction_history_deduction ON deduction_history(deduction_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_deduction_history_bulletin ON deduction_history(bulletin_paie_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_deduction_history_period ON deduction_history(period_year, period_month)`);
+
+    console.log('Database indexes created successfully');
   } catch (e) {
     // Indexes may already exist
+  }
+
+  // Initialize default admin user if not exists
+  try {
+    const existingUsers = db.prepare('SELECT COUNT(*) as count FROM users').get();
+    console.log('Users count:', existingUsers.count);
+    
+    if (existingUsers.count === 0) {
+      console.log('Initializing default admin user...');
+      const adminId = crypto.randomUUID();
+      const hashedPassword = hashPassword('admin123');
+      const now = new Date().toISOString();
+      
+      db.prepare(`
+        INSERT INTO users (id, nom_utilisateur, mot_de_passe_hash, nom_complet, email, role, statut, cree_le, modifie_le)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        adminId,
+        'admin',
+        hashedPassword,
+        'Administrateur Système',
+        'admin@goaheadsecurity.com',
+        'ADMIN',
+        'ACTIF',
+        now,
+        now
+      );
+      
+      console.log('✅ Default admin user created successfully');
+      console.log('   Username: admin');
+      console.log('   Password: admin123');
+    } else {
+      console.log('Users already exist, skipping admin user creation');
+    }
+  } catch (e) {
+    console.error('Error initializing default admin user:', e.message);
   }
 
   console.log('HR, Operations, Inventory, Disciplinary & Payroll tables created successfully');
@@ -962,14 +1293,17 @@ function createWindow() {
 // RÔTEUR MANAGEMENT HANDLERS
 // ============================================================================
 
-// Get all rôteurs (employees with categorie='ROTEUR')
+// Get all rôteurs (employees with poste='ROTEUR')
 ipcMain.handle('db-get-roteurs', async (event, filters = {}) => {
   try {
     let query = `
-      SELECT e.*, s.nom_site as site_nom
+      SELECT e.*, 
+             COUNT(ar.id) as sites_assigned,
+             (6 - COUNT(ar.id)) as capacity_remaining
       FROM employees_gas e
-      LEFT JOIN sites_gas s ON e.site_affecte_id = s.id
-      WHERE e.categorie = 'ROTEUR'
+      LEFT JOIN affectations_roteur ar ON e.id = ar.roteur_id 
+        AND ar.statut IN ('PLANIFIE', 'EN_COURS')
+      WHERE e.categorie = 'GARDE' AND e.poste = 'ROTEUR'
     `;
     const params = [];
 
@@ -978,7 +1312,7 @@ ipcMain.handle('db-get-roteurs', async (event, filters = {}) => {
       params.push(filters.statut);
     }
 
-    query += ' ORDER BY e.nom_complet';
+    query += ' GROUP BY e.id ORDER BY e.nom_complet';
 
     return db.prepare(query).all(...params);
   } catch (error) {
@@ -994,14 +1328,14 @@ ipcMain.handle('db-get-roteur-assignments', async (event, filters = {}) => {
       SELECT 
         ar.*,
         r.nom_complet as roteur_nom,
+        r.matricule as roteur_matricule,
         s.nom_site as site_nom,
         c.nom_entreprise as client_nom,
-        e.nom_complet as employe_remplace_nom
+        (SELECT COUNT(*) FROM employees_gas WHERE site_affecte_id = s.id AND statut = 'ACTIF' AND poste = 'GARDE') as site_guard_count
       FROM affectations_roteur ar
       LEFT JOIN employees_gas r ON ar.roteur_id = r.id
       LEFT JOIN sites_gas s ON ar.site_id = s.id
       LEFT JOIN clients_gas c ON s.client_id = c.id
-      LEFT JOIN employees_gas e ON ar.employe_remplace_id = e.id
       WHERE 1=1
     `;
     const params = [];
@@ -1035,24 +1369,180 @@ ipcMain.handle('db-get-roteur-assignments', async (event, filters = {}) => {
   }
 });
 
+// Convert roteur back to normal guard and unassign all sites
+ipcMain.handle('db-convert-roteur-to-guard', async (event, { roteurId, reason }) => {
+  console.log(`🚨 BACKEND: Converting roteur ${roteurId} back to guard`);
+  try {
+    // Start a transaction to ensure data consistency
+    const updateEmployeePoste = db.prepare('UPDATE employees_gas SET poste = ? WHERE id = ?');
+    const cancelActiveAssignments = db.prepare(`
+      UPDATE affectations_roteur 
+      SET statut = 'ANNULE', notes = COALESCE(notes || ' | ', '') || ? 
+      WHERE roteur_id = ? AND statut IN ('PLANIFIE', 'EN_COURS')
+    `);
+    
+    // Check current assignments before conversion
+    const activeAssignments = db.prepare(`
+      SELECT ar.*, s.nom_site, c.nom_entreprise as client_nom
+      FROM affectations_roteur ar
+      JOIN sites_gas s ON ar.site_id = s.id
+      JOIN clients_gas c ON s.client_id = c.id
+      WHERE ar.roteur_id = ? AND ar.statut IN ('PLANIFIE', 'EN_COURS')
+    `).all(roteurId);
+    
+    // Get roteur info
+    const roteurInfo = db.prepare('SELECT nom_complet, matricule FROM employees_gas WHERE id = ?').get(roteurId);
+    
+    console.log(`📊 Converting roteur ${roteurInfo?.nom_complet} (${roteurInfo?.matricule}):`);
+    console.log(`  - Active assignments to cancel: ${activeAssignments.length}`);
+    activeAssignments.forEach(assignment => {
+      console.log(`    • Site: ${assignment.nom_site} (${assignment.client_nom}) - ${assignment.jour_semaine}`);
+    });
+    
+    // Begin transaction
+    const transaction = db.transaction(() => {
+      // 1. Change employee poste from ROTEUR to GARDE
+      const employeeResult = updateEmployeePoste.run('GARDE', roteurId);
+      console.log(`✅ Employee poste updated: ${employeeResult.changes} row(s) affected`);
+      
+      // 2. Cancel all active roteur assignments
+      const cancellationReason = reason || 'Conversion automatique: Roteur → Garde';
+      const assignmentsResult = cancelActiveAssignments.run(cancellationReason, roteurId);
+      console.log(`📋 Assignments cancelled: ${assignmentsResult.changes} row(s) affected`);
+      
+      return {
+        employeeUpdated: employeeResult.changes,
+        assignmentsCancelled: assignmentsResult.changes,
+        sitesAffected: activeAssignments.length,
+        affectedSites: activeAssignments.map(a => ({
+          site_id: a.site_id,
+          nom_site: a.nom_site,
+          client_nom: a.client_nom,
+          jour_semaine: a.jour_semaine
+        }))
+      };
+    });
+    
+    // Execute the transaction and get results
+    const results = transaction();
+    
+    console.log(`✅ Roteur conversion completed:`, results);
+    
+    return { success: true, ...results };
+  } catch (error) {
+    console.error('❌ Error converting roteur to guard:', error);
+    throw error;
+  }
+});
+
+// Get sites eligible for rôteur assignment (sites with exactly 1 guard)
+ipcMain.handle('db-get-sites-eligible-for-roteur', async (event, filters = {}) => {
+  try {
+    let query = `
+      SELECT 
+        s.*,
+        c.nom_entreprise as client_nom,
+        COUNT(e.id) as guard_count,
+        GROUP_CONCAT(e.nom_complet) as guard_names,
+        CASE WHEN ar.id IS NOT NULL THEN 1 ELSE 0 END as has_roteur,
+        ar.roteur_id,
+        r.nom_complet as roteur_nom,
+        ar.jour_semaine
+      FROM sites_gas s
+      LEFT JOIN clients_gas c ON s.client_id = c.id
+      LEFT JOIN employees_gas e ON e.site_affecte_id = s.id 
+        AND e.statut = 'ACTIF' 
+        AND e.poste = 'GARDE'
+      LEFT JOIN affectations_roteur ar ON s.id = ar.site_id 
+        AND ar.statut IN ('PLANIFIE', 'EN_COURS')
+      LEFT JOIN employees_gas r ON ar.roteur_id = r.id
+      WHERE s.est_actif = 1
+    `;
+    const params = [];
+
+    if (filters.clientId) {
+      query += ' AND s.client_id = ?';
+      params.push(filters.clientId);
+    }
+
+    if (filters.needsRoteur) {
+      query += ' AND ar.id IS NULL'; // Only sites without roteur
+    }
+
+    query += `
+      GROUP BY s.id
+      HAVING COUNT(e.id) = 1
+      ORDER BY c.nom_entreprise, s.nom_site
+    `;
+
+    return db.prepare(query).all(...params);
+  } catch (error) {
+    console.error('Error fetching sites eligible for rôteur:', error);
+    throw error;
+  }
+});
+
 // Create rôteur assignment
 ipcMain.handle('db-create-roteur-assignment', async (event, assignment) => {
   try {
     const id = assignment.id || crypto.randomUUID();
     
+    // Validation 1: Check if roteur has capacity (max 6 sites)
+    const roteurSiteCount = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM affectations_roteur 
+      WHERE roteur_id = ? AND statut IN ('PLANIFIE', 'EN_COURS')
+    `).get(assignment.roteur_id);
+    
+    if (roteurSiteCount.count >= 6) {
+      throw new Error('Ce rôteur a déjà atteint sa capacité maximale de 6 sites');
+    }
+    
+    // Validation 2: Check if site has exactly 1 guard
+    const siteGuardCount = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM employees_gas 
+      WHERE site_affecte_id = ? AND statut = 'ACTIF' AND poste = 'GARDE'
+    `).get(assignment.site_id);
+    
+    if (siteGuardCount.count !== 1) {
+      throw new Error('Seuls les sites avec exactement 1 garde peuvent avoir un rôteur assigné');
+    }
+    
+    // Validation 3: Check if site already has a roteur
+    const existingRoteur = db.prepare(`
+      SELECT id FROM affectations_roteur 
+      WHERE site_id = ? AND statut IN ('PLANIFIE', 'EN_COURS')
+    `).get(assignment.site_id);
+    
+    if (existingRoteur) {
+      throw new Error('Ce site a déjà un rôteur assigné');
+    }
+    
+    // Validation 4: Check if roteur is already assigned to this day of week
+    if (assignment.jour_semaine) {
+      const dayConflict = db.prepare(`
+        SELECT id FROM affectations_roteur 
+        WHERE roteur_id = ? AND jour_semaine = ? AND statut IN ('PLANIFIE', 'EN_COURS')
+      `).get(assignment.roteur_id, assignment.jour_semaine);
+      
+      if (dayConflict) {
+        throw new Error(`Ce rôteur est déjà assigné le ${assignment.jour_semaine}`);
+      }
+    }
+    
     const stmt = db.prepare(`
       INSERT INTO affectations_roteur (
-        id, roteur_id, site_id, employe_remplace_id, demande_conge_id,
+        id, roteur_id, site_id, jour_semaine,
         date_debut, date_fin, poste, statut, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       id,
       assignment.roteur_id,
       assignment.site_id,
-      assignment.employe_remplace_id || null,
-      assignment.demande_conge_id || null,
+      assignment.jour_semaine || null,
       assignment.date_debut,
       assignment.date_fin,
       assignment.poste || 'JOUR',
@@ -1278,6 +1768,130 @@ ipcMain.handle('db-create-payroll-period', async (event, data) => {
   }
 });
 
+// Helper function to calculate employee deductions for a payroll period
+async function calculateEmployeeDeductions(employeId, periodeId, mois, annee, salaireBrut) {
+  try {
+    // Get all active deductions for this employee
+    const deductions = db.prepare(`
+      SELECT ed.*, dt.code as type_code, dt.priority_order, dt.max_percentage_salary
+      FROM employee_deductions ed
+      JOIN deduction_types dt ON ed.deduction_type_id = dt.id
+      WHERE ed.employe_id = ? AND ed.status = 'ACTIVE'
+      AND (ed.end_date IS NULL OR ed.end_date >= ?)
+      ORDER BY dt.priority_order
+    `).all(employeId, `${annee}-${String(mois).padStart(2, '0')}-01`);
+    
+    const result = {
+      disciplinary: 0,
+      uniform: 0,
+      contribution: 0,
+      other: 0,
+      total: 0
+    };
+    
+    let availableSalary = salaireBrut;
+    const MAX_DEDUCTION_PERCENTAGE = 0.5; // Maximum 50% of salary can be deducted
+    
+    for (const deduction of deductions) {
+      // Check if there's a scheduled amount for this period
+      const scheduledDeduction = db.prepare(`
+        SELECT * FROM deduction_schedule
+        WHERE deduction_id = ? AND period_year = ? AND period_month = ?
+      `).get(deduction.id, annee, mois);
+      
+      let scheduledAmount = 0;
+      if (scheduledDeduction && scheduledDeduction.status === 'PENDING') {
+        scheduledAmount = scheduledDeduction.scheduled_amount;
+      } else if (deduction.schedule_type === 'INSTALLMENTS' && deduction.installment_amount > 0 && deduction.amount_remaining > 0) {
+        scheduledAmount = Math.min(deduction.installment_amount, deduction.amount_remaining);
+      } else if (deduction.schedule_type === 'ONE_TIME' && deduction.amount_remaining > 0) {
+        scheduledAmount = deduction.amount_remaining;
+      } else if (deduction.schedule_type === 'RECURRING' && deduction.installment_amount > 0) {
+        scheduledAmount = deduction.installment_amount;
+      }
+      
+      if (scheduledAmount > 0) {
+        // Apply constraints
+        const maxPerPeriod = deduction.max_per_period || scheduledAmount;
+        const maxByPercentage = deduction.max_percentage_salary 
+          ? salaireBrut * deduction.max_percentage_salary 
+          : scheduledAmount;
+        const maxByGlobalLimit = availableSalary;
+        
+        const maxAllowed = Math.min(scheduledAmount, maxPerPeriod, maxByPercentage, maxByGlobalLimit);
+        const actualAmount = Math.max(0, maxAllowed);
+        
+        if (actualAmount > 0) {
+          // Create deduction history record
+          const historyId = crypto.randomUUID();
+          db.prepare(`
+            INSERT INTO deduction_history (
+              id, deduction_id, amount_deducted, period_year, period_month, 
+              deduction_date, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            historyId, deduction.id, actualAmount, annee, mois,
+            new Date().toISOString().split('T')[0], 'APPLIED'
+          );
+          
+          // Update deduction balance
+          db.prepare(`
+            UPDATE employee_deductions 
+            SET amount_deducted = amount_deducted + ?,
+                amount_remaining = amount_remaining - ?,
+                installments_completed = installments_completed + 1,
+                modified_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).run(actualAmount, actualAmount, deduction.id);
+          
+          // Update schedule status if exists
+          if (scheduledDeduction) {
+            db.prepare(`
+              UPDATE deduction_schedule 
+              SET actual_amount = ?, status = 'APPLIED', applied_date = ?
+              WHERE id = ?
+            `).run(actualAmount, new Date().toISOString().split('T')[0], scheduledDeduction.id);
+          }
+          
+          // Categorize deduction
+          const typeCode = deduction.source_type || deduction.type_code || 'OTHER';
+          switch (typeCode) {
+            case 'DISCIPLINARY':
+              result.disciplinary += actualAmount;
+              break;
+            case 'UNIFORM':
+              result.uniform += actualAmount;
+              break;
+            case 'CONTRIBUTION':
+              result.contribution += actualAmount;
+              break;
+            default:
+              result.other += actualAmount;
+          }
+          
+          result.total += actualAmount;
+          availableSalary -= actualAmount;
+          
+          // Check if deduction is completed
+          const updatedDeduction = db.prepare('SELECT amount_remaining FROM employee_deductions WHERE id = ?').get(deduction.id);
+          if (updatedDeduction.amount_remaining <= 0) {
+            db.prepare(`
+              UPDATE employee_deductions 
+              SET status = 'COMPLETED', modified_at = CURRENT_TIMESTAMP
+              WHERE id = ?
+            `).run(deduction.id);
+          }
+        }
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error calculating employee deductions:', error);
+    return { disciplinary: 0, uniform: 0, contribution: 0, other: 0, total: 0 };
+  }
+}
+
 // Calculate payroll for a period
 ipcMain.handle('db-calculate-payroll', async (event, { periodeId, mois, annee, calculePar }) => {
   try {
@@ -1355,8 +1969,16 @@ ipcMain.handle('db-calculate-payroll', async (event, { periodeId, mois, annee, c
       // 4. Calculate IPR
       const ipr = calculateIPR(salaireImposable);
       
-      // 5. Get disciplinary deductions for this period
-      const disciplinaires = db.prepare(`
+      // 5. Calculate enhanced deductions using new system
+      const periodDeductions = await calculateEmployeeDeductions(emp.id, periodeId, mois, annee, salaireBrut);
+      
+      let retenuesDisciplinaires = periodDeductions.disciplinary || 0;
+      let retenues_uniformes = periodDeductions.uniform || 0;
+      let retenues_contributions = periodDeductions.contribution || 0;
+      let autres_retenues_detail = periodDeductions.other || 0;
+      
+      // Legacy disciplinary deductions (for backward compatibility)
+      const legacyDisciplinaires = db.prepare(`
         SELECT id, montant_deduction
         FROM actions_disciplinaires
         WHERE employe_id = ?
@@ -1366,25 +1988,24 @@ ipcMain.handle('db-calculate-payroll', async (event, { periodeId, mois, annee, c
         AND (periode_paie_mois IS NULL OR periode_paie_mois = ?)
         AND (periode_paie_annee IS NULL OR periode_paie_annee = ?)
         AND applique_paie = 0
+        AND deduction_id IS NULL
       `).all(emp.id, mois, annee);
       
-      let retenuesDisciplinaires = 0;
-      const disciplinaryIds = [];
-      
-      for (const disc of disciplinaires) {
+      const legacyDisciplinaryIds = [];
+      for (const disc of legacyDisciplinaires) {
         retenuesDisciplinaires += disc.montant_deduction;
-        disciplinaryIds.push(disc.id);
+        legacyDisciplinaryIds.push(disc.id);
       }
       
-      // Mark disciplinary actions as applied to this payroll period
-      if (disciplinaryIds.length > 0) {
+      // Mark legacy disciplinary actions as applied
+      if (legacyDisciplinaryIds.length > 0) {
         const updateDisciplinaryStmt = db.prepare(`
           UPDATE actions_disciplinaires 
           SET periode_paie_mois = ?, periode_paie_annee = ?, applique_paie = 1
           WHERE id = ?
         `);
         
-        for (const discId of disciplinaryIds) {
+        for (const discId of legacyDisciplinaryIds) {
           updateDisciplinaryStmt.run(mois, annee, discId);
         }
       }
@@ -1407,10 +2028,11 @@ ipcMain.handle('db-calculate-payroll', async (event, { periodeId, mois, annee, c
       }
       
       // 7. Calculate total deductions and net salary
-      const totalRetenues = totalRetenuesSociales + ipr + retenuesDisciplinaires + totalAvances;
+      const totalDeductionsDetail = retenuesDisciplinaires + retenues_uniformes + retenues_contributions + autres_retenues_detail;
+      const totalRetenues = totalRetenuesSociales + ipr + totalDeductionsDetail + totalAvances;
       const salaireNet = salaireBrut - totalRetenues;
       
-      // 8. Create payslip
+      // 8. Create payslip with detailed deductions
       const bulletinId = crypto.randomUUID();
       
       db.prepare(`
@@ -1418,13 +2040,17 @@ ipcMain.handle('db-calculate-payroll', async (event, { periodeId, mois, annee, c
           id, periode_paie_id, employe_id, matricule, nom_complet, categorie, mode_remuneration,
           salaire_base, jours_travailles, taux_journalier, primes, arrieres, salaire_brut,
           cnss, onem, inpp, total_retenues_sociales, salaire_imposable, ipr,
-          retenues_disciplinaires, avances, total_retenues, salaire_net, devise, statut
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'USD', 'BROUILLON')
+          retenues_disciplinaires, avances, autres_retenues,
+          deductions_disciplinaires, deductions_uniformes, deductions_contributions, deductions_autres,
+          total_deductions_detail, total_retenues, salaire_net, devise, statut
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'USD', 'BROUILLON')
       `).run(
         bulletinId, periodeId, emp.id, emp.matricule, emp.nom_complet, emp.categorie, emp.mode_remuneration,
         salaireBase, joursTravailles, emp.taux_journalier || 0, primes, arrieres, salaireBrut,
         cnss, onem, inpp, totalRetenuesSociales, salaireImposable, ipr,
-        retenuesDisciplinaires, totalAvances, totalRetenues, salaireNet
+        retenuesDisciplinaires, totalAvances, totalDeductionsDetail,
+        retenuesDisciplinaires, retenues_uniformes, retenues_contributions, autres_retenues_detail,
+        totalDeductionsDetail, totalRetenues, salaireNet
       );
       
       // Create advance repayment records
@@ -2409,6 +3035,469 @@ ipcMain.handle('db-get-bilan-ohada', async (event, { date_fin }) => {
   }
 });
 
+// ============================================================================
+// ENHANCED DEDUCTIONS SYSTEM - API HANDLERS
+// ============================================================================
+
+// Get deduction types
+ipcMain.handle('db-get-deduction-types', async (event, filters = {}) => {
+  try {
+    let query = 'SELECT * FROM deduction_types WHERE is_active = 1';
+    const params = [];
+    
+    if (filters.code) {
+      query += ' AND code = ?';
+      params.push(filters.code);
+    }
+    
+    query += ' ORDER BY priority_order, nom';
+    
+    return db.prepare(query).all(...params);
+  } catch (error) {
+    console.error('Error fetching deduction types:', error);
+    throw error;
+  }
+});
+
+// Create employee deduction
+ipcMain.handle('db-create-deduction', async (event, deduction) => {
+  try {
+    const id = deduction.id || crypto.randomUUID();
+    
+    // Get deduction type for validation
+    const deductionType = db.prepare('SELECT * FROM deduction_types WHERE id = ?').get(deduction.deduction_type_id);
+    if (!deductionType) {
+      throw new Error('Type de déduction non trouvé');
+    }
+    
+    // Calculate installment amount if needed
+    let installmentAmount = deduction.installment_amount;
+    if (deduction.schedule_type === 'INSTALLMENTS' && deduction.number_of_installments > 0) {
+      installmentAmount = Math.round((deduction.total_amount / deduction.number_of_installments) * 100) / 100;
+    }
+    
+    // Create deduction record
+    const stmt = db.prepare(`
+      INSERT INTO employee_deductions (
+        id, employe_id, deduction_type_id, source_type, source_id,
+        title, total_amount, amount_remaining, schedule_type,
+        installment_amount, number_of_installments, start_date, end_date,
+        next_deduction_date, status, max_per_period, skip_periods, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    stmt.run(
+      id,
+      deduction.employe_id,
+      deduction.deduction_type_id,
+      deduction.source_type || 'MANUAL',
+      deduction.source_id || null,
+      deduction.title,
+      deduction.total_amount,
+      deduction.total_amount, // amount_remaining starts as total
+      deduction.schedule_type,
+      installmentAmount,
+      deduction.number_of_installments || 1,
+      deduction.start_date,
+      deduction.end_date || null,
+      deduction.start_date, // next_deduction_date starts as start_date
+      'ACTIVE',
+      deduction.max_per_period || null,
+      deduction.skip_periods ? JSON.stringify(deduction.skip_periods) : null,
+      deduction.created_by || 'system'
+    );
+    
+    // Generate schedule if needed
+    if (deduction.schedule_type === 'INSTALLMENTS' || deduction.schedule_type === 'CUSTOM') {
+      await generateDeductionSchedule(id, deduction);
+    }
+    
+    return { success: true, id };
+  } catch (error) {
+    console.error('Error creating deduction:', error);
+    throw error;
+  }
+});
+
+// Get employee deductions
+ipcMain.handle('db-get-employee-deductions', async (event, { employe_id, filters = {} } = {}) => {
+  try {
+    let query = `
+      SELECT ed.*, dt.nom as type_nom, dt.code as type_code, dt.priority_order,
+             eg.nom_complet as employe_nom,
+             ed.number_of_installments as installments,
+             dt.description as description
+      FROM employee_deductions ed
+      JOIN deduction_types dt ON ed.deduction_type_id = dt.id
+      JOIN employees_gas eg ON ed.employe_id = eg.id
+    `;
+    const params = [];
+    
+    // If employe_id is provided, filter by employee
+    if (employe_id) {
+      query += ' WHERE ed.employe_id = ?';
+      params.push(employe_id);
+    } else {
+      query += ' WHERE 1=1'; // Always true condition for additional filters
+    }
+    
+    if (filters.status) {
+      query += ' AND ed.status = ?';
+      params.push(filters.status);
+    }
+    
+    if (filters.source_type) {
+      query += ' AND ed.source_type = ?';
+      params.push(filters.source_type);
+    }
+    
+    query += ' ORDER BY dt.priority_order, ed.created_at DESC';
+    
+    return db.prepare(query).all(...params);
+  } catch (error) {
+    console.error('Error fetching employee deductions:', error);
+    throw error;
+  }
+});
+
+// Calculate deductions for payroll period
+ipcMain.handle('db-calculate-period-deductions', async (event, { periode_paie_id, mois, annee }) => {
+  try {
+    // Get all active employees for the period
+    const employees = db.prepare(`
+      SELECT DISTINCT bp.employe_id, bp.salaire_net
+      FROM bulletins_paie bp
+      WHERE bp.periode_paie_id = ?
+    `).all(periode_paie_id);
+    
+    const deductionResults = [];
+    
+    for (const employee of employees) {
+      // Get active deductions for this employee
+      const deductions = db.prepare(`
+        SELECT ed.*, dt.priority_order, dt.max_percentage_salary
+        FROM employee_deductions ed
+        JOIN deduction_types dt ON ed.deduction_type_id = dt.id
+        WHERE ed.employe_id = ? AND ed.status = 'ACTIVE'
+        AND (ed.end_date IS NULL OR ed.end_date >= ?)
+        ORDER BY dt.priority_order
+      `).all(employee.employe_id, `${annee}-${String(mois).padStart(2, '0')}-01`);
+      
+      let availableSalary = employee.salaire_net;
+      const employeeDeductions = [];
+      
+      for (const deduction of deductions) {
+        // Check if there's a scheduled amount for this period
+        const scheduledDeduction = db.prepare(`
+          SELECT * FROM deduction_schedule
+          WHERE deduction_id = ? AND period_year = ? AND period_month = ?
+        `).get(deduction.id, annee, mois);
+        
+        let scheduledAmount = 0;
+        if (scheduledDeduction) {
+          scheduledAmount = scheduledDeduction.scheduled_amount;
+        } else if (deduction.schedule_type === 'INSTALLMENTS' && deduction.installment_amount > 0) {
+          scheduledAmount = deduction.installment_amount;
+        } else if (deduction.schedule_type === 'ONE_TIME' && deduction.amount_remaining > 0) {
+          scheduledAmount = deduction.amount_remaining;
+        }
+        
+        if (scheduledAmount > 0) {
+          // Apply constraints
+          const maxPerPeriod = deduction.max_per_period || scheduledAmount;
+          const maxByPercentage = deduction.max_percentage_salary 
+            ? employee.salaire_net * deduction.max_percentage_salary 
+            : scheduledAmount;
+          
+          const maxAllowed = Math.min(scheduledAmount, maxPerPeriod, maxByPercentage, availableSalary);
+          const actualAmount = Math.max(0, maxAllowed);
+          
+          if (actualAmount > 0) {
+            employeeDeductions.push({
+              deduction_id: deduction.id,
+              employe_id: employee.employe_id,
+              type_code: deduction.source_type || 'OTHER',
+              scheduled_amount: scheduledAmount,
+              actual_amount: actualAmount,
+              shortfall: scheduledAmount - actualAmount,
+              title: deduction.title
+            });
+            
+            availableSalary -= actualAmount;
+          }
+        }
+      }
+      
+      if (employeeDeductions.length > 0) {
+        deductionResults.push({
+          employe_id: employee.employe_id,
+          deductions: employeeDeductions,
+          total_deductions: employeeDeductions.reduce((sum, d) => sum + d.actual_amount, 0)
+        });
+      }
+    }
+    
+    return deductionResults;
+  } catch (error) {
+    console.error('Error calculating period deductions:', error);
+    throw error;
+  }
+});
+
+// Apply deductions to payroll period
+ipcMain.handle('db-apply-period-deductions', async (event, { periode_paie_id, mois, annee, deductions }) => {
+  try {
+    const transaction = db.transaction(() => {
+      for (const employeeDeduction of deductions) {
+        const { employe_id, deductions: empDeductions } = employeeDeduction;
+        
+        // Get the payslip for this employee
+        const payslip = db.prepare(`
+          SELECT id FROM bulletins_paie 
+          WHERE periode_paie_id = ? AND employe_id = ?
+        `).get(periode_paie_id, employe_id);
+        
+        if (!payslip) continue;
+        
+        let totalDisciplinary = 0;
+        let totalUniform = 0;
+        let totalContribution = 0;
+        let totalOther = 0;
+        
+        for (const deduction of empDeductions) {
+          // Create deduction history record
+          const historyId = crypto.randomUUID();
+          db.prepare(`
+            INSERT INTO deduction_history (
+              id, deduction_id, bulletin_paie_id, amount_deducted,
+              period_year, period_month, deduction_date, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            historyId,
+            deduction.deduction_id,
+            payslip.id,
+            deduction.actual_amount,
+            annee,
+            mois,
+            new Date().toISOString().split('T')[0],
+            'APPLIED'
+          );
+          
+          // Update deduction balance
+          db.prepare(`
+            UPDATE employee_deductions 
+            SET amount_deducted = amount_deducted + ?,
+                amount_remaining = amount_remaining - ?,
+                installments_completed = installments_completed + 1,
+                modified_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `).run(deduction.actual_amount, deduction.actual_amount, deduction.deduction_id);
+          
+          // Update schedule status if exists
+          db.prepare(`
+            UPDATE deduction_schedule 
+            SET actual_amount = ?, status = 'APPLIED', applied_date = ?
+            WHERE deduction_id = ? AND period_year = ? AND period_month = ?
+          `).run(
+            deduction.actual_amount,
+            new Date().toISOString().split('T')[0],
+            deduction.deduction_id,
+            annee,
+            mois
+          );
+          
+          // Categorize deductions
+          switch (deduction.type_code) {
+            case 'DISCIPLINARY':
+              totalDisciplinary += deduction.actual_amount;
+              break;
+            case 'UNIFORM':
+              totalUniform += deduction.actual_amount;
+              break;
+            case 'CONTRIBUTION':
+              totalContribution += deduction.actual_amount;
+              break;
+            default:
+              totalOther += deduction.actual_amount;
+          }
+        }
+        
+        // Update payslip with detailed deductions
+        const totalDeductions = totalDisciplinary + totalUniform + totalContribution + totalOther;
+        db.prepare(`
+          UPDATE bulletins_paie 
+          SET deductions_disciplinaires = ?,
+              deductions_uniformes = ?,
+              deductions_contributions = ?,
+              deductions_autres = ?,
+              total_deductions_detail = ?,
+              autres_retenues = autres_retenues + ?,
+              total_retenues = total_retenues + ?,
+              salaire_net = salaire_net - ?
+          WHERE id = ?
+        `).run(
+          totalDisciplinary,
+          totalUniform,
+          totalContribution,
+          totalOther,
+          totalDeductions,
+          totalDeductions,
+          totalDeductions,
+          totalDeductions,
+          payslip.id
+        );
+        
+        // Mark completed deductions
+        db.prepare(`
+          UPDATE employee_deductions 
+          SET status = 'COMPLETED'
+          WHERE employe_id = ? AND amount_remaining <= 0
+        `).run(employe_id);
+      }
+    });
+    
+    transaction();
+    return { success: true };
+  } catch (error) {
+    console.error('Error applying period deductions:', error);
+    throw error;
+  }
+});
+
+// Update deduction
+ipcMain.handle('db-update-deduction', async (event, { deduction_id, updates }) => {
+  try {
+    const allowedFields = [
+      'title', 'total_amount', 'schedule_type', 'installment_amount',
+      'number_of_installments', 'start_date', 'end_date', 'status',
+      'max_per_period', 'skip_periods'
+    ];
+    
+    const updateFields = [];
+    const params = [];
+    
+    for (const [field, value] of Object.entries(updates)) {
+      if (allowedFields.includes(field)) {
+        updateFields.push(`${field} = ?`);
+        params.push(field === 'skip_periods' && Array.isArray(value) ? JSON.stringify(value) : value);
+      }
+    }
+    
+    if (updateFields.length === 0) {
+      throw new Error('Aucun champ valide à mettre à jour');
+    }
+    
+    updateFields.push('modified_at = CURRENT_TIMESTAMP');
+    params.push(deduction_id);
+    
+    const query = `UPDATE employee_deductions SET ${updateFields.join(', ')} WHERE id = ?`;
+    db.prepare(query).run(...params);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating deduction:', error);
+    throw error;
+  }
+});
+
+// Cancel deduction
+ipcMain.handle('db-cancel-deduction', async (event, { deduction_id, reason }) => {
+  try {
+    db.prepare(`
+      UPDATE employee_deductions 
+      SET status = 'CANCELLED', modified_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(deduction_id);
+    
+    // Cancel pending schedules
+    db.prepare(`
+      UPDATE deduction_schedule 
+      SET status = 'SKIPPED', notes = ?
+      WHERE deduction_id = ? AND status = 'PENDING'
+    `).run(reason || 'Déduction annulée', deduction_id);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error cancelling deduction:', error);
+    throw error;
+  }
+});
+
+// Get deduction history
+ipcMain.handle('db-get-deduction-history', async (event, { deduction_id }) => {
+  try {
+    const history = db.prepare(`
+      SELECT dh.*, bp.periode_paie_id, pp.mois, pp.annee
+      FROM deduction_history dh
+      JOIN bulletins_paie bp ON dh.bulletin_paie_id = bp.id
+      JOIN periodes_paie pp ON bp.periode_paie_id = pp.id
+      WHERE dh.deduction_id = ?
+      ORDER BY dh.period_year DESC, dh.period_month DESC
+    `).all(deduction_id);
+    
+    return history;
+  } catch (error) {
+    console.error('Error fetching deduction history:', error);
+    throw error;
+  }
+});
+
+// Helper function to generate deduction schedule
+async function generateDeductionSchedule(deductionId, deduction) {
+  try {
+    if (deduction.schedule_type !== 'INSTALLMENTS') return;
+    
+    const startDate = new Date(deduction.start_date);
+    const skipPeriods = deduction.skip_periods || [];
+    const installmentAmount = Math.round((deduction.total_amount / deduction.number_of_installments) * 100) / 100;
+    const remainder = deduction.total_amount - (installmentAmount * deduction.number_of_installments);
+    
+    const scheduleRecords = [];
+    let currentDate = new Date(startDate);
+    
+    for (let i = 0; i < deduction.number_of_installments; i++) {
+      // Skip periods if specified
+      const periodKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      while (skipPeriods.includes(periodKey)) {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+      
+      const amount = i === 0 ? installmentAmount + remainder : installmentAmount;
+      
+      scheduleRecords.push({
+        id: crypto.randomUUID(),
+        deduction_id: deductionId,
+        period_year: currentDate.getFullYear(),
+        period_month: currentDate.getMonth() + 1,
+        scheduled_amount: amount,
+        status: 'PENDING'
+      });
+      
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    // Insert schedule records
+    const insertStmt = db.prepare(`
+      INSERT INTO deduction_schedule (id, deduction_id, period_year, period_month, scheduled_amount, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
+    for (const record of scheduleRecords) {
+      insertStmt.run(
+        record.id,
+        record.deduction_id,
+        record.period_year,
+        record.period_month,
+        record.scheduled_amount,
+        record.status
+      );
+    }
+  } catch (error) {
+    console.error('Error generating deduction schedule:', error);
+    throw error;
+  }
+}
+
 app.whenReady().then(() => {
   initDatabase();
   createWindow();
@@ -3112,11 +4201,98 @@ ipcMain.handle('db-delete-client-gas', async (event, id) => {
 
 // Update client status (for reactivation or setting inactive)
 ipcMain.handle('db-update-client-status', async (event, { id, statut }) => {
+  console.log(`🚨 BACKEND: db-update-client-status called with id=${id}, statut=${statut}`);
   try {
-    db.prepare('UPDATE clients_gas SET statut = ? WHERE id = ?').run(statut, id);
-    return { success: true };
+    console.log(`🔄 Starting client status update: Client ${id} -> ${statut}`);
+    
+    // First, ensure the statut column exists
+    try {
+      db.exec(`ALTER TABLE clients_gas ADD COLUMN statut TEXT DEFAULT 'ACTIF'`);
+      console.log('✅ Added statut column to clients_gas table');
+    } catch (e) {
+      // Column already exists, ignore
+      console.log('📝 statut column already exists in clients_gas table');
+    }
+    
+    // Start a transaction to ensure data consistency
+    const updateClient = db.prepare('UPDATE clients_gas SET statut = ? WHERE id = ?');
+    const updateSites = db.prepare('UPDATE sites_gas SET est_actif = ? WHERE client_id = ?');
+    const closeDeployments = db.prepare(`
+      UPDATE historique_deployements 
+      SET est_actif = 0, date_fin = CURRENT_TIMESTAMP 
+      WHERE site_id IN (SELECT id FROM sites_gas WHERE client_id = ?) AND est_actif = 1
+    `);
+    const clearEmployeeSiteAssignments = db.prepare(`
+      UPDATE employees_gas 
+      SET site_affecte_id = NULL 
+      WHERE site_affecte_id IN (SELECT id FROM sites_gas WHERE client_id = ?)
+    `);
+    
+    // Check what we're about to affect
+    const sitesToAffect = db.prepare('SELECT id, nom_site, est_actif FROM sites_gas WHERE client_id = ?').all(id);
+    const deploymentsToAffect = db.prepare(`
+      SELECT h.id, h.employe_id, e.nom_complet, s.nom_site 
+      FROM historique_deployements h
+      JOIN employees_gas e ON h.employe_id = e.id
+      JOIN sites_gas s ON h.site_id = s.id
+      WHERE h.est_actif = 1 AND s.client_id = ?
+    `).all(id);
+    const employeesToAffect = db.prepare(`
+      SELECT e.id, e.nom_complet, e.site_affecte_id, s.nom_site
+      FROM employees_gas e
+      JOIN sites_gas s ON e.site_affecte_id = s.id
+      WHERE s.client_id = ?
+    `).all(id);
+    
+    console.log(`📊 Before update - Client ${id}:`);
+    console.log(`  - Sites to affect: ${sitesToAffect.length}`, sitesToAffect);
+    console.log(`  - Active deployments to close: ${deploymentsToAffect.length}`, deploymentsToAffect);
+    console.log(`  - Employee assignments to clear: ${employeesToAffect.length}`, employeesToAffect);
+    
+    // Begin transaction
+    const transaction = db.transaction(() => {
+      // Update client status
+      const clientResult = updateClient.run(statut, id);
+      console.log(`✅ Client status updated: ${clientResult.changes} row(s) affected`);
+      
+      // If client is being deactivated, cascade the deactivation
+      if (statut === 'INACTIF') {
+        // 1. Deactivate all client's sites
+        const sitesResult = updateSites.run(0, id); // 0 = false for est_actif
+        console.log(`🏢 Sites deactivated: ${sitesResult.changes} row(s) affected`);
+        
+        // 2. Close all active deployments to those sites
+        const deploymentsResult = closeDeployments.run(id);
+        console.log(`📋 Deployments closed: ${deploymentsResult.changes} row(s) affected`);
+        
+        // 3. Clear site assignments for all employees assigned to those sites
+        const employeesResult = clearEmployeeSiteAssignments.run(id);
+        console.log(`👥 Employee assignments cleared: ${employeesResult.changes} row(s) affected`);
+        
+        return {
+          clientUpdated: clientResult.changes,
+          sitesDeactivated: sitesResult.changes,
+          deploymentsClosed: deploymentsResult.changes,
+          employeeAssignmentsCleared: employeesResult.changes
+        };
+      }
+      
+      return {
+        clientUpdated: clientResult.changes,
+        sitesDeactivated: 0,
+        deploymentsClosed: 0,
+        employeeAssignmentsCleared: 0
+      };
+    });
+    
+    // Execute the transaction and get results
+    const results = transaction();
+    
+    console.log(`✅ Client ${id} status update completed:`, results);
+    
+    return { success: true, ...results };
   } catch (error) {
-    console.error('Error updating client status:', error);
+    console.error('❌ Error updating client status:', error);
     throw error;
   }
 });
@@ -3214,6 +4390,86 @@ ipcMain.handle('db-update-site-gas', async (event, site) => {
     return { success: true };
   } catch (error) {
     console.error('Error updating site GAS:', error);
+    throw error;
+  }
+});
+
+// Update site status (for deactivation/reactivation with deployment termination)
+ipcMain.handle('db-update-site-status', async (event, { id, est_actif }) => {
+  console.log(`🚨 BACKEND: db-update-site-status called with id=${id}, est_actif=${est_actif}`);
+  try {
+    console.log(`🔄 Starting site status update: Site ${id} -> ${est_actif ? 'ACTIF' : 'INACTIF'}`);
+    
+    // Start a transaction to ensure data consistency
+    const updateSite = db.prepare('UPDATE sites_gas SET est_actif = ? WHERE id = ?');
+    const closeDeployments = db.prepare(`
+      UPDATE historique_deployements 
+      SET est_actif = 0, date_fin = CURRENT_TIMESTAMP 
+      WHERE site_id = ? AND est_actif = 1
+    `);
+    const clearEmployeeSiteAssignments = db.prepare(`
+      UPDATE employees_gas 
+      SET site_affecte_id = NULL 
+      WHERE site_affecte_id = ?
+    `);
+    
+    // Check what we're about to affect
+    const siteInfo = db.prepare('SELECT nom_site, client_id FROM sites_gas WHERE id = ?').get(id);
+    const deploymentsToAffect = db.prepare(`
+      SELECT h.id, h.employe_id, e.nom_complet, s.nom_site 
+      FROM historique_deployements h
+      JOIN employees_gas e ON h.employe_id = e.id
+      JOIN sites_gas s ON h.site_id = s.id
+      WHERE h.est_actif = 1 AND h.site_id = ?
+    `).all(id);
+    const employeesToAffect = db.prepare(`
+      SELECT e.id, e.nom_complet, e.site_affecte_id
+      FROM employees_gas e
+      WHERE e.site_affecte_id = ?
+    `).all(id);
+    
+    console.log(`📊 Before update - Site ${id} (${siteInfo?.nom_site}):`);
+    console.log(`  - Active deployments to close: ${deploymentsToAffect.length}`, deploymentsToAffect);
+    console.log(`  - Employee assignments to clear: ${employeesToAffect.length}`, employeesToAffect);
+    
+    // Begin transaction
+    const transaction = db.transaction(() => {
+      // Update site status
+      const siteResult = updateSite.run(est_actif ? 1 : 0, id);
+      console.log(`✅ Site status updated: ${siteResult.changes} row(s) affected`);
+      
+      // If site is being deactivated, cascade the deactivation
+      if (!est_actif) {
+        // 1. Close all active deployments to this site
+        const deploymentsResult = closeDeployments.run(id);
+        console.log(`📋 Deployments closed: ${deploymentsResult.changes} row(s) affected`);
+        
+        // 2. Clear site assignments for all employees assigned to this site
+        const employeesResult = clearEmployeeSiteAssignments.run(id);
+        console.log(`👥 Employee assignments cleared: ${employeesResult.changes} row(s) affected`);
+        
+        return {
+          siteUpdated: siteResult.changes,
+          deploymentsClosed: deploymentsResult.changes,
+          employeeAssignmentsCleared: employeesResult.changes
+        };
+      }
+      
+      return {
+        siteUpdated: siteResult.changes,
+        deploymentsClosed: 0,
+        employeeAssignmentsCleared: 0
+      };
+    });
+    
+    // Execute the transaction and get results
+    const results = transaction();
+    
+    console.log(`✅ Site ${id} status update completed:`, results);
+    
+    return { success: true, ...results };
+  } catch (error) {
+    console.error('❌ Error updating site status:', error);
     throw error;
   }
 });
@@ -5432,6 +6688,88 @@ ipcMain.handle('db-validate-disciplinary-action', async (event, { id, validePar,
       WHERE id = ?
     `).run(validePar, commentaire || null, id);
 
+    // Create deduction if there's a financial impact
+    if (action.impact_financier && action.montant_deduction > 0) {
+      // Get disciplinary deduction type
+      const disciplinaryType = db.prepare('SELECT id FROM deduction_types WHERE code = ?').get('DISCIPLINARY');
+      
+      if (disciplinaryType) {
+        const deductionId = crypto.randomUUID();
+        
+        // Determine schedule type based on action
+        let scheduleType = 'ONE_TIME';
+        let installments = 1;
+        
+        // If deduction amount is large (> 50% of base salary), split into installments
+        const employee = db.prepare('SELECT salaire_base FROM employees_gas WHERE id = ?').get(action.employe_id);
+        if (employee && employee.salaire_base > 0) {
+          const maxMonthlyDeduction = employee.salaire_base * 0.3; // Max 30% per month
+          if (action.montant_deduction > maxMonthlyDeduction) {
+            scheduleType = 'INSTALLMENTS';
+            installments = Math.ceil(action.montant_deduction / maxMonthlyDeduction);
+          }
+        }
+        
+        // Create deduction record
+        db.prepare(`
+          INSERT INTO employee_deductions (
+            id, employe_id, deduction_type_id, source_type, source_id,
+            title, description, total_amount, amount_remaining,
+            schedule_type, installments, status, created_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          deductionId,
+          action.employe_id,
+          disciplinaryType.id,
+          'DISCIPLINARY_ACTION',
+          action.id,
+          `Sanction disciplinaire - ${action.type_action}`,
+          action.description || 'Déduction suite à action disciplinaire',
+          action.montant_deduction,
+          action.montant_deduction,
+          scheduleType,
+          installments,
+          'ACTIVE',
+          validePar
+        );
+        
+        // Create schedule if installments
+        if (scheduleType === 'INSTALLMENTS' && installments > 1) {
+          const monthlyAmount = Math.ceil(action.montant_deduction / installments * 100) / 100;
+          let remainingAmount = action.montant_deduction;
+          
+          for (let i = 0; i < installments; i++) {
+            const scheduleId = crypto.randomUUID();
+            const currentDate = new Date();
+            const scheduleDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + i + 1, 1);
+            
+            // Last installment gets the remaining amount to handle rounding
+            const installmentAmount = i === installments - 1 ? remainingAmount : monthlyAmount;
+            remainingAmount -= installmentAmount;
+            
+            db.prepare(`
+              INSERT INTO deduction_schedule (
+                id, deduction_id, period_year, period_month,
+                scheduled_amount, status
+              ) VALUES (?, ?, ?, ?, ?, ?)
+            `).run(
+              scheduleId,
+              deductionId,
+              scheduleDate.getFullYear(),
+              scheduleDate.getMonth() + 1,
+              installmentAmount,
+              'PENDING'
+            );
+          }
+        }
+        
+        // Link deduction to disciplinary action
+        db.prepare(`
+          UPDATE actions_disciplinaires SET deduction_id = ? WHERE id = ?
+        `).run(deductionId, action.id);
+      }
+    }
+
     // If suspension, update employee status
     if (action.type_action === 'SUSPENSION' && action.jours_suspension > 0) {
       db.prepare(`
@@ -6605,6 +7943,173 @@ ipcMain.handle('db-get-disciplinary-stats', async () => {
 });
 
 // ============================================================================
+// USER AUTHENTICATION & MANAGEMENT
+// ============================================================================
+
+// Authenticate user
+ipcMain.handle('auth-authenticate-user', async (event, username, password) => {
+  console.log('🔐 [AUTH] Tentative d\'authentification pour:', username);
+  
+  try {
+    const hashedPassword = hashPassword(password);
+    const user = db.prepare(`
+      SELECT id, nom_utilisateur, nom_complet, email, role, statut, derniere_connexion, cree_le
+      FROM users 
+      WHERE nom_utilisateur = ? AND mot_de_passe_hash = ?
+    `).get(username, hashedPassword);
+
+    if (user) {
+      console.log('✅ [AUTH] Authentification réussie pour:', user.nom_complet);
+      return user;
+    } else {
+      console.log('❌ [AUTH] Échec d\'authentification pour:', username);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ [AUTH] Erreur lors de l\'authentification:', error);
+    throw error;
+  }
+});
+
+// Get user by ID
+ipcMain.handle('auth-get-user-by-id', async (event, userId) => {
+  try {
+    const user = db.prepare(`
+      SELECT id, nom_utilisateur, nom_complet, email, role, statut, derniere_connexion, cree_le
+      FROM users 
+      WHERE id = ?
+    `).get(userId);
+    
+    return user;
+  } catch (error) {
+    console.error('❌ [AUTH] Erreur lors de la récupération de l\'utilisateur:', error);
+    throw error;
+  }
+});
+
+// Update last login
+ipcMain.handle('auth-update-last-login', async (event, userId) => {
+  try {
+    const now = new Date().toISOString();
+    db.prepare(`
+      UPDATE users 
+      SET derniere_connexion = ?, modifie_le = ?
+      WHERE id = ?
+    `).run(now, now, userId);
+    
+    console.log('✅ [AUTH] Dernière connexion mise à jour pour:', userId);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [AUTH] Erreur lors de la mise à jour de la dernière connexion:', error);
+    throw error;
+  }
+});
+
+// Get all users
+ipcMain.handle('auth-get-users', async (event) => {
+  try {
+    const users = db.prepare(`
+      SELECT id, nom_utilisateur, nom_complet, email, role, statut, derniere_connexion, cree_le
+      FROM users 
+      ORDER BY nom_complet
+    `).all();
+    
+    return users;
+  } catch (error) {
+    console.error('❌ [AUTH] Erreur lors de la récupération des utilisateurs:', error);
+    throw error;
+  }
+});
+
+// Create user
+ipcMain.handle('auth-create-user', async (event, userData) => {
+  try {
+    const { nom_utilisateur, nom_complet, email, role, statut, mot_de_passe } = userData;
+    const id = crypto.randomUUID();
+    const hashedPassword = hashPassword(mot_de_passe);
+    const now = new Date().toISOString();
+
+    db.prepare(`
+      INSERT INTO users (id, nom_utilisateur, mot_de_passe_hash, nom_complet, email, role, statut, cree_le, modifie_le)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, nom_utilisateur, hashedPassword, nom_complet, email || null, role, statut, now, now);
+
+    console.log('✅ [AUTH] Utilisateur créé:', nom_complet);
+    return { success: true, id };
+  } catch (error) {
+    console.error('❌ [AUTH] Erreur lors de la création de l\'utilisateur:', error);
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      throw new Error('Ce nom d\'utilisateur existe déjà.');
+    }
+    throw error;
+  }
+});
+
+// Update user
+ipcMain.handle('auth-update-user', async (event, userData) => {
+  try {
+    const { id, nom_utilisateur, nom_complet, email, role, statut, mot_de_passe } = userData;
+    const now = new Date().toISOString();
+
+    if (mot_de_passe) {
+      // Update with new password
+      const hashedPassword = hashPassword(mot_de_passe);
+      db.prepare(`
+        UPDATE users 
+        SET nom_utilisateur = ?, mot_de_passe_hash = ?, nom_complet = ?, email = ?, role = ?, statut = ?, modifie_le = ?
+        WHERE id = ?
+      `).run(nom_utilisateur, hashedPassword, nom_complet, email || null, role, statut, now, id);
+    } else {
+      // Update without changing password
+      db.prepare(`
+        UPDATE users 
+        SET nom_utilisateur = ?, nom_complet = ?, email = ?, role = ?, statut = ?, modifie_le = ?
+        WHERE id = ?
+      `).run(nom_utilisateur, nom_complet, email || null, role, statut, now, id);
+    }
+
+    console.log('✅ [AUTH] Utilisateur mis à jour:', nom_complet);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [AUTH] Erreur lors de la mise à jour de l\'utilisateur:', error);
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      throw new Error('Ce nom d\'utilisateur existe déjà.');
+    }
+    throw error;
+  }
+});
+
+// Delete user
+ipcMain.handle('auth-delete-user', async (event, userId) => {
+  try {
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    console.log('✅ [AUTH] Utilisateur supprimé:', userId);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [AUTH] Erreur lors de la suppression de l\'utilisateur:', error);
+    throw error;
+  }
+});
+
+// Update user status
+ipcMain.handle('auth-update-user-status', async (event, userId, status) => {
+  try {
+    const now = new Date().toISOString();
+    db.prepare(`
+      UPDATE users 
+      SET statut = ?, modifie_le = ?
+      WHERE id = ?
+    `).run(status, now, userId);
+
+    console.log('✅ [AUTH] Statut utilisateur mis à jour:', userId, status);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [AUTH] Erreur lors de la mise à jour du statut:', error);
+    throw error;
+  }
+});
+
+// ============================================================================
 // USER SETTINGS & QUICK ACTIONS
 // ============================================================================
 
@@ -6986,6 +8491,82 @@ ipcMain.handle('db-get-operations-report-stats', async (event, dateRange) => {
     };
   } catch (error) {
     console.error('Error fetching operations report stats:', error);
+    throw error;
+  }
+});
+
+// ============================================================================
+// FILE MANAGEMENT - Photo and Document Upload
+// ============================================================================
+
+const fs = require('fs');
+
+// Save uploaded file (photo or document)
+ipcMain.handle('db-save-file', async (event, { fileBuffer, fileName, fileType, employeeId }) => {
+  try {
+    const uploadsDir = isDev 
+      ? path.join(__dirname, '..', 'uploads')
+      : path.join(process.resourcesPath, 'uploads');
+    
+    // Create uploads directory if it doesn't exist
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // Create employee-specific directory
+    const employeeDir = path.join(uploadsDir, employeeId);
+    if (!fs.existsSync(employeeDir)) {
+      fs.mkdirSync(employeeDir, { recursive: true });
+    }
+    
+    // Generate unique filename with timestamp
+    const timestamp = Date.now();
+    const extension = path.extname(fileName);
+    const baseName = path.basename(fileName, extension);
+    const uniqueFileName = `${fileType}_${timestamp}_${baseName}${extension}`;
+    const filePath = path.join(employeeDir, uniqueFileName);
+    
+    // Save file
+    fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+    
+    // Return relative path for database storage
+    const relativePath = path.join('uploads', employeeId, uniqueFileName);
+    
+    return { success: true, filePath: relativePath };
+  } catch (error) {
+    console.error('Error saving file:', error);
+    throw error;
+  }
+});
+
+// Delete file
+ipcMain.handle('db-delete-file', async (event, filePath) => {
+  try {
+    const fullPath = isDev 
+      ? path.join(__dirname, '..', filePath)
+      : path.join(process.resourcesPath, filePath);
+    
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    throw error;
+  }
+});
+
+// Get file path for serving
+ipcMain.handle('db-get-file-path', async (event, relativePath) => {
+  try {
+    const fullPath = isDev 
+      ? path.join(__dirname, '..', relativePath)
+      : path.join(process.resourcesPath, relativePath);
+    
+    return { success: true, fullPath };
+  } catch (error) {
+    console.error('Error getting file path:', error);
     throw error;
   }
 });

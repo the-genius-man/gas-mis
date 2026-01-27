@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
+import { AuthProvider } from './contexts/AuthContext';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import Dashboard from './components/Dashboard/EnhancedDashboard';
@@ -14,11 +15,22 @@ import FinanceModule from './components/Finance/FinanceModule';
 import InvoicesManagement from './components/Finance/InvoicesManagement';
 import FinanceManagement from './components/Finance/FinanceManagement';
 import SettingsPage from './components/Settings/SettingsPage';
+import UserManagement from './components/Settings/UserManagement';
 import ReportsModule from './components/Reports/ReportsModule';
+import Login from './components/Auth/Login';
 import { Employee, Client, Site } from './types';
+import { useAuth } from './contexts/AuthContext';
 
 function AppContent() {
   const [activeModule, setActiveModule] = useState('dashboard');
+  const { utilisateur, loading: authLoading } = useAuth();
+  
+  // Debug logging
+  console.log('🔍 [APP] État d\'authentification:', {
+    utilisateur: utilisateur ? utilisateur.nom_utilisateur : 'null',
+    authLoading,
+    hasUser: !!utilisateur
+  });
   
   // Memoize electron detection to prevent re-computation
   const electronMode = useMemo(() => {
@@ -34,44 +46,42 @@ function AppContent() {
 
   // Use App context for Electron mode
   const appContext = electronMode ? useApp() : null;
-  
-  // Use Auth context for Supabase mode (lazy load to avoid errors)
-  const [authContext, setAuthContext] = useState<any>(null);
-
-  useEffect(() => {
-    if (supabaseMode) {
-      // Dynamically import AuthContext only when needed
-      import('./contexts/AuthContext').then(({ useAuth }) => {
-        try {
-          setAuthContext({ useAuth });
-        } catch (error) {
-          console.error('Failed to load auth context:', error);
-        }
-      });
-    }
-  }, [supabaseMode]);
 
   // Load all data on app start (Electron mode) - only run once
   useEffect(() => {
     if (electronMode && appContext) {
       appContext.actions.loadAllData();
     }
-  }, [electronMode]); // Remove appContext dependency to prevent loops
+  }, [electronMode]); // Remove appContext from dependencies to prevent infinite loop
 
-  // Handle authentication loading (Supabase mode)
-  if (supabaseMode && authContext) {
-    // This would handle Supabase auth, but for now we'll skip it
-    // since we're focusing on Electron mode
+  // Show login if not authenticated
+  if (authLoading) {
+    console.log('⏳ [APP] Chargement de l\'authentification...');
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
   }
+
+  if (!utilisateur) {
+    console.log('🚫 [APP] Aucun utilisateur connecté, affichage de la page de connexion');
+    return <Login />;
+  }
+
+  console.log('✅ [APP] Utilisateur connecté, affichage du dashboard:', utilisateur.nom_utilisateur);
 
   const getModuleTitle = () => {
     switch (activeModule) {
       case 'dashboard':
         return 'Tableau de Bord';
       case 'hr':
-        return 'Ressources Humaines';
+        return 'Personnel';
       case 'hr-module':
-        return 'Ressources Humaines';
+        return 'Personnel';
       case 'operations':
         return 'Opérations';
       case 'operations-module':
@@ -88,6 +98,10 @@ function AppContent() {
         return 'Facturation';
       case 'finance':
         return 'Finance';
+      case 'reports':
+        return 'Rapports';
+      case 'users':
+        return 'Gestion des Utilisateurs';
       case 'mobile':
         return 'Opérations sur le Terrain';
       case 'analytics':
@@ -123,14 +137,16 @@ function AppContent() {
         return 'Factures, paiements et facturation mensuelle';
       case 'finance':
         return 'Gestion des entrées et dépenses';
+      case 'reports':
+        return 'Rapports et analyses';
+      case 'users':
+        return 'Gestion des comptes utilisateurs et permissions';
       case 'settings':
         return 'Configuration et actions rapides personnalisées';
       case 'mobile':
         return 'Application mobile et opérations sur le terrain';
       case 'analytics':
         return 'Rapports et analyses commerciales';
-      case 'settings':
-        return 'Configuration du système et préférences';
       default:
         return '';
     }
@@ -330,6 +346,17 @@ function AppContent() {
             </div>
           </div>
         );
+      case 'users':
+        return electronMode ? (
+          <UserManagement />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Gestion des Utilisateurs</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
       case 'settings':
         return electronMode ? (
           <SettingsPage />
@@ -370,15 +397,6 @@ function AppContent() {
             </div>
           </div>
         );
-      case 'settings':
-        return (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Paramètres du Système</h3>
-              <p className="text-gray-600">Options de configuration à venir bientôt</p>
-            </div>
-          </div>
-        );
       default:
         return <Dashboard />;
     }
@@ -403,9 +421,11 @@ function AppContent() {
 function App() {
   // Always use AppProvider for now, since we're focusing on Electron mode
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </AuthProvider>
   );
 }
 

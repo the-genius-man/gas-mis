@@ -1,5 +1,6 @@
 import { useApp } from '../../contexts/AppContext';
-import { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   Building2, 
@@ -22,6 +23,7 @@ import {
   CalendarCheck
 } from 'lucide-react';
 import { AlerteSysteme, HRStats, FleetStats, InventoryStats, DisciplinaryStats } from '../../types';
+import { hasPermission, isOperationsReadOnly } from '../../utils/permissions';
 
 interface EnhancedDashboardProps {
   onNavigate?: (module: string) => void;
@@ -123,6 +125,7 @@ function StatCard({ title, value, subtitle, icon, trend }: StatCardProps) {
 
 export default function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps) {
   const appContext = useApp();
+  const { utilisateur } = useAuth();
   const [alerts, setAlerts] = useState<AlerteSysteme[]>([]);
   const [alertCounts, setAlertCounts] = useState<any>(null);
   const [hrStats, setHrStats] = useState<HRStats | null>(null);
@@ -134,26 +137,23 @@ export default function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps
   const [quickActions, setQuickActions] = useState<QuickAction[]>([]);
 
   const dashboardStats = appContext?.state.dashboardStats;
+  const userRole = utilisateur?.role;
 
   // For demo purposes, using a default user. In production, get from auth context
   const currentUserId = 'admin-user-1';
 
-  useEffect(() => {
-    loadAllStats();
-    loadQuickActions();
-  }, []);
-
-  const loadQuickActions = async () => {
+  const loadQuickActions = useCallback(async () => {
     try {
-      if (window.electronAPI) {
-        const settings = await window.electronAPI.getUserSettings(currentUserId);
-        setQuickActions(settings.quick_actions || []);
+      if (window.electronAPI && (window.electronAPI as any).getUserSettings) {
+        const settings = await (window.electronAPI as any).getUserSettings(currentUserId);
+        setQuickActions(settings?.quick_actions || []);
       }
     } catch (error) {
       console.error('Error loading quick actions:', error);
     }
-  };
-  const loadAllStats = async () => {
+  }, [currentUserId]);
+
+  const loadAllStats = useCallback(async () => {
     if (window.electronAPI) {
       setLoadingStats(true);
       setLoadingAlerts(true);
@@ -180,7 +180,12 @@ export default function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps
         setLoadingAlerts(false);
       }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadAllStats();
+    loadQuickActions();
+  }, [loadAllStats, loadQuickActions]);
 
   if (appContext?.state.loading || loadingStats) {
     return (
@@ -193,8 +198,46 @@ export default function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps
     );
   }
 
+  // Role-based welcome message
+  const getWelcomeMessage = () => {
+    if (!userRole) return 'Tableau de Bord';
+    
+    switch (userRole) {
+      case 'ADMIN':
+        return 'Tableau de Bord Administrateur';
+      case 'FINANCE_MANAGER':
+        return 'Tableau de Bord Financier';
+      case 'OPERATIONS_MANAGER':
+        return 'Tableau de Bord Opérations';
+      case 'ASSISTANT_OPERATIONS_MANAGER':
+        return 'Tableau de Bord Assistant Opérations';
+      default:
+        return 'Tableau de Bord';
+    }
+  };
+
+  // Check permissions for different sections
+  const canViewFinance = hasPermission(userRole || null, 'finance.view');
+  const canViewOperations = hasPermission(userRole || null, 'operations.view');
+  const canViewHR = hasPermission(userRole || null, 'hr.view');
+  const canViewInventory = hasPermission(userRole || null, 'inventory.view');
+  const isOperationsReadOnlyUser = isOperationsReadOnly(userRole || null);
+
   return (
     <div className="space-y-6">
+      {/* Welcome Header */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h1 className="text-2xl font-bold text-gray-900">{getWelcomeMessage()}</h1>
+        <p className="text-gray-600 mt-1">
+          Bienvenue, {utilisateur?.nom_complet || 'Utilisateur'}
+          {isOperationsReadOnlyUser && (
+            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+              Lecture seule - Opérations
+            </span>
+          )}
+        </p>
+      </div>
+
       {/* Quick Actions - Top of Dashboard */}
       {quickActions.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -220,47 +263,41 @@ export default function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps
         </div>
       )}
 
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Go Ahead Security MIS</h2>
-            <p className="text-blue-100">Système de gestion intégré pour opérations de sécurité</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-blue-100">Aujourd'hui</p>
-            <p className="text-lg font-semibold">{new Date().toLocaleDateString('fr-FR', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Primary Stats */}
+      {/* Primary Stats - Always visible but content varies by role */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Vue d'Ensemble</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Revenus Mensuels"
-            value={`${(dashboardStats?.monthlyRevenue || 0).toLocaleString('fr-FR')} USD`}
-            icon={<DollarSign className="w-6 h-6 text-blue-600" />}
-            subtitle="Facturation du mois"
-          />
-          <StatCard
-            title="Total Clients"
-            value={dashboardStats?.totalClients || 0}
-            icon={<Building2 className="w-6 h-6 text-blue-600" />}
-            subtitle={`${dashboardStats?.activeSites || 0} sites actifs`}
-          />
-          <StatCard
-            title="Total Employés"
-            value={hrStats?.totalEmployees || dashboardStats?.totalEmployees || 0}
-            icon={<Users className="w-6 h-6 text-blue-600" />}
-            subtitle={`${hrStats?.activeEmployees || dashboardStats?.activeGuards || 0} actifs`}
-          />
+          {/* Revenue - Only for Finance and Admin */}
+          {canViewFinance && (
+            <StatCard
+              title="Revenus Mensuels"
+              value={`${(dashboardStats?.monthlyRevenue || 0).toLocaleString('fr-FR')} USD`}
+              icon={<DollarSign className="w-6 h-6 text-blue-600" />}
+              subtitle="Facturation du mois"
+            />
+          )}
+          
+          {/* Clients - Only for Finance and Admin */}
+          {canViewFinance && (
+            <StatCard
+              title="Total Clients"
+              value={dashboardStats?.totalClients || 0}
+              icon={<Building2 className="w-6 h-6 text-blue-600" />}
+              subtitle={`${dashboardStats?.activeSites || 0} sites actifs`}
+            />
+          )}
+          
+          {/* Employees - For HR access roles */}
+          {canViewHR && (
+            <StatCard
+              title="Total Employés"
+              value={hrStats?.totalEmployees || dashboardStats?.totalEmployees || 0}
+              icon={<Users className="w-6 h-6 text-blue-600" />}
+              subtitle={`${hrStats?.activeEmployees || dashboardStats?.activeGuards || 0} actifs`}
+            />
+          )}
+          
+          {/* Alerts - Always visible */}
           <StatCard
             title="Alertes Actives"
             value={alertCounts?.active || 0}
@@ -270,10 +307,10 @@ export default function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps
         </div>
       </div>
 
-      {/* HR Stats */}
-      {hrStats && (
+      {/* HR Stats - Only for roles with HR access */}
+      {canViewHR && hrStats && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Ressources Humaines</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Personnel</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard
               title="Gardiens"
@@ -303,69 +340,84 @@ export default function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps
         </div>
       )}
 
-      {/* Operations & Logistics Stats */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Opérations & Logistique</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Flotte Active"
-            value={fleetStats?.activeVehicles || 0}
-            icon={<Truck className="w-6 h-6 text-blue-600" />}
-            subtitle={`${fleetStats?.totalVehicles || 0} véhicules total`}
-          />
-          <StatCard
-            title="En Réparation"
-            value={fleetStats?.inRepairVehicles || 0}
-            icon={<Car className="w-6 h-6 text-orange-600" />}
-            subtitle="Véhicules indisponibles"
-          />
-          <StatCard
-            title="Équipements"
-            value={inventoryStats?.totalEquipment || 0}
-            icon={<Package className="w-6 h-6 text-purple-600" />}
-            subtitle={`${inventoryStats?.assignedEquipment || 0} affectés`}
-          />
-          <StatCard
-            title="Disponibles"
-            value={inventoryStats?.availableEquipment || 0}
-            icon={<Package className="w-6 h-6 text-green-600" />}
-            subtitle="Équipements en stock"
-          />
+      {/* Operations & Logistics Stats - Only for roles with Operations access */}
+      {canViewOperations && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Opérations & Logistique</h3>
+            {isOperationsReadOnlyUser && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                Lecture
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              title="Flotte Active"
+              value={fleetStats?.activeVehicles || 0}
+              icon={<Truck className="w-6 h-6 text-blue-600" />}
+              subtitle={`${fleetStats?.totalVehicles || 0} véhicules total`}
+            />
+            <StatCard
+              title="En Réparation"
+              value={fleetStats?.inRepairVehicles || 0}
+              icon={<Car className="w-6 h-6 text-orange-600" />}
+              subtitle="Véhicules indisponibles"
+            />
+            {canViewInventory && (
+              <>
+                <StatCard
+                  title="Équipements"
+                  value={inventoryStats?.totalEquipment || 0}
+                  icon={<Package className="w-6 h-6 text-purple-600" />}
+                  subtitle={`${inventoryStats?.assignedEquipment || 0} affectés`}
+                />
+                <StatCard
+                  title="Disponibles"
+                  value={inventoryStats?.availableEquipment || 0}
+                  icon={<Package className="w-6 h-6 text-green-600" />}
+                  subtitle="Équipements en stock"
+                />
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Compliance & Discipline */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Conformité & Discipline</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Assurances Expirantes"
-            value={fleetStats?.expiringInsurance || 0}
-            icon={<Shield className="w-6 h-6 text-red-600" />}
-            subtitle="Véhicules à renouveler"
-          />
-          <StatCard
-            title="Contrôles Techniques"
-            value={fleetStats?.expiringTechnicalInspection || 0}
-            icon={<FileText className="w-6 h-6 text-yellow-600" />}
-            subtitle="À planifier"
-          />
-          <StatCard
-            title="Actions Disciplinaires"
-            value={disciplinaryStats?.thisMonthActions || 0}
-            icon={<AlertTriangle className="w-6 h-6 text-orange-600" />}
-            subtitle="Ce mois"
-          />
-          <StatCard
-            title="En Attente Validation"
-            value={disciplinaryStats?.pendingValidations || 0}
-            icon={<Clock className="w-6 h-6 text-blue-600" />}
-            subtitle="Actions à traiter"
-          />
+      {/* Compliance & Discipline - Only for Admin and Finance Manager */}
+      {(userRole === 'ADMIN' || userRole === 'FINANCE_MANAGER') && (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Conformité & Discipline</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              title="Assurances Expirantes"
+              value={fleetStats?.expiringInsurance || 0}
+              icon={<Shield className="w-6 h-6 text-red-600" />}
+              subtitle="Véhicules à renouveler"
+            />
+            <StatCard
+              title="Contrôles Techniques"
+              value={fleetStats?.expiringTechnicalInspection || 0}
+              icon={<FileText className="w-6 h-6 text-yellow-600" />}
+              subtitle="À planifier"
+            />
+            <StatCard
+              title="Actions Disciplinaires"
+              value={disciplinaryStats?.thisMonthActions || 0}
+              icon={<AlertTriangle className="w-6 h-6 text-orange-600" />}
+              subtitle="Ce mois"
+            />
+            <StatCard
+              title="En Attente Validation"
+              value={disciplinaryStats?.pendingValidations || 0}
+              icon={<Clock className="w-6 h-6 text-blue-600" />}
+              subtitle="Actions à traiter"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Activity and Alerts */}
+      {/* Activity and Alerts - Always visible */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

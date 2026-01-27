@@ -9,7 +9,7 @@ export type PosteGarde = 'GARDE' | 'ROTEUR';
 export type PosteAdministration = 'DIRECTEUR_GERANT' | 'ADMINISTRATEUR_GERANT' | 'FINANCIER' | 'COMPTABLE' | 'CHEF_OPERATIONS' | 'SUPERVISEUR' | 'CHAUFFEUR';
 export type PosteEmploye = PosteGarde | PosteAdministration;
 export type ModeRemuneration = 'MENSUEL_FIXE' | 'TAUX_JOURNALIER';
-export type RoleUtilisateur = 'ADMIN' | 'CEO' | 'FINANCE' | 'OPS_MANAGER' | 'SUPERVISOR';
+export type RoleUtilisateur = 'ADMIN' | 'FINANCE_MANAGER' | 'OPERATIONS_MANAGER' | 'ASSISTANT_OPERATIONS_MANAGER';
 
 // ============================================================================
 // GUARDIAN COMMAND - Types conformes au schéma SQL OHADA

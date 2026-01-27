@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Settings as SettingsIcon,
   Save,
@@ -16,7 +17,11 @@ import {
   Eye,
   Calendar,
   DollarSign,
-  Check
+  Check,
+  AlertTriangle,
+  RefreshCw,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 
 interface QuickAction {
@@ -47,12 +52,19 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
+  const { utilisateur } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [availableActions, setAvailableActions] = useState<QuickAction[]>([]);
   const [selectedActionIds, setSelectedActionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'quick-actions' | 'appearance' | 'security'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'quick-actions' | 'appearance' | 'security' | 'maintenance'>('general');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
   // Preferences state
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('light');
@@ -65,9 +77,9 @@ export default function SettingsPage() {
   const [currency, setCurrency] = useState<'USD' | 'CDF' | 'EUR'>('USD');
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
-  // For demo purposes, using a default user. In production, get from auth context
-  const currentUserId = 'admin-user-1';
-  const currentUserRole = 'ADMIN';
+  // Get current user info from auth context
+  const currentUserId = utilisateur?.id || 'default-user';
+  const currentUserRole = utilisateur?.role || 'ADMIN';
 
   useEffect(() => {
     loadSettings();
@@ -162,6 +174,88 @@ export default function SettingsPage() {
       setCurrency('USD');
       setItemsPerPage(25);
     }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      alert('Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      alert('Les nouveaux mots de passe ne correspondent pas');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      alert('Le nouveau mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    try {
+      if (window.electronAPI && window.electronAPI.changeUserPassword) {
+        await window.electronAPI.changeUserPassword(
+          currentUserId,
+          passwordForm.currentPassword,
+          passwordForm.newPassword
+        );
+        alert('Mot de passe modifié avec succès!');
+        setShowPasswordModal(false);
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        alert('Fonctionnalité non disponible en mode web');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Erreur lors du changement de mot de passe');
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      if (window.electronAPI && window.electronAPI.exportUserData) {
+        const data = await window.electronAPI.exportUserData(currentUserId);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `user-data-${currentUserId}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('Données exportées avec succès!');
+      } else {
+        alert('Fonctionnalité non disponible en mode web');
+      }
+    } catch (error) {
+      alert('Erreur lors de l\'export des données');
+    }
+  };
+
+  const handleImportData = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        
+        if (window.electronAPI && window.electronAPI.importUserData) {
+          await window.electronAPI.importUserData(currentUserId, data);
+          alert('Données importées avec succès! Rechargement des paramètres...');
+          loadSettings();
+        } else {
+          alert('Fonctionnalité non disponible en mode web');
+        }
+      } catch (error) {
+        alert('Erreur lors de l\'import des données. Vérifiez le format du fichier.');
+      }
+    };
+    input.click();
   };
 
   if (loading) {
@@ -261,6 +355,21 @@ export default function SettingsPage() {
                 <span>Sécurité</span>
               </div>
             </button>
+            {currentUserRole === 'ADMIN' && (
+              <button
+                onClick={() => setActiveTab('maintenance')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'maintenance'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  <span>Maintenance</span>
+                </div>
+              </button>
+            )}
           </nav>
         </div>
 
@@ -540,12 +649,18 @@ export default function SettingsPage() {
                       <User className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">Utilisateur Admin</p>
-                      <p className="text-sm text-gray-500">Rôle: {currentUserRole}</p>
+                      <p className="font-medium text-gray-900">{utilisateur?.nom_complet || 'Utilisateur'}</p>
+                      <p className="text-sm text-gray-500">Rôle: {utilisateur?.role || 'Non défini'}</p>
+                      {utilisateur?.email && (
+                        <p className="text-sm text-gray-500">{utilisateur.email}</p>
+                      )}
                     </div>
                   </div>
                   <div className="text-xs text-gray-500">
-                    <p>ID: {currentUserId}</p>
+                    <p>Nom d'utilisateur: {utilisateur?.nom_utilisateur || 'Non défini'}</p>
+                    {utilisateur?.derniere_connexion && (
+                      <p>Dernière connexion: {new Date(utilisateur.derniere_connexion).toLocaleString('fr-FR')}</p>
+                    )}
                   </div>
                 </div>
 
@@ -555,7 +670,10 @@ export default function SettingsPage() {
                     <Lock className="h-4 w-4" />
                     Changer le Mot de Passe
                   </label>
-                  <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                  <button 
+                    onClick={() => setShowPasswordModal(true)}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                  >
                     Modifier le Mot de Passe
                   </button>
                   <p className="text-xs text-gray-500 mt-1">Dernière modification: Jamais</p>
@@ -567,7 +685,10 @@ export default function SettingsPage() {
                     <Download className="h-4 w-4" />
                     Exporter les Données
                   </label>
-                  <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                  <button 
+                    onClick={handleExportData}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                  >
                     Télécharger mes Données
                   </button>
                   <p className="text-xs text-gray-500 mt-1">Exporter toutes vos données personnelles</p>
@@ -579,7 +700,10 @@ export default function SettingsPage() {
                     <Upload className="h-4 w-4" />
                     Importer les Paramètres
                   </label>
-                  <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                  <button 
+                    onClick={handleImportData}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                  >
                     Importer depuis un Fichier
                   </button>
                   <p className="text-xs text-gray-500 mt-1">Restaurer vos paramètres depuis une sauvegarde</p>
@@ -600,8 +724,443 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* Maintenance Tab */}
+          {activeTab === 'maintenance' && currentUserRole === 'ADMIN' && (
+            <MaintenanceTab />
+          )}
+        </div>
+      </div>
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Changer le Mot de Passe</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mot de passe actuel
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Entrez votre mot de passe actuel"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nouveau mot de passe
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Entrez le nouveau mot de passe"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirmer le nouveau mot de passe
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Confirmez le nouveau mot de passe"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handlePasswordChange}
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Changer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Maintenance Tab Component
+const MaintenanceTab: React.FC = () => {
+  const [checking, setChecking] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [fixingClientSites, setFixingClientSites] = useState(false);
+  const [issues, setIssues] = useState<any[]>([]);
+  const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<any>(null);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [clientSiteFixResult, setClientSiteFixResult] = useState<any>(null);
+
+  const handleCheckConsistency = async () => {
+    setChecking(true);
+    try {
+      if (window.electronAPI) {
+        const result = await window.electronAPI.checkDataConsistency();
+        setIssues(result.issues || []);
+        setLastCheck(new Date());
+      }
+    } catch (error) {
+      console.error('Error checking data consistency:', error);
+      alert('Erreur lors de la vérification de la cohérence des données');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleCleanupRoteurAssignments = async () => {
+    if (!confirm('Cette action va corriger les affectations incohérentes des rôteurs. Continuer?')) {
+      return;
+    }
+
+    setCleaning(true);
+    try {
+      if (window.electronAPI) {
+        const result = await window.electronAPI.cleanupRoteurAssignments();
+        setCleanupResult(result);
+        // Re-check consistency after cleanup
+        await handleCheckConsistency();
+        alert(`Nettoyage terminé: ${result.deploymentsUpdated} déploiements fermés, ${result.employeesUpdated} employés mis à jour`);
+      }
+    } catch (error) {
+      console.error('Error cleaning up roteur assignments:', error);
+      alert('Erreur lors du nettoyage des affectations');
+    } finally {
+      setCleaning(false);
+    }
+  };
+
+  const handleSyncSiteAssignments = async () => {
+    if (!confirm('Cette action va synchroniser les affectations de site avec les déploiements actifs. Continuer?')) {
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      if (window.electronAPI && window.electronAPI.syncSiteAssignments) {
+        const result = await window.electronAPI.syncSiteAssignments();
+        setSyncResult(result);
+        // Re-check consistency after sync
+        await handleCheckConsistency();
+        alert(`Synchronisation terminée: ${result.employeesUpdated} employé(s) synchronisé(s)`);
+      }
+    } catch (error) {
+      console.error('Error syncing site assignments:', error);
+      alert('Erreur lors de la synchronisation des affectations');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleFixClientSiteConsistency = async () => {
+    if (!confirm('Cette action va désactiver tous les sites appartenant à des clients inactifs. Continuer?')) {
+      return;
+    }
+
+    setFixingClientSites(true);
+    try {
+      if (window.electronAPI && window.electronAPI.fixClientSiteConsistency) {
+        const result = await window.electronAPI.fixClientSiteConsistency();
+        setClientSiteFixResult(result);
+        // Re-check consistency after fix
+        await handleCheckConsistency();
+        alert(`Correction terminée: ${result.sitesDeactivated} site(s) désactivé(s), ${result.deploymentsClosed} déploiement(s) fermé(s), ${result.employeeAssignmentsCleared} affectation(s) supprimée(s)`);
+      }
+    } catch (error) {
+      console.error('Error fixing client-site consistency:', error);
+      alert('Erreur lors de la correction de la cohérence client-site');
+    } finally {
+      setFixingClientSites(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Maintenance de la Base de Données</h3>
+        <p className="text-sm text-gray-600 mb-6">
+          Outils de maintenance pour vérifier et corriger la cohérence des données.
+        </p>
+
+        {/* Data Consistency Check */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-md font-medium text-gray-900">Vérification de Cohérence</h4>
+              <p className="text-sm text-gray-600">
+                Vérifier les incohérences dans les affectations de sites et déploiements
+              </p>
+            </div>
+            <button
+              onClick={handleCheckConsistency}
+              disabled={checking}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {checking ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Database className="w-4 h-4" />
+              )}
+              {checking ? 'Vérification...' : 'Vérifier'}
+            </button>
+          </div>
+
+          {lastCheck && (
+            <p className="text-xs text-gray-500 mb-4">
+              Dernière vérification: {lastCheck.toLocaleString('fr-FR')}
+            </p>
+          )}
+
+          {issues.length > 0 ? (
+            <div className="space-y-3">
+              {issues.map((issue, index) => (
+                <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-red-900">{issue.description}</p>
+                      <p className="text-sm text-red-700">
+                        {issue.count} problème(s) détecté(s)
+                      </p>
+                      {issue.type === 'ROTEUR_WITH_SITE' && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Des rôteurs ont des affectations de site alors qu'ils ne devraient pas en avoir.
+                        </p>
+                      )}
+                      {issue.type === 'ROTEUR_WITH_ACTIVE_DEPLOYMENT' && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Des rôteurs ont des déploiements actifs alors qu'ils ne devraient pas en avoir.
+                        </p>
+                      )}
+                      {issue.type === 'SITE_ASSIGNMENT_MISMATCH' && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Des employés ont des incohérences entre leur site_affecte_id et leur déploiement actif.
+                        </p>
+                      )}
+                      {issue.type === 'ACTIVE_SITES_INACTIVE_CLIENT' && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Des sites actifs appartiennent à des clients inactifs.
+                        </p>
+                      )}
+                      {issue.type === 'ACTIVE_DEPLOYMENTS_INACTIVE_CLIENT' && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Des employés sont déployés sur des sites de clients inactifs.
+                        </p>
+                      )}
+                      {issue.type === 'EMPLOYEES_ASSIGNED_INACTIVE_CLIENT_SITES' && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Des employés sont affectés à des sites de clients inactifs.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : lastCheck ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <p className="text-sm text-green-800">Aucun problème de cohérence détecté</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Roteur Assignment Cleanup */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-md font-medium text-gray-900">Correction des Affectations Rôteurs</h4>
+              <p className="text-sm text-gray-600">
+                Corriger automatiquement les affectations incohérentes des employés rôteurs
+              </p>
+            </div>
+            <button
+              onClick={handleCleanupRoteurAssignments}
+              disabled={cleaning}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {cleaning ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <AlertTriangle className="w-4 h-4" />
+              )}
+              {cleaning ? 'Correction...' : 'Corriger'}
+            </button>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <div className="flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-yellow-900">Attention</p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Cette action va automatiquement:
+                </p>
+                <ul className="text-sm text-yellow-700 mt-2 ml-4 list-disc">
+                  <li>Fermer tous les déploiements actifs des employés rôteurs</li>
+                  <li>Supprimer les affectations de site des employés rôteurs</li>
+                  <li>Mettre à jour les enregistrements de déploiement</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {cleanupResult && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Correction terminée</p>
+                  <p className="text-sm text-green-700">
+                    {cleanupResult.deploymentsUpdated} déploiements fermés, {cleanupResult.employeesUpdated} employés mis à jour
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Site Assignment Sync */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-md font-medium text-gray-900">Synchronisation des Affectations de Site</h4>
+              <p className="text-sm text-gray-600">
+                Synchroniser les affectations de site (site_affecte_id) avec les déploiements actifs
+              </p>
+            </div>
+            <button
+              onClick={handleSyncSiteAssignments}
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {syncing ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {syncing ? 'Synchronisation...' : 'Synchroniser'}
+            </button>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex gap-3">
+              <RefreshCw className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">Problème résolu</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Cette action corrige les incohérences où:
+                </p>
+                <ul className="text-sm text-blue-700 mt-2 ml-4 list-disc">
+                  <li>Un employé a un déploiement actif mais site_affecte_id est NULL</li>
+                  <li>Un employé a un déploiement actif mais site_affecte_id pointe vers un autre site</li>
+                  <li>Les listes d'employés montrent "Non affecté" alors que les détails montrent un site</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {syncResult && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Synchronisation terminée</p>
+                  <p className="text-sm text-green-700">
+                    {syncResult.employeesUpdated} employé(s) synchronisé(s)
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Client-Site Consistency Fix */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-md font-medium text-gray-900">Cohérence Client-Site</h4>
+              <p className="text-sm text-gray-600">
+                Corriger les sites actifs appartenant à des clients inactifs
+              </p>
+            </div>
+            <button
+              onClick={handleFixClientSiteConsistency}
+              disabled={fixingClientSites}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {fixingClientSites ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <AlertTriangle className="w-4 h-4" />
+              )}
+              {fixingClientSites ? 'Correction...' : 'Corriger'}
+            </button>
+          </div>
+
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <div className="flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-900">Workflow de désactivation client</p>
+                <p className="text-sm text-red-700 mt-1">
+                  Cette action applique le workflow complet de désactivation:
+                </p>
+                <ul className="text-sm text-red-700 mt-2 ml-4 list-disc">
+                  <li>Désactiver tous les sites du client inactif</li>
+                  <li>Fermer tous les déploiements actifs sur ces sites</li>
+                  <li>Supprimer les affectations de site des employés concernés</li>
+                  <li>Maintenir la cohérence des données</li>
+                </ul>
+                <p className="text-sm text-red-700 mt-2">
+                  <strong>Résultat:</strong> Les employés ne seront plus affectés à aucun site et devront être redéployés manuellement.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {clientSiteFixResult && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">Correction terminée</p>
+                  <div className="text-sm text-green-700 mt-1">
+                    <p>• {clientSiteFixResult.sitesDeactivated} site(s) désactivé(s)</p>
+                    <p>• {clientSiteFixResult.deploymentsClosed} déploiement(s) fermé(s)</p>
+                    <p>• {clientSiteFixResult.employeeAssignmentsCleared} affectation(s) d'employé supprimée(s)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-}
+};

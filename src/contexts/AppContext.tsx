@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useCallback, useMemo } from 'react';
 import { EmployeeGASFull, ElectronClient, Site, User, DashboardStats } from '../types';
 import { databaseService } from '../services/database';
 
@@ -134,7 +134,7 @@ const AppContext = createContext<{
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
@@ -156,9 +156,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  };
+  }, []);
 
-  const actions = {
+  const actions = useMemo(() => ({
     loadAllData,
 
     addEmployee: async (employee: EmployeeGASFull) => {
@@ -329,7 +329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     }
-  };
+  }), [loadAllData]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, actions }}>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Bell, Search, User, Calendar, AlertTriangle, LogOut, ChevronDown } from 'lucide-react';
 import AlertsPanel from '../Alerts/AlertsPanel';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
   title: string;
@@ -47,30 +48,20 @@ export default function Header({ title, subtitle }: HeaderProps) {
     return () => clearInterval(interval);
   }, []);
   
-  // Only use auth in web mode
-  let utilisateur = null;
-  let signOut = null;
-  
-  if (!electronMode) {
-    try {
-      // Dynamically import and use auth only in web mode
-      const { useAuth } = require('../../contexts/AuthContext');
-      const authContext = useAuth();
-      utilisateur = authContext.utilisateur;
-      signOut = authContext.signOut;
-    } catch (error) {
-      // Auth context not available, continue without it
-      console.log('Auth context not available in this mode');
-    }
-  }
+  // Get auth context properly
+  const { utilisateur, signOut } = useAuth();
 
   const handleSignOut = async () => {
     if (signOut) {
       try {
+        console.log('🚪 [HEADER] Tentative de déconnexion...');
         await signOut();
+        console.log('✅ [HEADER] Déconnexion réussie');
       } catch (error) {
-        console.error('Erreur de déconnexion:', error);
+        console.error('❌ [HEADER] Erreur de déconnexion:', error);
       }
+    } else {
+      console.log('⚠️ [HEADER] Fonction signOut non disponible');
     }
   };
 
@@ -96,21 +87,30 @@ export default function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-            />
+          {/* Current Date */}
+          <div className="flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-lg">
+            <Calendar className="h-5 w-5 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">
+              {new Date().toLocaleDateString('fr-FR', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </span>
           </div>
 
           {/* Quick Actions */}
           <div className="flex items-center space-x-2">
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-              <Calendar className="h-5 w-5" />
-            </button>
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Rechercher..."
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+              />
+            </div>
             
             <button 
               onClick={() => setShowAlertsPanel(true)}
@@ -128,15 +128,17 @@ export default function Header({ title, subtitle }: HeaderProps) {
               <AlertTriangle className="h-5 w-5" />
             </button>
 
-            {/* User Menu - only show in web mode with auth */}
-            {!electronMode && utilisateur && (
+            {/* User Menu - show when user is available */}
+            {utilisateur && (
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <User className="h-5 w-5" />
-                  <span className="text-sm font-medium">{utilisateur?.nom_complet}</span>
+                  <span className="text-sm font-medium">
+                    {utilisateur.nom_complet || utilisateur.nom_utilisateur || 'Utilisateur'}
+                  </span>
                   <ChevronDown className="h-4 w-4" />
                 </button>
 
@@ -148,10 +150,10 @@ export default function Header({ title, subtitle }: HeaderProps) {
                     />
                     <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
                       <div className="px-4 py-3 border-b border-gray-200">
-                        <p className="text-sm font-medium text-gray-900">{utilisateur?.nom_complet}</p>
-                        <p className="text-xs text-gray-500 mt-1">@{utilisateur?.nom_utilisateur}</p>
-                        <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded ${getRoleBadgeColor(utilisateur?.role || '')}`}>
-                          {utilisateur?.role}
+                        <p className="text-sm font-medium text-gray-900">{utilisateur.nom_complet || utilisateur.nom_utilisateur}</p>
+                        <p className="text-xs text-gray-500 mt-1">@{utilisateur.nom_utilisateur}</p>
+                        <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded ${getRoleBadgeColor(utilisateur.role || '')}`}>
+                          {utilisateur.role}
                         </span>
                       </div>
                       <button
@@ -167,11 +169,11 @@ export default function Header({ title, subtitle }: HeaderProps) {
               </div>
             )}
 
-            {/* Simple user icon for Electron mode */}
-            {electronMode && (
+            {/* Show simple user icon when no user */}
+            {!utilisateur && (
               <div className="flex items-center gap-2 p-2 text-gray-700">
                 <User className="h-5 w-5" />
-                <span className="text-sm font-medium">Admin</span>
+                <span className="text-sm font-medium">Non connecté</span>
               </div>
             )}
           </div>

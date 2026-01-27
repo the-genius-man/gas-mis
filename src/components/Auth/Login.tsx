@@ -3,7 +3,7 @@ import { Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -11,12 +11,12 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔐 [LOGIN] Tentative de connexion pour:', email);
+    console.log('🔐 [LOGIN] Tentative de connexion pour:', username);
     setError(null);
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      await signIn(username, password);
       console.log('✅ [LOGIN] Connexion réussie');
     } catch (err: any) {
       console.error('❌ [LOGIN] Erreur de connexion:', err);
@@ -40,6 +40,31 @@ export default function Login() {
           </div>
 
           <div className="p-8">
+            {/* Debug Section */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Debug</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  console.log('🧹 [DEBUG] Nettoyage manuel localStorage');
+                  localStorage.clear();
+                  window.location.reload();
+                }}
+                className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 mr-2"
+              >
+                Clear All Storage
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  console.log('🔍 [DEBUG] État localStorage:', localStorage.getItem('gas_current_user'));
+                }}
+                className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200"
+              >
+                Check Storage
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
@@ -49,16 +74,16 @@ export default function Login() {
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Adresse Email
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom d'utilisateur
                 </label>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="utilisateur@goaheadsecurity.com"
+                  placeholder="admin"
                   required
                   disabled={loading}
                 />
@@ -92,6 +117,15 @@ export default function Login() {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Système de gestion ERP pour la sécurité privée
+              </p>
+            </div>
+
+            {/* Development credentials hint */}
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-600 text-center">
+                <strong>Identifiants par défaut:</strong><br />
+                Utilisateur: <code className="bg-blue-100 px-1 rounded">admin</code><br />
+                Mot de passe: <code className="bg-blue-100 px-1 rounded">admin123</code>
               </p>
             </div>
           </div>

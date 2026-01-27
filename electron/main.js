@@ -619,6 +619,426 @@ function createWindow() {
   });
 }
 
+// ============================================================================
+// ROTEUR MANAGEMENT - IPC Handlers
+// ============================================================================
+
+// Get all roteurs (employees with categorie='GARDE' and poste='ROTEUR')
+ipcMain.handle('db-get-roteurs', async (event, filters) => {
+  try {
+    let query = `
+      SELECT e.*, s.nom_site as site_nom, c.nom_entreprise as client_nom
+      FROM employees_gas e
+      LEFT JOIN sites_gas s ON e.site_affecte_id = s.id
+      LEFT JOIN clients_gas c ON s.client_id = c.id
+      WHERE e.categorie = 'GARDE' AND e.poste = 'ROTEUR'
+    `;
+    const params = [];
+
+    if (filters?.statut) {
+      query += ' AND e.statut = ?';
+      params.push(filters.statut);
+    }
+    if (filters?.search) {
+      query += ' AND (e.nom_complet LIKE ? OR e.matricule LIKE ?)';
+      params.push(`%${filters.search}%`, `%${filters.search}%`);
+    }
+
+    query += ' ORDER BY e.nom_complet';
+
+    return db.prepare(query).all(...params);
+  } catch (error) {
+    console.error('Error fetching roteurs:', error);
+    throw error;
+  }
+});
+
+// Get all roteur assignments with optional filters
+ipcMain.handle('db-get-roteur-assignments', async (event, filters) => {
+  try {
+    let query = `
+      SELECT a.*, 
+             r.nom_complet as roteur_nom, r.matricule as roteur_matricule,
+             s.nom_site as site_nom, c.nom_entreprise as client_nom,
+             e.nom_complet as employe_remplace_nom
+      FROM affectations_roteur a
+      LEFT JOIN employees_gas r ON a.roteur_id = r.id
+      LEFT JOIN sites_gas s ON a.site_id = s.id
+      LEFT JOIN clients_gas c ON s.client_id = c.id
+      LEFT JOIN employees_gas e ON a.employe_remplace_id = e.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (filters?.roteurId) {
+      query += ' AND a.roteur_id = ?';
+      params.push(filters.roteurId);
+    }
+    if (filters?.siteId) {
+      query += ' AND a.site_id = ?';
+      params.push(filters.siteId);
+    }
+    if (filters?.statut) {
+      query += ' AND a.statut = ?';
+      params.push(filters.statut);
+    }
+    if (filters?.dateDebut) {
+      query += ' AND a.date_fin >= ?';
+      params.push(filters.dateDebut);
+    }
+    if (filters?.dateFin) {
+      query += ' AND a.date_debut <= ?';
+      params.push(filters.dateFin);
+    }
+
+    query += ' ORDER BY a.date_debut DESC';
+
+    return db.prepare(query).all(...params);
+  } catch (error) {
+    console.error('Error fetching roteur assignments:', error);
+    throw error;
+  }
+});
+
+// Create new roteur assignment
+ipcMain.handle('db-create-roteur-assignment', async (event, assignment) => {
+  try {
+    // Validate that roteur is available during the period
+    const conflictingAssignment = db.prepare(`
+      SELECT id FROM affectations_roteur 
+      WHERE roteur_id = ? AND statut IN ('PLANIFIE', 'EN_COURS')
+      AND ((date_debut <= ? AND date_fin >= ?) OR (date_debut <= ? AND date_fin >= ?))
+    `).get(
+      assignment.roteur_id,
+      assignment.date_debut, assignment.date_debut,
+      assignment.date_fin, assignment.date_fin
+    );
+
+    if (conflictingAssignment) {
+      throw new Error('Le rôteur est déjà affecté pendant cette période');
+    }
+
+    // Validate dates
+    if (new Date(assignment.date_fin) <= new Date(assignment.date_debut)) {
+      throw new Error('La date de fin doit être postérieure à la date de début');
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO affectations_roteur (
+        id, roteur_id, site_id, employe_remplace_id, demande_conge_id,
+        date_debut, date_fin, poste, statut, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(
+      assignment.id,
+      assignment.roteur_id,
+      assignment.site_id,
+      assignment.employe_remplace_id || null,
+      assignment.demande_conge_id || null,
+      assignment.date_debut,
+      assignment.date_fin,
+      assignment.poste || 'JOUR',
+      assignment.statut || 'PLANIFIE',
+      assignment.notes || null
+    );
+
+    return { success: true, id: assignment.id };
+  } catch (error) {
+    console.error('Error creating roteur assignment:', error);
+    throw error;
+  }
+});
+
+// Update roteur assignment
+ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
+  try {
+    // Check if assignment exists and is modifiable
+    const existing = db.prepare('SELECT statut FROM affectations_roteur WHERE id = ?').get(assignment.id);
+    
+    if (!existing) {
+      throw new Error('Affectation non trouvée');
+    }
+
+    if (existing.statut === 'TERMINE') {
+      throw new Error('Impossible de modifier une affectation terminée');
+    }
+
+    // If updating dates or roteur, validate availability
+    if (assignment.date_debut || assignment.date_fin || assignment.roteur_id) {
+      const roteurId = assignment.roteur_id || db.prepare('SELECT roteur_id FROM affectations_roteur WHERE id = ?').get(assignment.id).roteur_id;
+      const dateDebut = assignment.date_debut || db.prepare('SELECT date_debut FROM affectations_roteur WHERE id = ?').get(assignment.id).date_debut;
+      const dateFin = assignment.date_fin || db.prepare('SELECT date_fin FROM affectations_roteur WHERE id = ?').get(assignment.id).date_fin;
+
+      const conflictingAssignment = db.prepare(`
+        SELECT id FROM affectations_roteur 
+        WHERE roteur_id = ? AND statut IN ('PLANIFIE', 'EN_COURS') AND id != ?
+        AND ((date_debut <= ? AND date_fin >= ?) OR (date_debut <= ? AND date_fin >= ?))
+      `).get(roteurId, assignment.id, dateDebut, dateDebut, dateFin, dateFin);
+
+      if (conflictingAssignment) {
+        throw new Error('Le rôteur est déjà affecté pendant cette période');
+      }
+    }
+
+    // Build dynamic update query
+    const updateFields = [];
+    const params = [];
+
+    if (assignment.roteur_id !== undefined) {
+      updateFields.push('roteur_id = ?');
+      params.push(assignment.roteur_id);
+    }
+    if (assignment.site_id !== undefined) {
+      updateFields.push('site_id = ?');
+      params.push(assignment.site_id);
+    }
+    if (assignment.employe_remplace_id !== undefined) {
+      updateFields.push('employe_remplace_id = ?');
+      params.push(assignment.employe_remplace_id);
+    }
+    if (assignment.date_debut !== undefined) {
+      updateFields.push('date_debut = ?');
+      params.push(assignment.date_debut);
+    }
+    if (assignment.date_fin !== undefined) {
+      updateFields.push('date_fin = ?');
+      params.push(assignment.date_fin);
+    }
+    if (assignment.poste !== undefined) {
+      updateFields.push('poste = ?');
+      params.push(assignment.poste);
+    }
+    if (assignment.statut !== undefined) {
+      updateFields.push('statut = ?');
+      params.push(assignment.statut);
+    }
+    if (assignment.notes !== undefined) {
+      updateFields.push('notes = ?');
+      params.push(assignment.notes);
+    }
+
+    if (updateFields.length === 0) {
+      return { success: true }; // Nothing to update
+    }
+
+    params.push(assignment.id); // Add ID for WHERE clause
+
+    const stmt = db.prepare(`
+      UPDATE affectations_roteur SET ${updateFields.join(', ')}
+      WHERE id = ?
+    `);
+
+    stmt.run(...params);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating roteur assignment:', error);
+    throw error;
+  }
+});
+
+// Get site coverage gaps (sites needing roteur coverage)
+ipcMain.handle('db-get-site-coverage-gaps', async (event, filters) => {
+  try {
+    // This query finds sites with exactly 1 guard that might need roteur coverage
+    let query = `
+      SELECT 
+        s.id as site_id,
+        s.nom_site,
+        c.nom_entreprise as client_nom,
+        COUNT(h.employe_id) as guard_count,
+        GROUP_CONCAT(e.nom_complet) as guard_names
+      FROM sites_gas s
+      LEFT JOIN clients_gas c ON s.client_id = c.id
+      LEFT JOIN historique_deployements h ON s.id = h.site_id AND h.est_actif = 1
+      LEFT JOIN employees_gas e ON h.employe_id = e.id AND e.statut = 'ACTIF' AND e.poste != 'ROTEUR'
+      WHERE s.est_actif = 1
+    `;
+    const params = [];
+
+    if (filters?.clientId) {
+      query += ' AND s.client_id = ?';
+      params.push(filters.clientId);
+    }
+
+    query += `
+      GROUP BY s.id, s.nom_site, c.nom_entreprise
+      HAVING guard_count = 1
+      ORDER BY s.nom_site
+    `;
+
+    return db.prepare(query).all(...params);
+  } catch (error) {
+    console.error('Error fetching site coverage gaps:', error);
+    throw error;
+  }
+});
+
+// Get roteur availability for a specific period
+ipcMain.handle('db-get-roteur-availability', async (event, { dateDebut, dateFin }) => {
+  try {
+    const roteurs = db.prepare(`
+      SELECT e.*, 
+             CASE WHEN a.id IS NOT NULL THEN 0 ELSE 1 END as is_available
+      FROM employees_gas e
+      LEFT JOIN affectations_roteur a ON e.id = a.roteur_id 
+        AND a.statut IN ('PLANIFIE', 'EN_COURS')
+        AND ((a.date_debut <= ? AND a.date_fin >= ?) OR (a.date_debut <= ? AND a.date_fin >= ?))
+      WHERE e.categorie = 'GARDE' AND e.poste = 'ROTEUR' AND e.statut = 'ACTIF'
+      ORDER BY e.nom_complet
+    `).all(dateDebut, dateDebut, dateFin, dateFin);
+
+    return roteurs;
+  } catch (error) {
+    console.error('Error checking roteur availability:', error);
+    throw error;
+  }
+});
+
+// ============================================================================
+// HR STATS - Dashboard Statistics
+// ============================================================================
+
+// Get HR statistics for dashboard
+ipcMain.handle('db-get-hr-stats', async (event) => {
+  try {
+    // Total employees
+    const totalEmployees = db.prepare('SELECT COUNT(*) as count FROM employees_gas WHERE statut != "TERMINE"').get();
+    
+    // Active employees
+    const activeEmployees = db.prepare('SELECT COUNT(*) as count FROM employees_gas WHERE statut = "ACTIF"').get();
+    
+    // Guards count (excluding roteurs)
+    const guardsCount = db.prepare(`
+      SELECT COUNT(*) as count FROM employees_gas 
+      WHERE categorie = 'GARDE' AND poste != 'ROTEUR' AND statut = 'ACTIF'
+    `).get();
+    
+    // Roteurs count
+    const roteursCount = db.prepare(`
+      SELECT COUNT(*) as count FROM employees_gas 
+      WHERE categorie = 'GARDE' AND poste = 'ROTEUR' AND statut = 'ACTIF'
+    `).get();
+    
+    // Supervisors count
+    const supervisorsCount = db.prepare(`
+      SELECT COUNT(*) as count FROM employees_gas 
+      WHERE poste IN ('SUPERVISEUR', 'SUPERVISEUR_NUIT') AND statut = 'ACTIF'
+    `).get();
+    
+    // Admin count
+    const adminCount = db.prepare(`
+      SELECT COUNT(*) as count FROM employees_gas 
+      WHERE categorie = 'ADMINISTRATION' AND statut = 'ACTIF'
+    `).get();
+    
+    // On leave count (employees with active leave requests)
+    const onLeaveCount = db.prepare(`
+      SELECT COUNT(DISTINCT employe_id) as count FROM demandes_conge 
+      WHERE statut = 'APPROUVE' AND date_debut <= date('now') AND date_fin >= date('now')
+    `).get();
+    
+    // Pending leave requests
+    const pendingLeaveRequests = db.prepare(`
+      SELECT COUNT(*) as count FROM demandes_conge WHERE statut = 'EN_ATTENTE'
+    `).get();
+
+    return {
+      totalEmployees: totalEmployees?.count || 0,
+      activeEmployees: activeEmployees?.count || 0,
+      guardsCount: guardsCount?.count || 0,
+      roteursCount: roteursCount?.count || 0,
+      supervisorsCount: supervisorsCount?.count || 0,
+      adminCount: adminCount?.count || 0,
+      onLeaveCount: onLeaveCount?.count || 0,
+      pendingLeaveRequests: pendingLeaveRequests?.count || 0
+    };
+  } catch (error) {
+    console.error('Error getting HR stats:', error);
+    throw error;
+  }
+});
+
+// Get fleet statistics for dashboard
+ipcMain.handle('db-get-fleet-stats', async (event) => {
+  try {
+    const totalVehicles = db.prepare('SELECT COUNT(*) as count FROM vehicules_flotte').get();
+    const activeVehicles = db.prepare('SELECT COUNT(*) as count FROM vehicules_flotte WHERE statut = "ACTIF"').get();
+    const inRepairVehicles = db.prepare('SELECT COUNT(*) as count FROM vehicules_flotte WHERE statut = "EN_REPARATION"').get();
+    
+    // Vehicles with insurance expiring in next 30 days
+    const j30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const expiringInsurance = db.prepare(`
+      SELECT COUNT(*) as count FROM vehicules_flotte 
+      WHERE assurance_date_fin <= ? AND assurance_date_fin >= date('now') AND statut = 'ACTIF'
+    `).get(j30);
+    
+    // Vehicles with technical inspection expiring in next 15 days
+    const j15 = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const expiringTechnicalInspection = db.prepare(`
+      SELECT COUNT(*) as count FROM vehicules_flotte 
+      WHERE controle_technique_expiration <= ? AND controle_technique_expiration >= date('now') AND statut = 'ACTIF'
+    `).get(j15);
+
+    return {
+      totalVehicles: totalVehicles?.count || 0,
+      activeVehicles: activeVehicles?.count || 0,
+      inRepairVehicles: inRepairVehicles?.count || 0,
+      expiringInsurance: expiringInsurance?.count || 0,
+      expiringTechnicalInspection: expiringTechnicalInspection?.count || 0
+    };
+  } catch (error) {
+    console.error('Error getting fleet stats:', error);
+    throw error;
+  }
+});
+
+// Get inventory statistics for dashboard
+ipcMain.handle('db-get-inventory-stats', async (event) => {
+  try {
+    const totalEquipment = db.prepare('SELECT COUNT(*) as count FROM equipements').get();
+    const availableEquipment = db.prepare('SELECT COUNT(*) as count FROM equipements WHERE statut = "DISPONIBLE"').get();
+    const assignedEquipment = db.prepare('SELECT COUNT(*) as count FROM equipements WHERE statut = "AFFECTE"').get();
+    const damagedEquipment = db.prepare('SELECT COUNT(*) as count FROM equipements WHERE etat = "ENDOMMAGE"').get();
+
+    return {
+      totalEquipment: totalEquipment?.count || 0,
+      availableEquipment: availableEquipment?.count || 0,
+      assignedEquipment: assignedEquipment?.count || 0,
+      damagedEquipment: damagedEquipment?.count || 0
+    };
+  } catch (error) {
+    console.error('Error getting inventory stats:', error);
+    throw error;
+  }
+});
+
+// Get disciplinary statistics for dashboard
+ipcMain.handle('db-get-disciplinary-stats', async (event) => {
+  try {
+    const pendingActions = db.prepare('SELECT COUNT(*) as count FROM actions_disciplinaires WHERE statut = "BROUILLON"').get();
+    const pendingSignatures = db.prepare('SELECT COUNT(*) as count FROM actions_disciplinaires WHERE statut = "EN_ATTENTE_SIGNATURE"').get();
+    const pendingValidations = db.prepare('SELECT COUNT(*) as count FROM actions_disciplinaires WHERE statut = "EN_ATTENTE_VALIDATION"').get();
+    
+    // Actions created this month
+    const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const thisMonthActions = db.prepare(`
+      SELECT COUNT(*) as count FROM actions_disciplinaires WHERE date_incident >= ?
+    `).get(firstDayOfMonth);
+
+    return {
+      pendingActions: pendingActions?.count || 0,
+      pendingSignatures: pendingSignatures?.count || 0,
+      pendingValidations: pendingValidations?.count || 0,
+      thisMonthActions: thisMonthActions?.count || 0
+    };
+  } catch (error) {
+    console.error('Error getting disciplinary stats:', error);
+    throw error;
+  }
+});
+
 app.on('ready', () => {
   initDatabase();
   createWindow();
@@ -815,11 +1235,89 @@ ipcMain.handle('db-get-active-clients-gas', async () => {
 
 // Update client status (for reactivation or setting inactive)
 ipcMain.handle('db-update-client-status', async (event, { id, statut }) => {
+  console.log(`🚨 BACKEND: db-update-client-status called with id=${id}, statut=${statut}`);
   try {
-    db.prepare('UPDATE clients_gas SET statut = ? WHERE id = ?').run(statut, id);
-    return { success: true };
+    console.log(`🔄 Starting client status update: Client ${id} -> ${statut}`);
+    
+    // Start a transaction to ensure data consistency
+    const updateClient = db.prepare('UPDATE clients_gas SET statut = ?, modifie_le = CURRENT_TIMESTAMP WHERE id = ?');
+    const updateSites = db.prepare('UPDATE sites_gas SET est_actif = ?, modifie_le = CURRENT_TIMESTAMP WHERE client_id = ?');
+    const closeDeployments = db.prepare(`
+      UPDATE historique_deployements 
+      SET est_actif = 0, date_fin = CURRENT_TIMESTAMP, modifie_le = CURRENT_TIMESTAMP 
+      WHERE site_id IN (SELECT id FROM sites_gas WHERE client_id = ?) AND est_actif = 1
+    `);
+    const clearEmployeeSiteAssignments = db.prepare(`
+      UPDATE employees_gas 
+      SET site_affecte_id = NULL, modifie_le = CURRENT_TIMESTAMP 
+      WHERE site_affecte_id IN (SELECT id FROM sites_gas WHERE client_id = ?)
+    `);
+    
+    // Check what we're about to affect
+    const sitesToAffect = db.prepare('SELECT id, nom_site, est_actif FROM sites_gas WHERE client_id = ?').all(id);
+    const deploymentsToAffect = db.prepare(`
+      SELECT h.id, h.employe_id, e.nom_complet, s.nom_site 
+      FROM historique_deployements h
+      JOIN employees_gas e ON h.employe_id = e.id
+      JOIN sites_gas s ON h.site_id = s.id
+      WHERE h.est_actif = 1 AND s.client_id = ?
+    `).all(id);
+    const employeesToAffect = db.prepare(`
+      SELECT e.id, e.nom_complet, e.site_affecte_id, s.nom_site
+      FROM employees_gas e
+      JOIN sites_gas s ON e.site_affecte_id = s.id
+      WHERE s.client_id = ?
+    `).all(id);
+    
+    console.log(`📊 Before update - Client ${id}:`);
+    console.log(`  - Sites to affect: ${sitesToAffect.length}`, sitesToAffect);
+    console.log(`  - Active deployments to close: ${deploymentsToAffect.length}`, deploymentsToAffect);
+    console.log(`  - Employee assignments to clear: ${employeesToAffect.length}`, employeesToAffect);
+    
+    // Begin transaction
+    const transaction = db.transaction(() => {
+      // Update client status
+      const clientResult = updateClient.run(statut, id);
+      console.log(`✅ Client status updated: ${clientResult.changes} row(s) affected`);
+      
+      // If client is being deactivated, cascade the deactivation
+      if (statut === 'INACTIF') {
+        // 1. Deactivate all client's sites
+        const sitesResult = updateSites.run(0, id); // 0 = false for est_actif
+        console.log(`🏢 Sites deactivated: ${sitesResult.changes} row(s) affected`);
+        
+        // 2. Close all active deployments to those sites
+        const deploymentsResult = closeDeployments.run(id);
+        console.log(`📋 Deployments closed: ${deploymentsResult.changes} row(s) affected`);
+        
+        // 3. Clear site assignments for all employees assigned to those sites
+        const employeesResult = clearEmployeeSiteAssignments.run(id);
+        console.log(`👥 Employee assignments cleared: ${employeesResult.changes} row(s) affected`);
+        
+        return {
+          clientUpdated: clientResult.changes,
+          sitesDeactivated: sitesResult.changes,
+          deploymentsClosed: deploymentsResult.changes,
+          employeeAssignmentsCleared: employeesResult.changes
+        };
+      }
+      
+      return {
+        clientUpdated: clientResult.changes,
+        sitesDeactivated: 0,
+        deploymentsClosed: 0,
+        employeeAssignmentsCleared: 0
+      };
+    });
+    
+    // Execute the transaction and get results
+    const results = transaction();
+    
+    console.log(`✅ Client ${id} status update completed:`, results);
+    
+    return { success: true, ...results };
   } catch (error) {
-    console.error('Error updating client status:', error);
+    console.error('❌ Error updating client status:', error);
     throw error;
   }
 });
@@ -1700,18 +2198,36 @@ ipcMain.handle('db-create-employee-gas', async (event, employee) => {
 // Update employee
 ipcMain.handle('db-update-employee-gas', async (event, employee) => {
   try {
+// Update employee
+ipcMain.handle('db-update-employee-gas', async (event, employee) => {
+  try {
     // Get current employee data
-    const currentEmployee = db.prepare('SELECT site_affecte_id FROM employees_gas WHERE id = ?').get(employee.id);
+    const currentEmployee = db.prepare('SELECT site_affecte_id, poste FROM employees_gas WHERE id = ?').get(employee.id);
     
-    // Check if site is changing
-    const siteChanging = currentEmployee && currentEmployee.site_affecte_id !== employee.site_affecte_id;
+    // Check if site is changing or being cleared
+    const currentSiteId = currentEmployee ? currentEmployee.site_affecte_id : null;
+    const newSiteId = employee.site_affecte_id || null;
+    const siteChanging = currentSiteId !== newSiteId;
     
-    // Validate new site capacity if site is being assigned or changed
-    if (employee.site_affecte_id && siteChanging) {
+    // Check if employee is becoming a ROTEUR
+    const isBecomingRoteur = employee.poste === 'ROTEUR';
+    const wasRoteur = currentEmployee && currentEmployee.poste === 'ROTEUR';
+    
+    // If becoming a ROTEUR or site is being cleared, close current deployment
+    if ((isBecomingRoteur && !wasRoteur) || (siteChanging && !newSiteId)) {
+      db.prepare(`
+        UPDATE historique_deployements 
+        SET est_actif = 0, date_fin = CURRENT_DATE, modifie_le = CURRENT_TIMESTAMP
+        WHERE employe_id = ? AND est_actif = 1
+      `).run(employee.id);
+    }
+    
+    // Validate new site capacity if site is being assigned or changed to a new site
+    if (newSiteId && siteChanging) {
       const site = db.prepare(`
         SELECT effectif_jour_requis, effectif_nuit_requis, nom_site
         FROM sites_gas WHERE id = ?
-      `).get(employee.site_affecte_id);
+      `).get(newSiteId);
 
       if (!site) {
         throw new Error('Site non trouvé');
@@ -1724,7 +2240,7 @@ ipcMain.handle('db-update-employee-gas', async (event, employee) => {
         SELECT COUNT(*) as count
         FROM historique_deployements
         WHERE site_id = ? AND est_actif = 1 AND employe_id != ?
-      `).get(employee.site_affecte_id, employee.id);
+      `).get(newSiteId, employee.id);
 
       if (currentCount.count >= totalCapacity) {
         throw new Error(
@@ -1734,21 +2250,28 @@ ipcMain.handle('db-update-employee-gas', async (event, employee) => {
         );
       }
 
-      // Close current deployment if exists
-      db.prepare(`
-        UPDATE historique_deployements 
-        SET est_actif = 0, date_fin = CURRENT_DATE, modifie_le = CURRENT_TIMESTAMP
-        WHERE employe_id = ? AND est_actif = 1
-      `).run(employee.id);
+      // Close current deployment if exists (if not already closed above)
+      if (!((isBecomingRoteur && !wasRoteur) || (!newSiteId))) {
+        db.prepare(`
+          UPDATE historique_deployements 
+          SET est_actif = 0, date_fin = CURRENT_DATE, modifie_le = CURRENT_TIMESTAMP
+          WHERE employe_id = ? AND est_actif = 1
+        `).run(employee.id);
+      }
 
-      // Create new deployment
-      const deploymentId = 'dep-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-      db.prepare(`
-        INSERT INTO historique_deployements (
-          id, employe_id, site_id, date_debut, poste, motif_affectation, est_actif
-        ) VALUES (?, ?, ?, CURRENT_DATE, ?, 'TRANSFERT', 1)
-      `).run(deploymentId, employee.id, employee.site_affecte_id, 'JOUR');
+      // Create new deployment (only if not becoming a ROTEUR)
+      if (!isBecomingRoteur) {
+        const deploymentId = 'dep-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        db.prepare(`
+          INSERT INTO historique_deployements (
+            id, employe_id, site_id, date_debut, poste, motif_affectation, est_actif
+          ) VALUES (?, ?, ?, CURRENT_DATE, ?, 'TRANSFERT', 1)
+        `).run(deploymentId, employee.id, newSiteId, 'JOUR');
+      }
     }
+
+    // Ensure ROTEUR employees don't have site assignments
+    const finalSiteId = (employee.poste === 'ROTEUR') ? null : (employee.site_affecte_id || null);
 
     const stmt = db.prepare(`
       UPDATE employees_gas SET
@@ -1777,7 +2300,7 @@ ipcMain.handle('db-update-employee-gas', async (event, employee) => {
       employee.document_casier_url || null,
       employee.poste || 'GARDE',
       employee.categorie || 'GARDE',
-      employee.site_affecte_id || null,
+      finalSiteId,
       employee.mode_remuneration || 'MENSUEL',
       employee.salaire_base || 0,
       employee.taux_journalier || 0,
@@ -3146,6 +3669,581 @@ ipcMain.handle('db-flush-payroll', async (event) => {
     return { success: true, message: 'Toutes les données de paie ont été supprimées' };
   } catch (error) {
     console.error('Error flushing payroll data:', error);
+    throw error;
+  }
+});
+
+// ============================================================================
+// FILE MANAGEMENT - Photo and Document Upload
+// ============================================================================
+
+const fs = require('fs');
+
+// Save uploaded file (photo or document)
+ipcMain.handle('db-save-file', async (event, { fileBuffer, fileName, fileType, employeeId }) => {
+  try {
+    const isDev = !app.isPackaged;
+    const uploadsDir = isDev 
+      ? path.join(__dirname, '..', 'uploads')
+      : path.join(process.resourcesPath, 'uploads');
+    
+    // Create uploads directory if it doesn't exist
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // Create employee-specific directory
+    const employeeDir = path.join(uploadsDir, employeeId);
+    if (!fs.existsSync(employeeDir)) {
+      fs.mkdirSync(employeeDir, { recursive: true });
+    }
+    
+    // Generate unique filename with timestamp
+    const timestamp = Date.now();
+    const extension = path.extname(fileName);
+    const baseName = path.basename(fileName, extension);
+    const uniqueFileName = `${fileType}_${timestamp}_${baseName}${extension}`;
+    const filePath = path.join(employeeDir, uniqueFileName);
+    
+    // Save file
+    fs.writeFileSync(filePath, Buffer.from(fileBuffer));
+    
+    // Return relative path for database storage
+    const relativePath = path.join('uploads', employeeId, uniqueFileName);
+    
+    return { success: true, filePath: relativePath };
+  } catch (error) {
+    console.error('Error saving file:', error);
+    throw error;
+  }
+});
+
+// Delete file
+ipcMain.handle('db-delete-file', async (event, filePath) => {
+  try {
+    const isDev = !app.isPackaged;
+    const fullPath = isDev 
+      ? path.join(__dirname, '..', filePath)
+      : path.join(process.resourcesPath, filePath);
+    
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    throw error;
+  }
+});
+
+// Get file path for serving
+ipcMain.handle('db-get-file-path', async (event, relativePath) => {
+  try {
+    const isDev = !app.isPackaged;
+    const fullPath = isDev 
+      ? path.join(__dirname, '..', relativePath)
+      : path.join(process.resourcesPath, relativePath);
+    
+    return { success: true, fullPath };
+  } catch (error) {
+    console.error('Error getting file path:', error);
+    throw error;
+  }
+});
+
+// ============================================================================
+// DATA CONSISTENCY UTILITIES
+// ============================================================================
+
+// Clean up inconsistent site assignments for ROTEUR employees
+ipcMain.handle('db-cleanup-roteur-assignments', async () => {
+  try {
+    // Close active deployments for ROTEUR employees
+    const result1 = db.prepare(`
+      UPDATE historique_deployements 
+      SET est_actif = 0, date_fin = CURRENT_DATE, modifie_le = CURRENT_TIMESTAMP
+      WHERE employe_id IN (
+        SELECT id FROM employees_gas WHERE poste = 'ROTEUR'
+      ) AND est_actif = 1
+    `).run();
+
+    // Clear site assignments for ROTEUR employees
+    const result2 = db.prepare(`
+      UPDATE employees_gas 
+      SET site_affecte_id = NULL, modifie_le = CURRENT_TIMESTAMP
+      WHERE poste = 'ROTEUR' AND site_affecte_id IS NOT NULL
+    `).run();
+
+    return { 
+      success: true, 
+      deploymentsUpdated: result1.changes,
+      employeesUpdated: result2.changes
+    };
+  } catch (error) {
+    console.error('Error cleaning up roteur assignments:', error);
+    throw error;
+  }
+});
+
+// General data consistency check
+ipcMain.handle('db-check-data-consistency', async () => {
+  try {
+    const issues = [];
+
+    // Check for ROTEUR employees with site assignments
+    const roteurWithSites = db.prepare(`
+      SELECT id, nom_complet, site_affecte_id
+      FROM employees_gas 
+      WHERE poste = 'ROTEUR' AND site_affecte_id IS NOT NULL
+    `).all();
+
+    if (roteurWithSites.length > 0) {
+      issues.push({
+        type: 'ROTEUR_WITH_SITE',
+        count: roteurWithSites.length,
+        description: 'Rôteurs avec affectation de site',
+        employees: roteurWithSites
+      });
+    }
+
+    // Check for active deployments for ROTEUR employees
+    const roteurWithActiveDeployments = db.prepare(`
+      SELECT h.id, h.employe_id, e.nom_complet, s.nom_site
+      FROM historique_deployements h
+      JOIN employees_gas e ON h.employe_id = e.id
+      JOIN sites_gas s ON h.site_id = s.id
+      WHERE e.poste = 'ROTEUR' AND h.est_actif = 1
+    `).all();
+
+    if (roteurWithActiveDeployments.length > 0) {
+      issues.push({
+        type: 'ROTEUR_WITH_ACTIVE_DEPLOYMENT',
+        count: roteurWithActiveDeployments.length,
+        description: 'Rôteurs avec déploiements actifs',
+        deployments: roteurWithActiveDeployments
+      });
+    }
+
+    // Check for employees with site assignments but no active deployment
+    const employeesWithSiteButNoDeployment = db.prepare(`
+      SELECT e.id, e.nom_complet, e.site_affecte_id, s.nom_site
+      FROM employees_gas e
+      JOIN sites_gas s ON e.site_affecte_id = s.id
+      WHERE e.poste != 'ROTEUR' 
+        AND e.statut = 'ACTIF'
+        AND e.site_affecte_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM historique_deployements h 
+          WHERE h.employe_id = e.id AND h.est_actif = 1
+        )
+    `).all();
+
+    if (employeesWithSiteButNoDeployment.length > 0) {
+      issues.push({
+        type: 'EMPLOYEE_WITH_SITE_NO_DEPLOYMENT',
+        count: employeesWithSiteButNoDeployment.length,
+        description: 'Employés avec site affecté mais sans déploiement actif',
+        employees: employeesWithSiteButNoDeployment
+      });
+    }
+
+    // Check for employees with active deployments but mismatched site_affecte_id
+    const employeesWithMismatchedSites = db.prepare(`
+      SELECT 
+        e.id, 
+        e.nom_complet, 
+        e.matricule,
+        e.site_affecte_id as employee_site_id,
+        s1.nom_site as employee_site_name,
+        h.site_id as deployment_site_id,
+        s2.nom_site as deployment_site_name
+      FROM employees_gas e
+      JOIN historique_deployements h ON e.id = h.employe_id AND h.est_actif = 1
+      LEFT JOIN sites_gas s1 ON e.site_affecte_id = s1.id
+      JOIN sites_gas s2 ON h.site_id = s2.id
+      WHERE e.poste != 'ROTEUR' 
+        AND e.statut = 'ACTIF'
+        AND (e.site_affecte_id IS NULL OR e.site_affecte_id != h.site_id)
+    `).all();
+
+    if (employeesWithMismatchedSites.length > 0) {
+      issues.push({
+        type: 'SITE_ASSIGNMENT_MISMATCH',
+        count: employeesWithMismatchedSites.length,
+        description: 'Employés avec incohérence entre site_affecte_id et déploiement actif',
+        employees: employeesWithMismatchedSites
+      });
+    }
+
+    // Check for active sites belonging to inactive clients
+    const activeSitesWithInactiveClients = db.prepare(`
+      SELECT 
+        s.id as site_id,
+        s.nom_site,
+        s.est_actif as site_active,
+        c.id as client_id,
+        c.nom_entreprise,
+        c.statut as client_status
+      FROM sites_gas s
+      JOIN clients_gas c ON s.client_id = c.id
+      WHERE s.est_actif = 1 AND c.statut = 'INACTIF'
+    `).all();
+
+    if (activeSitesWithInactiveClients.length > 0) {
+      issues.push({
+        type: 'ACTIVE_SITES_INACTIVE_CLIENT',
+        count: activeSitesWithInactiveClients.length,
+        description: 'Sites actifs appartenant à des clients inactifs',
+        sites: activeSitesWithInactiveClients
+      });
+    }
+
+    // Check for active deployments to sites of inactive clients
+    const activeDeploymentsInactiveClients = db.prepare(`
+      SELECT 
+        h.id as deployment_id,
+        h.employe_id,
+        e.nom_complet as employee_name,
+        s.id as site_id,
+        s.nom_site,
+        c.id as client_id,
+        c.nom_entreprise,
+        c.statut as client_status
+      FROM historique_deployements h
+      JOIN employees_gas e ON h.employe_id = e.id
+      JOIN sites_gas s ON h.site_id = s.id
+      JOIN clients_gas c ON s.client_id = c.id
+      WHERE h.est_actif = 1 AND c.statut = 'INACTIF'
+    `).all();
+
+    if (activeDeploymentsInactiveClients.length > 0) {
+      issues.push({
+        type: 'ACTIVE_DEPLOYMENTS_INACTIVE_CLIENT',
+        count: activeDeploymentsInactiveClients.length,
+        description: 'Déploiements actifs sur des sites de clients inactifs',
+        deployments: activeDeploymentsInactiveClients
+      });
+    }
+
+    // Check for employees assigned to sites of inactive clients
+    const employeesAssignedToInactiveClientSites = db.prepare(`
+      SELECT 
+        e.id as employee_id,
+        e.nom_complet as employee_name,
+        e.matricule,
+        s.id as site_id,
+        s.nom_site,
+        c.id as client_id,
+        c.nom_entreprise,
+        c.statut as client_status
+      FROM employees_gas e
+      JOIN sites_gas s ON e.site_affecte_id = s.id
+      JOIN clients_gas c ON s.client_id = c.id
+      WHERE c.statut = 'INACTIF'
+    `).all();
+
+    if (employeesAssignedToInactiveClientSites.length > 0) {
+      issues.push({
+        type: 'EMPLOYEES_ASSIGNED_INACTIVE_CLIENT_SITES',
+        count: employeesAssignedToInactiveClientSites.length,
+        description: 'Employés affectés à des sites de clients inactifs',
+        employees: employeesAssignedToInactiveClientSites
+      });
+    }
+
+    return { success: true, issues };
+  } catch (error) {
+    console.error('Error checking data consistency:', error);
+    throw error;
+  }
+});
+
+// Sync site assignments with active deployments
+ipcMain.handle('db-sync-site-assignments', async () => {
+  try {
+    // Update employees_gas.site_affecte_id to match their active deployment
+    const result = db.prepare(`
+      UPDATE employees_gas 
+      SET site_affecte_id = (
+        SELECT h.site_id 
+        FROM historique_deployements h 
+        WHERE h.employe_id = employees_gas.id AND h.est_actif = 1
+      ),
+      modifie_le = CURRENT_TIMESTAMP
+      WHERE id IN (
+        SELECT e.id
+        FROM employees_gas e
+        JOIN historique_deployements h ON e.id = h.employe_id AND h.est_actif = 1
+        WHERE e.poste != 'ROTEUR' 
+          AND e.statut = 'ACTIF'
+          AND (e.site_affecte_id IS NULL OR e.site_affecte_id != h.site_id)
+      )
+    `).run();
+
+    return { 
+      success: true, 
+      employeesUpdated: result.changes,
+      message: `${result.changes} employé(s) synchronisé(s)`
+    };
+  } catch (error) {
+    console.error('Error syncing site assignments:', error);
+    throw error;
+  }
+});
+
+// Fix client-site status inconsistencies
+ipcMain.handle('db-fix-client-site-consistency', async () => {
+  try {
+    // Use a transaction to ensure all operations succeed together
+    const deactivateSites = db.prepare(`
+      UPDATE sites_gas 
+      SET est_actif = 0, modifie_le = CURRENT_TIMESTAMP
+      WHERE est_actif = 1 
+        AND client_id IN (SELECT id FROM clients_gas WHERE statut = 'INACTIF')
+    `);
+    
+    const closeDeployments = db.prepare(`
+      UPDATE historique_deployements 
+      SET est_actif = 0, date_fin = CURRENT_TIMESTAMP, modifie_le = CURRENT_TIMESTAMP 
+      WHERE est_actif = 1 
+        AND site_id IN (
+          SELECT s.id FROM sites_gas s 
+          JOIN clients_gas c ON s.client_id = c.id 
+          WHERE c.statut = 'INACTIF'
+        )
+    `);
+    
+    const clearEmployeeAssignments = db.prepare(`
+      UPDATE employees_gas 
+      SET site_affecte_id = NULL, modifie_le = CURRENT_TIMESTAMP 
+      WHERE site_affecte_id IN (
+        SELECT s.id FROM sites_gas s 
+        JOIN clients_gas c ON s.client_id = c.id 
+        WHERE c.statut = 'INACTIF'
+      )
+    `);
+
+    // Execute all operations in a transaction
+    const transaction = db.transaction(() => {
+      const sitesResult = deactivateSites.run();
+      const deploymentsResult = closeDeployments.run();
+      const employeesResult = clearEmployeeAssignments.run();
+      
+      return {
+        sitesDeactivated: sitesResult.changes,
+        deploymentsClosed: deploymentsResult.changes,
+        employeeAssignmentsCleared: employeesResult.changes
+      };
+    });
+
+    const results = transaction();
+
+    return { 
+      success: true, 
+      ...results,
+      message: `Cohérence restaurée: ${results.sitesDeactivated} site(s) désactivé(s), ${results.deploymentsClosed} déploiement(s) fermé(s), ${results.employeeAssignmentsCleared} affectation(s) d'employé supprimée(s)`
+    };
+  } catch (error) {
+    console.error('Error fixing client-site consistency:', error);
+    throw error;
+  }
+});
+
+// Debug function to test client deactivation workflow
+ipcMain.handle('db-test-client-deactivation', async (event, clientId) => {
+  try {
+    console.log(`🧪 Testing client deactivation workflow for client: ${clientId}`);
+    
+    // Check current state
+    const client = db.prepare('SELECT * FROM clients_gas WHERE id = ?').get(clientId);
+    const sites = db.prepare('SELECT * FROM sites_gas WHERE client_id = ?').all(clientId);
+    const activeDeployments = db.prepare(`
+      SELECT h.*, e.nom_complet, s.nom_site 
+      FROM historique_deployements h
+      JOIN employees_gas e ON h.employe_id = e.id
+      JOIN sites_gas s ON h.site_id = s.id
+      WHERE h.est_actif = 1 AND s.client_id = ?
+    `).all(clientId);
+    const assignedEmployees = db.prepare(`
+      SELECT e.*, s.nom_site
+      FROM employees_gas e
+      JOIN sites_gas s ON e.site_affecte_id = s.id
+      WHERE s.client_id = ?
+    `).all(clientId);
+    
+    return {
+      client,
+      sites,
+      activeDeployments,
+      assignedEmployees,
+      summary: {
+        clientStatus: client?.statut,
+        totalSites: sites.length,
+        activeSites: sites.filter(s => s.est_actif).length,
+        activeDeployments: activeDeployments.length,
+        assignedEmployees: assignedEmployees.length
+      }
+    };
+  } catch (error) {
+    console.error('Error testing client deactivation:', error);
+    throw error;
+  }
+});
+
+// ============================================================================
+// USER SETTINGS AND PREFERENCES
+// ============================================================================
+
+// Get user settings
+ipcMain.handle('db-get-user-settings', async (event, userId) => {
+  try {
+    // For now, return default settings since we don't have a users table
+    // In a real implementation, you would fetch from a user_settings table
+    const defaultSettings = {
+      id: `settings-${userId}`,
+      user_id: userId,
+      user_role: 'ADMIN', // This should come from actual user data
+      quick_actions: [
+        { id: 'add-employee', label: 'Ajouter Employé', icon: 'UserPlus', module: 'RH', color: 'blue', roles: ['ADMIN', 'HR'] },
+        { id: 'add-client', label: 'Nouveau Client', icon: 'Building', module: 'Finance', color: 'green', roles: ['ADMIN', 'FINANCE'] },
+        { id: 'create-invoice', label: 'Créer Facture', icon: 'FileText', module: 'Finance', color: 'purple', roles: ['ADMIN', 'FINANCE'] },
+        { id: 'view-reports', label: 'Rapports', icon: 'BarChart', module: 'Rapports', color: 'orange', roles: ['ADMIN', 'MANAGER'] }
+      ],
+      preferences: {
+        theme: 'light',
+        language: 'fr',
+        notifications: true,
+        autoSave: true,
+        compactView: false,
+        showWelcomeBanner: true,
+        dateFormat: 'DD/MM/YYYY',
+        currency: 'USD',
+        itemsPerPage: 25
+      }
+    };
+
+    return defaultSettings;
+  } catch (error) {
+    console.error('Error getting user settings:', error);
+    throw error;
+  }
+});
+
+// Save user settings
+ipcMain.handle('db-save-user-settings', async (event, settings) => {
+  try {
+    // For now, just return success since we don't have persistent storage
+    // In a real implementation, you would save to a user_settings table
+    console.log('Saving user settings:', settings);
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving user settings:', error);
+    throw error;
+  }
+});
+
+// Get available quick actions based on user role
+ipcMain.handle('db-get-available-quick-actions', async (event, userRole) => {
+  try {
+    const allActions = [
+      { id: 'add-employee', label: 'Ajouter Employé', icon: 'UserPlus', module: 'RH', color: 'blue', roles: ['ADMIN', 'HR'] },
+      { id: 'add-client', label: 'Nouveau Client', icon: 'Building', module: 'Finance', color: 'green', roles: ['ADMIN', 'FINANCE'] },
+      { id: 'create-invoice', label: 'Créer Facture', icon: 'FileText', module: 'Finance', color: 'purple', roles: ['ADMIN', 'FINANCE'] },
+      { id: 'view-reports', label: 'Rapports', icon: 'BarChart', module: 'Rapports', color: 'orange', roles: ['ADMIN', 'MANAGER'] },
+      { id: 'add-site', label: 'Nouveau Site', icon: 'MapPin', module: 'Operations', color: 'indigo', roles: ['ADMIN', 'OPERATIONS'] },
+      { id: 'fleet-management', label: 'Gestion Flotte', icon: 'Truck', module: 'Operations', color: 'gray', roles: ['ADMIN', 'OPERATIONS'] },
+      { id: 'payroll', label: 'Paie', icon: 'DollarSign', module: 'Paie', color: 'emerald', roles: ['ADMIN', 'HR'] },
+      { id: 'inventory', label: 'Inventaire', icon: 'Package', module: 'Inventaire', color: 'amber', roles: ['ADMIN', 'INVENTORY'] },
+      { id: 'disciplinary', label: 'Actions Disciplinaires', icon: 'AlertTriangle', module: 'RH', color: 'red', roles: ['ADMIN', 'HR'] },
+      { id: 'roteur-management', label: 'Gestion Rôteurs', icon: 'RotateCcw', module: 'Operations', color: 'cyan', roles: ['ADMIN', 'OPERATIONS'] }
+    ];
+
+    // Filter actions based on user role
+    const availableActions = allActions.filter(action => 
+      action.roles.includes(userRole) || userRole === 'ADMIN'
+    );
+
+    return availableActions;
+  } catch (error) {
+    console.error('Error getting available quick actions:', error);
+    throw error;
+  }
+});
+
+// Change user password
+ipcMain.handle('db-change-user-password', async (event, userId, currentPassword, newPassword) => {
+  try {
+    // For now, just simulate password change since we don't have user authentication
+    // In a real implementation, you would:
+    // 1. Verify current password
+    // 2. Hash new password
+    // 3. Update user record
+    console.log(`Password change requested for user ${userId}`);
+    
+    // Simulate password verification (always fail for demo)
+    if (currentPassword !== 'admin') {
+      throw new Error('Mot de passe actuel incorrect');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error changing user password:', error);
+    throw error;
+  }
+});
+
+// Export user data
+ipcMain.handle('db-export-user-data', async (event, userId) => {
+  try {
+    // Export relevant user data
+    const userData = {
+      user_id: userId,
+      export_date: new Date().toISOString(),
+      settings: {
+        preferences: {
+          theme: 'light',
+          language: 'fr',
+          notifications: true,
+          autoSave: true,
+          compactView: false,
+          showWelcomeBanner: true,
+          dateFormat: 'DD/MM/YYYY',
+          currency: 'USD',
+          itemsPerPage: 25
+        }
+      },
+      // Add other user-specific data as needed
+      metadata: {
+        export_version: '1.0',
+        application: 'Go Ahead Security'
+      }
+    };
+
+    return userData;
+  } catch (error) {
+    console.error('Error exporting user data:', error);
+    throw error;
+  }
+});
+
+// Import user data
+ipcMain.handle('db-import-user-data', async (event, userId, data) => {
+  try {
+    // Validate import data structure
+    if (!data || !data.settings) {
+      throw new Error('Format de données invalide');
+    }
+
+    // In a real implementation, you would:
+    // 1. Validate data structure
+    // 2. Merge with existing settings
+    // 3. Save to database
+    console.log(`Importing user data for user ${userId}:`, data);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error importing user data:', error);
     throw error;
   }
 });

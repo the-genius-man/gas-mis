@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit, MapPin, Phone, Mail, Calendar, Building, Clock, Package, AlertTriangle, DollarSign } from 'lucide-react';
+import { X, Edit, MapPin, Phone, Mail, Calendar, Building, Clock, Package, AlertTriangle, DollarSign, FileText, Eye, Download } from 'lucide-react';
 import { EmployeeGASFull, HistoriqueDeployement, CongeProvision, Equipement, ActionDisciplinaire } from '../../types';
 import DeploymentHistory from './DeploymentHistory';
+import Pagination from '../common/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 
 interface EmployeeDetailModalProps {
   employee: EmployeeGASFull;
@@ -24,6 +26,29 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({ employee, onC
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedSalary, setSelectedSalary] = useState<any>(null);
+
+  // Pagination for different sections
+  const ITEMS_PER_PAGE = 10;
+  
+  // Unpaid salaries pagination
+  const unpaidSalariesData = unpaidSalaries.filter(s => s.statut !== 'PAYE_TOTAL');
+  const unpaidPagination = usePagination({ 
+    data: unpaidSalariesData, 
+    itemsPerPage: ITEMS_PER_PAGE 
+  });
+
+  // Payment history pagination
+  const paidSalariesData = unpaidSalaries.filter(s => s.statut === 'PAYE_TOTAL');
+  const paidPagination = usePagination({ 
+    data: paidSalariesData, 
+    itemsPerPage: ITEMS_PER_PAGE 
+  });
+
+  // Disciplinary actions pagination
+  const disciplinaryPagination = usePagination({ 
+    data: disciplinaryActions, 
+    itemsPerPage: ITEMS_PER_PAGE 
+  });
 
   useEffect(() => {
     loadDetails();
@@ -85,8 +110,16 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({ employee, onC
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl">
-              {employee.nom_complet.charAt(0)}
+            <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl overflow-hidden">
+              {employee.photo_url ? (
+                <img
+                  src={employee.photo_url}
+                  alt={`Photo de ${employee.nom_complet}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                employee.nom_complet.charAt(0)
+              )}
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">{employee.nom_complet}</h2>
@@ -236,24 +269,142 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({ employee, onC
                     </div>
                   </div>
 
-                  {/* Current Deployment */}
-                  {employeeDetails?.currentDeployment && (
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Déploiement Actuel</h3>
-                      <div className="bg-blue-50 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                          <MapPin className="w-5 h-5 text-blue-600" />
-                          <div>
-                            <p className="font-medium text-blue-900">{employeeDetails.currentDeployment.nom_site}</p>
-                            <p className="text-sm text-blue-700">{employeeDetails.currentDeployment.client_nom}</p>
-                            <p className="text-xs text-blue-600">
-                              Depuis le {formatDate(employeeDetails.currentDeployment.date_debut)} • Poste: {employeeDetails.currentDeployment.poste}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                  {/* Documents */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Documents</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border border-gray-200 rounded-lg">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                              Type de Document
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                              Statut
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-blue-500" />
+                                <span className="font-medium text-gray-900">Photo de Profil</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                employee.photo_url ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {employee.photo_url ? '✓ Fournie' : '✗ Manquante'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-center">
+                              {employee.photo_url ? (
+                                <button
+                                  onClick={() => window.open(employee.photo_url, '_blank')}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                  title="Voir la photo"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-blue-500" />
+                                <span className="font-medium text-gray-900">Pièce d'Identité</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                employee.document_id_url ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {employee.document_id_url ? '✓ Fournie' : '✗ Manquante'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-center">
+                              {employee.document_id_url ? (
+                                <button
+                                  onClick={() => window.open(employee.document_id_url, '_blank')}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                  title="Voir le document"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-green-500" />
+                                <span className="font-medium text-gray-900">Curriculum Vitae</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                employee.document_cv_url ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {employee.document_cv_url ? '✓ Fourni' : '✗ Manquant'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-center">
+                              {employee.document_cv_url ? (
+                                <button
+                                  onClick={() => window.open(employee.document_cv_url, '_blank')}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                                  title="Voir le document"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                          <tr className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-purple-500" />
+                                <span className="font-medium text-gray-900">Casier Judiciaire</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                employee.document_casier_url ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {employee.document_casier_url ? '✓ Fourni' : '✗ Manquant'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-center">
+                              {employee.document_casier_url ? (
+                                <button
+                                  onClick={() => window.open(employee.document_casier_url, '_blank')}
+                                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                                  title="Voir le document"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                  )}
+                  </div>
+
                 </div>
               )}
 
@@ -299,68 +450,99 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({ employee, onC
                     </div>
                   </div>
 
-                  {/* Unpaid Salaries List */}
+                  {/* Unpaid Salaries Table */}
                   <div>
                     <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Salaires en Attente</h3>
-                    {unpaidSalaries.filter(s => s.statut !== 'PAYE_TOTAL').length > 0 ? (
-                      <div className="space-y-3">
-                        {unpaidSalaries
-                          .filter(s => s.statut !== 'PAYE_TOTAL')
-                          .sort((a, b) => new Date(a.date_echeance).getTime() - new Date(b.date_echeance).getTime())
-                          .map((salary) => {
-                            const echeanceDate = new Date(salary.date_echeance);
-                            const periodMonth = echeanceDate.getMonth() === 0 ? 12 : echeanceDate.getMonth();
-                            const periodYear = echeanceDate.getMonth() === 0 ? echeanceDate.getFullYear() - 1 : echeanceDate.getFullYear();
-                            const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-                            
-                            return (
-                              <div key={salary.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <span className="font-medium text-gray-900">
-                                        {monthNames[periodMonth - 1]} {periodYear}
-                                      </span>
-                                      <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                        salary.statut === 'IMPAYE' ? 'bg-red-100 text-red-800' :
-                                        salary.statut === 'PAYE_PARTIEL' ? 'bg-yellow-100 text-yellow-800' :
-                                        'bg-green-100 text-green-800'
-                                      }`}>
-                                        {salary.statut.replace(/_/g, ' ')}
-                                      </span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                      <div>
-                                        <p className="text-gray-500">Montant Net Dû</p>
-                                        <p className="font-medium">${salary.montant_net_du.toFixed(2)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-gray-500">Déjà Payé</p>
-                                        <p className="font-medium text-green-600">${salary.montant_paye.toFixed(2)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-gray-500">Restant</p>
-                                        <p className="font-medium text-red-600">${salary.montant_restant.toFixed(2)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-gray-500">Échéance</p>
-                                        <p className="font-medium">{formatDate(salary.date_echeance)}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedSalary(salary);
-                                      setShowPaymentModal(true);
-                                    }}
-                                    className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                                  >
-                                    Payer
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
+                    {unpaidSalariesData.length > 0 ? (
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Période
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Statut
+                                </th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Net Dû
+                                </th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Payé
+                                </th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Restant
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Échéance
+                                </th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {unpaidPagination.paginatedData
+                                .sort((a, b) => new Date(a.date_echeance).getTime() - new Date(b.date_echeance).getTime())
+                                .map((salary) => {
+                                  const echeanceDate = new Date(salary.date_echeance);
+                                  const periodMonth = echeanceDate.getMonth() === 0 ? 12 : echeanceDate.getMonth();
+                                  const periodYear = echeanceDate.getMonth() === 0 ? echeanceDate.getFullYear() - 1 : echeanceDate.getFullYear();
+                                  const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+                                  
+                                  return (
+                                    <tr key={salary.id} className="hover:bg-gray-50 transition-colors">
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className="font-medium text-gray-900">
+                                          {monthNames[periodMonth - 1]} {periodYear}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                          salary.statut === 'IMPAYE' ? 'bg-red-100 text-red-800' :
+                                          salary.statut === 'PAYE_PARTIEL' ? 'bg-yellow-100 text-yellow-800' :
+                                          'bg-green-100 text-green-800'
+                                        }`}>
+                                          {salary.statut.replace(/_/g, ' ')}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                                        <span className="font-medium text-gray-900">${salary.montant_net_du.toFixed(2)}</span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                                        <span className="font-medium text-green-600">${salary.montant_paye.toFixed(2)}</span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                                        <span className="font-medium text-red-600">${salary.montant_restant.toFixed(2)}</span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className="font-medium text-blue-600">{formatDate(salary.date_echeance)}</span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                                        <button
+                                          onClick={() => {
+                                            setSelectedSalary(salary);
+                                            setShowPaymentModal(true);
+                                          }}
+                                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                                        >
+                                          Payer
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <Pagination
+                          currentPage={unpaidPagination.currentPage}
+                          totalPages={unpaidPagination.totalPages}
+                          onPageChange={unpaidPagination.setCurrentPage}
+                          itemsPerPage={ITEMS_PER_PAGE}
+                          totalItems={unpaidSalariesData.length}
+                        />
                       </div>
                     ) : (
                       <div className="text-center py-8 text-gray-500">
@@ -370,44 +552,72 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({ employee, onC
                     )}
                   </div>
 
-                  {/* Payment History */}
+                  {/* Payment History Table */}
                   <div>
                     <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Historique des Paiements</h3>
-                    {unpaidSalaries.filter(s => s.statut === 'PAYE_TOTAL').length > 0 ? (
-                      <div className="space-y-2">
-                        {unpaidSalaries
-                          .filter(s => s.statut === 'PAYE_TOTAL')
-                          .sort((a, b) => new Date(b.date_echeance).getTime() - new Date(a.date_echeance).getTime())
-                          .map((salary) => {
-                            const echeanceDate = new Date(salary.date_echeance);
-                            const periodMonth = echeanceDate.getMonth() === 0 ? 12 : echeanceDate.getMonth();
-                            const periodYear = echeanceDate.getMonth() === 0 ? echeanceDate.getFullYear() - 1 : echeanceDate.getFullYear();
-                            const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-                            
-                            return (
-                              <div key={salary.id} className="border rounded-lg p-3 bg-green-50 border-green-200">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                                      <DollarSign className="w-4 h-4 text-green-600" />
-                                    </div>
-                                    <div>
-                                      <p className="font-medium text-gray-900">
-                                        {monthNames[periodMonth - 1]} {periodYear}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        Payé le {formatDate(salary.modifie_le)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="font-semibold text-green-700">${salary.montant_net_du.toFixed(2)}</p>
-                                    <p className="text-xs text-green-600">{salary.devise}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                    {paidSalariesData.length > 0 ? (
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Période
+                                </th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Montant Payé
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Devise
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                  Date de Paiement
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {paidPagination.paginatedData
+                                .sort((a, b) => new Date(b.date_echeance).getTime() - new Date(a.date_echeance).getTime())
+                                .map((salary) => {
+                                  const echeanceDate = new Date(salary.date_echeance);
+                                  const periodMonth = echeanceDate.getMonth() === 0 ? 12 : echeanceDate.getMonth();
+                                  const periodYear = echeanceDate.getMonth() === 0 ? echeanceDate.getFullYear() - 1 : echeanceDate.getFullYear();
+                                  const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+                                  
+                                  return (
+                                    <tr key={salary.id} className="hover:bg-gray-50 transition-colors bg-green-50">
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                                            <DollarSign className="w-3 h-3 text-green-600" />
+                                          </div>
+                                          <span className="font-medium text-gray-900">
+                                            {monthNames[periodMonth - 1]} {periodYear}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                                        <span className="font-semibold text-green-700">${salary.montant_net_du.toFixed(2)}</span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className="text-sm text-green-600">{salary.devise}</span>
+                                      </td>
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className="text-sm text-gray-500">{formatDate(salary.modifie_le)}</span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <Pagination
+                          currentPage={paidPagination.currentPage}
+                          totalPages={paidPagination.totalPages}
+                          onPageChange={paidPagination.setCurrentPage}
+                          itemsPerPage={ITEMS_PER_PAGE}
+                          totalItems={paidSalariesData.length}
+                        />
                       </div>
                     ) : (
                       <p className="text-gray-500 text-sm">Aucun paiement effectué</p>
@@ -497,49 +707,91 @@ const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({ employee, onC
               )}
 
               {activeTab === 'disciplinary' && (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <h3 className="text-sm font-medium text-gray-500 uppercase mb-3">Historique Disciplinaire</h3>
                   {disciplinaryActions.length > 0 ? (
-                    <div className="space-y-3">
-                      {disciplinaryActions.map((action) => (
-                        <div key={action.id} className={`border rounded-lg p-4 ${
-                          action.type_action === 'LICENCIEMENT' ? 'border-red-300 bg-red-50' :
-                          action.type_action === 'SUSPENSION' ? 'border-orange-300 bg-orange-50' :
-                          'border-yellow-300 bg-yellow-50'
-                        }`}>
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className={`px-2 py-1 text-xs font-medium rounded ${
-                                  action.type_action === 'LICENCIEMENT' ? 'bg-red-100 text-red-800' :
-                                  action.type_action === 'SUSPENSION' ? 'bg-orange-100 text-orange-800' :
-                                  action.type_action === 'AVERTISSEMENT_ECRIT' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {action.type_action.replace(/_/g, ' ')}
-                                </span>
-                                <span className={`px-2 py-1 text-xs font-medium rounded ${
-                                  action.statut === 'VALIDE' ? 'bg-green-100 text-green-800' :
-                                  action.statut === 'REJETE' ? 'bg-red-100 text-red-800' :
-                                  'bg-blue-100 text-blue-800'
-                                }`}>
-                                  {action.statut.replace(/_/g, ' ')}
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-900 font-medium">
-                                Date: {formatDate(action.date_incident)}
-                              </p>
-                              <p className="text-sm text-gray-700 mt-1">{action.description_incident}</p>
-                              {action.impact_financier && (
-                                <p className="text-sm text-red-600 mt-2 font-medium">
-                                  Déduction: {action.montant_deduction} USD
-                                  {action.jours_suspension > 0 && ` (${action.jours_suspension} jours)`}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                Type d'Action
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                Statut
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                Date Incident
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                Description
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                Lieu
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                Impact Financier
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {disciplinaryPagination.paginatedData.map((action) => (
+                              <tr key={action.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                    action.type_action === 'LICENCIEMENT' ? 'bg-red-100 text-red-800' :
+                                    action.type_action === 'SUSPENSION' ? 'bg-orange-100 text-orange-800' :
+                                    action.type_action === 'AVERTISSEMENT_ECRIT' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {action.type_action.replace(/_/g, ' ')}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                    action.statut === 'VALIDE' ? 'bg-green-100 text-green-800' :
+                                    action.statut === 'REJETE' ? 'bg-red-100 text-red-800' :
+                                    'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {action.statut.replace(/_/g, ' ')}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                  {formatDate(action.date_incident)}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-700 max-w-xs">
+                                  <div className="truncate" title={action.description_incident}>
+                                    {action.description_incident}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                  {action.lieu_incident || '-'}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                  {action.impact_financier ? (
+                                    <div className="text-red-600 font-medium">
+                                      <div>${action.montant_deduction}</div>
+                                      {action.jours_suspension > 0 && (
+                                        <div className="text-xs">{action.jours_suspension} jours</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <Pagination
+                        currentPage={disciplinaryPagination.currentPage}
+                        totalPages={disciplinaryPagination.totalPages}
+                        onPageChange={disciplinaryPagination.setCurrentPage}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        totalItems={disciplinaryActions.length}
+                      />
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500">

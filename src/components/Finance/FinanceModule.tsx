@@ -19,6 +19,10 @@ export default function FinanceModule() {
   // Memoize electron detection
   const electronMode = useMemo(() => isElectron(), []);
 
+  const navigateToSites = () => {
+    setActiveTab('sites');
+  };
+
   const tabs = [
     {
       id: 'clients' as Tab,
@@ -48,7 +52,7 @@ export default function FinanceModule() {
 
     switch (activeTab) {
       case 'clients':
-        return <ClientsManagement />;
+        return <ClientsManagement onNavigateToSites={navigateToSites} />;
       case 'sites':
         return <SitesManagement />;
       default:

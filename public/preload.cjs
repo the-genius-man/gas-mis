@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSitesGAS: () => ipcRenderer.invoke('db-get-sites-gas'),
   addSiteGAS: (site) => ipcRenderer.invoke('db-add-site-gas', site),
   updateSiteGAS: (site) => ipcRenderer.invoke('db-update-site-gas', site),
+  updateSiteStatusGAS: (data) => ipcRenderer.invoke('db-update-site-status', data),
   deleteSiteGAS: (id) => ipcRenderer.invoke('db-delete-site-gas', id),
   
   // Factures GAS (Table: factures_clients)
@@ -122,8 +123,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   getRoteurs: (filters) => ipcRenderer.invoke('db-get-roteurs', filters),
   getRoteurAssignments: (filters) => ipcRenderer.invoke('db-get-roteur-assignments', filters),
+  getSitesEligibleForRoteur: (filters) => ipcRenderer.invoke('db-get-sites-eligible-for-roteur', filters),
   createRoteurAssignment: (assignment) => ipcRenderer.invoke('db-create-roteur-assignment', assignment),
   updateRoteurAssignment: (assignment) => ipcRenderer.invoke('db-update-roteur-assignment', assignment),
+  convertRoteurToGuard: (data) => ipcRenderer.invoke('db-convert-roteur-to-guard', data),
   getSiteCoverageGaps: (filters) => ipcRenderer.invoke('db-get-site-coverage-gaps', filters),
   
   // ============================================================================
@@ -141,6 +144,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   submitDisciplinaryForSignature: (id) => ipcRenderer.invoke('db-submit-disciplinary-for-signature', id),
   getPayrollDeductions: (filters) => ipcRenderer.invoke('db-get-payroll-deductions', filters),
   applyDisciplinaryDeductions: (data) => ipcRenderer.invoke('db-apply-disciplinary-deductions', data),
+  
+  // Enhanced Deductions System
+  getDeductionTypes: (filters) => ipcRenderer.invoke('db-get-deduction-types', filters),
+  createDeduction: (deduction) => ipcRenderer.invoke('db-create-deduction', deduction),
+  getEmployeeDeductions: (data) => ipcRenderer.invoke('db-get-employee-deductions', data),
+  calculatePeriodDeductions: (data) => ipcRenderer.invoke('db-calculate-period-deductions', data),
+  applyPeriodDeductions: (data) => ipcRenderer.invoke('db-apply-period-deductions', data),
+  updateDeduction: (data) => ipcRenderer.invoke('db-update-deduction', data),
+  cancelDeduction: (data) => ipcRenderer.invoke('db-cancel-deduction', data),
+  getDeductionHistory: (data) => ipcRenderer.invoke('db-get-deduction-history', data),
   
   // ============================================================================
   // ALERTS SYSTEM
@@ -208,6 +221,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAdvanceRepayments: (avanceId) => ipcRenderer.invoke('db-get-advance-repayments', avanceId),
   
   // ============================================================================
+  // USER AUTHENTICATION & MANAGEMENT
+  // ============================================================================
+  
+  // Authentication
+  authenticateUser: (username, password) => ipcRenderer.invoke('auth-authenticate-user', username, password),
+  getUserById: (userId) => ipcRenderer.invoke('auth-get-user-by-id', userId),
+  updateUserLastLogin: (userId) => ipcRenderer.invoke('auth-update-last-login', userId),
+  
+  // User Management
+  getUsers: () => ipcRenderer.invoke('auth-get-users'),
+  createUser: (userData) => ipcRenderer.invoke('auth-create-user', userData),
+  updateUser: (userData) => ipcRenderer.invoke('auth-update-user', userData),
+  deleteUser: (userId) => ipcRenderer.invoke('auth-delete-user', userId),
+  updateUserStatus: (userId, status) => ipcRenderer.invoke('auth-update-user-status', userId, status),
+
+  // ============================================================================
   // USER SETTINGS & QUICK ACTIONS
   // ============================================================================
   
@@ -254,6 +283,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   getHRReportStats: (dateRange) => ipcRenderer.invoke('db-get-hr-report-stats', dateRange),
   getOperationsReportStats: (dateRange) => ipcRenderer.invoke('db-get-operations-report-stats', dateRange),
+  
+  // ============================================================================
+  // FILE MANAGEMENT - Photo and Document Upload
+  // ============================================================================
+
+  saveFile: (data) => ipcRenderer.invoke('db-save-file', data),
+  deleteFile: (filePath) => ipcRenderer.invoke('db-delete-file', filePath),
+  getFilePath: (relativePath) => ipcRenderer.invoke('db-get-file-path', relativePath),
   
   // Utility
   isElectron: true

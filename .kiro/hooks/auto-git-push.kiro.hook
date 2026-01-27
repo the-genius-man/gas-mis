@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Auto Git Push",
+  "description": "Automatically generates commit messages from staged changes and pushes to GitHub when agent execution completes",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "git add . && git commit -m \"Auto-commit: Changes made by Kiro agent\" && git push origin main"
+  },
+  "workspaceFolderName": "gas-mis",
+  "shortName": "auto-git-push"
+}

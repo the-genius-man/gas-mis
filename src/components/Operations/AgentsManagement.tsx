@@ -1,8 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Users, UserCheck, Filter, Eye, Edit, MapPin } from 'lucide-react';
+import { Search, Users, UserCheck, Filter, Eye, Edit, MapPin, MoreVertical } from 'lucide-react';
 import { EmployeeGASFull } from '../../types';
 import DeploymentForm from '../HR/DeploymentForm';
 import EmployeeDetailModal from '../HR/EmployeeDetailModal';
+
+interface ActionDropdownProps {
+  employee: EmployeeGASFull;
+  isOpen: boolean;
+  onToggle: () => void;
+  onDeploy: () => void;
+}
+
+const ActionDropdown: React.FC<ActionDropdownProps> = ({
+  employee,
+  isOpen,
+  onToggle,
+  onDeploy
+}) => {
+  return (
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded hover:bg-gray-100 hover:border-gray-300 transition-colors"
+      >
+        <MoreVertical className="w-3 h-3" />
+      </button>
+      
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={onToggle}></div>
+          <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+            <div className="py-1">
+              <button
+                onClick={onDeploy}
+                className="w-full text-left px-3 py-2 text-xs text-purple-600 hover:bg-purple-50 flex items-center gap-2"
+              >
+                <UserCheck className="w-3 h-3" />
+                Déployer
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 const AgentsManagement: React.FC = () => {
   const [employees, setEmployees] = useState<EmployeeGASFull[]>([]);
@@ -14,6 +56,7 @@ const AgentsManagement: React.FC = () => {
   const [deployingEmployee, setDeployingEmployee] = useState<EmployeeGASFull | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeGASFull | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -286,16 +329,15 @@ const AgentsManagement: React.FC = () => {
                     {employee.telephone || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end gap-1">
-                      <button
-                        onClick={() => handleDeploy(employee)}
-                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded hover:bg-purple-100 hover:border-purple-300 transition-colors"
-                        title="Déployer / Transférer"
-                      >
-                        <UserCheck className="w-3 h-3 mr-1" />
-                        Déployer
-                      </button>
-                    </div>
+                    <ActionDropdown
+                      employee={employee}
+                      isOpen={openDropdown === employee.id}
+                      onToggle={() => setOpenDropdown(openDropdown === employee.id ? null : employee.id)}
+                      onDeploy={() => {
+                        handleDeploy(employee);
+                        setOpenDropdown(null);
+                      }}
+                    />
                   </td>
                 </tr>
               ))}

@@ -91,6 +91,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
   calculateLeaveProvisions: (year) => ipcRenderer.invoke('db-calculate-leave-provisions', year),
   
   // ============================================================================
+  // ROTEUR MANAGEMENT
+  // ============================================================================
+  
+  getRoteurs: (filters) => ipcRenderer.invoke('db-get-roteurs', filters),
+  getRoteurAssignments: (filters) => ipcRenderer.invoke('db-get-roteur-assignments', filters),
+  createRoteurAssignment: (assignment) => ipcRenderer.invoke('db-create-roteur-assignment', assignment),
+  updateRoteurAssignment: (assignment) => ipcRenderer.invoke('db-update-roteur-assignment', assignment),
+  getSiteCoverageGaps: (filters) => ipcRenderer.invoke('db-get-site-coverage-gaps', filters),
+  getRoteurAvailability: (data) => ipcRenderer.invoke('db-get-roteur-availability', data),
+  
+  // ============================================================================
+  // DASHBOARD STATS
+  // ============================================================================
+  
+  getHRStats: () => ipcRenderer.invoke('db-get-hr-stats'),
+  getFleetStats: () => ipcRenderer.invoke('db-get-fleet-stats'),
+  getInventoryStats: () => ipcRenderer.invoke('db-get-inventory-stats'),
+  getDisciplinaryStats: () => ipcRenderer.invoke('db-get-disciplinary-stats'),
+  
+  // ============================================================================
   // DISCIPLINARY MODULE
   // ============================================================================
   
@@ -133,12 +153,44 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateEquipment: (equipment) => ipcRenderer.invoke('db-update-equipment', equipment),
   assignEquipment: (assignment) => ipcRenderer.invoke('db-assign-equipment', assignment),
   returnEquipment: (returnData) => ipcRenderer.invoke('db-return-equipment', returnData),
-  getEmployeeEquipment: (employeId) => ipcRenderer.invoke('db-get-employee-equipment', employeId)
-});
-,
+  getEmployeeEquipment: (employeId) => ipcRenderer.invoke('db-get-employee-equipment', employeId),
 
   // ============================================================================
   // PAYROLL MODULE - Additional Functions
   // ============================================================================
 
-  flushPayroll: () => ipcRenderer.invoke('db-flush-payroll')
+  flushPayroll: () => ipcRenderer.invoke('db-flush-payroll'),
+  
+  // Disciplinary Deductions Integration
+  getPayrollDeductions: (filters) => ipcRenderer.invoke('db-get-payroll-deductions', filters),
+  applyDisciplinaryDeductions: (data) => ipcRenderer.invoke('db-apply-disciplinary-deductions', data),
+
+  // ============================================================================
+  // FILE MANAGEMENT - Photo and Document Upload
+  // ============================================================================
+
+  saveFile: (data) => ipcRenderer.invoke('db-save-file', data),
+  deleteFile: (filePath) => ipcRenderer.invoke('db-delete-file', filePath),
+  getFilePath: (relativePath) => ipcRenderer.invoke('db-get-file-path', relativePath),
+
+  // ============================================================================
+  // DATA CONSISTENCY UTILITIES
+  // ============================================================================
+  
+  cleanupRoteurAssignments: () => ipcRenderer.invoke('db-cleanup-roteur-assignments'),
+  checkDataConsistency: () => ipcRenderer.invoke('db-check-data-consistency'),
+  syncSiteAssignments: () => ipcRenderer.invoke('db-sync-site-assignments'),
+  fixClientSiteConsistency: () => ipcRenderer.invoke('db-fix-client-site-consistency'),
+  testClientDeactivation: (clientId) => ipcRenderer.invoke('db-test-client-deactivation', clientId),
+
+  // ============================================================================
+  // USER SETTINGS AND PREFERENCES
+  // ============================================================================
+  
+  getUserSettings: (userId) => ipcRenderer.invoke('db-get-user-settings', userId),
+  saveUserSettings: (settings) => ipcRenderer.invoke('db-save-user-settings', settings),
+  getAvailableQuickActions: (userRole) => ipcRenderer.invoke('db-get-available-quick-actions', userRole),
+  changeUserPassword: (userId, currentPassword, newPassword) => ipcRenderer.invoke('db-change-user-password', userId, currentPassword, newPassword),
+  exportUserData: (userId) => ipcRenderer.invoke('db-export-user-data', userId),
+  importUserData: (userId, data) => ipcRenderer.invoke('db-import-user-data', userId, data)
+});

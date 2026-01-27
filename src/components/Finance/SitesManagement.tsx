@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { 
   Plus, Search, MapPin, Edit, Trash2, Building2, DollarSign,
-  AlertCircle, Sun, Moon, Navigation, FileText, List, LayoutGrid, Eye
+  AlertCircle, Sun, Moon, Navigation, FileText, List, LayoutGrid, Eye,
+  Power, PowerOff
 } from 'lucide-react';
 import { SiteGAS, ClientGAS } from '../../types';
 import SiteForm from './SiteForm';
@@ -73,6 +74,47 @@ export default function SitesManagement() {
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       alert('Erreur lors de la suppression du site');
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: boolean) => {
+    const site = sites.find(s => s.id === id);
+    const statusText = newStatus ? 'activer' : 'désactiver';
+    const confirmMessage = newStatus 
+      ? `Voulez-vous vraiment activer le site "${site?.nom_site}" ?`
+      : `Voulez-vous vraiment désactiver le site "${site?.nom_site}" ?\n\nCela fermera automatiquement tous les déploiements actifs et supprimera les affectations des gardes à ce site.`;
+    
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      console.log(`🔄 Frontend: Changing site ${id} status to ${newStatus ? 'ACTIF' : 'INACTIF'}`);
+      
+      if (electronMode && window.electronAPI?.updateSiteStatusGAS) {
+        console.log(`📡 Frontend: Calling backend updateSiteStatusGAS...`);
+        const result = await window.electronAPI.updateSiteStatusGAS({ id, est_actif: newStatus });
+        console.log('✅ Frontend: Site status change result:', result);
+        
+        // Show detailed results if it was a deactivation
+        if (!newStatus && result.deploymentsClosed !== undefined) {
+          alert(`Site désactivé avec succès!\n\n` +
+                `Résultats:\n` +
+                `• Site mis à jour: ${result.siteUpdated || 0}\n` +
+                `• Déploiements fermés: ${result.deploymentsClosed || 0}\n` +
+                `• Affectations supprimées: ${result.employeeAssignmentsCleared || 0}`);
+        } else if (!newStatus) {
+          alert(`Site désactivé, mais aucun détail sur les changements cascadés n'a été retourné.`);
+        } else {
+          alert(`Site activé avec succès!`);
+        }
+        
+        await loadData();
+      } else {
+        console.log(`❌ Frontend: Cannot change status - electronMode: ${electronMode}, API available: ${!!window.electronAPI?.updateSiteStatusGAS}`);
+        alert('Cette fonctionnalité nécessite le mode Electron');
+      }
+    } catch (error) {
+      console.error('❌ Frontend: Erreur lors du changement de statut:', error);
+      alert('Erreur lors du changement de statut: ' + error.message);
     }
   };
 
@@ -327,6 +369,17 @@ export default function SitesManagement() {
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
+                        onClick={() => handleStatusChange(site.id, !site.est_actif)}
+                        className={`p-1.5 rounded transition-colors ${
+                          site.est_actif
+                            ? 'text-orange-600 hover:bg-orange-50'
+                            : 'text-green-600 hover:bg-green-50'
+                        }`}
+                        title={site.est_actif ? 'Désactiver le site' : 'Activer le site'}
+                      >
+                        {site.est_actif ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                      </button>
+                      <button
                         onClick={() => {
                           setEditingSite(site);
                           setShowForm(true);
@@ -462,6 +515,18 @@ export default function SitesManagement() {
                   <span>Détails</span>
                 </button>
                 <button
+                  onClick={() => handleStatusChange(site.id, !site.est_actif)}
+                  className={`flex-1 px-3 py-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-sm font-medium ${
+                    site.est_actif
+                      ? 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                      : 'bg-green-50 text-green-700 hover:bg-green-100'
+                  }`}
+                  title={site.est_actif ? 'Désactiver' : 'Activer'}
+                >
+                  {site.est_actif ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                  <span>{site.est_actif ? 'Désactiver' : 'Activer'}</span>
+                </button>
+                <button
                   onClick={() => {
                     setEditingSite(site);
                     setShowForm(true);
@@ -473,10 +538,10 @@ export default function SitesManagement() {
                 </button>
                 <button
                   onClick={() => handleDelete(site.id)}
-                  className="flex-1 bg-red-50 text-red-700 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center gap-1 text-sm font-medium"
+                  className="bg-red-50 text-red-700 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors flex items-center justify-center"
+                  title="Supprimer"
                 >
                   <Trash2 className="h-4 w-4" />
-                  <span>Supprimer</span>
                 </button>
               </div>
             </div>

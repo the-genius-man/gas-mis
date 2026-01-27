@@ -23,7 +23,7 @@ interface ClientWithStats extends ClientGAS {
   sitesCount: number;
 }
 
-export default function ClientsManagement() {
+export default function ClientsManagement({ onNavigateToSites }: { onNavigateToSites?: () => void }) {
   const electronMode = useMemo(() => isElectron(), []);
   
   const [clients, setClients] = useState<ClientGAS[]>([]);
@@ -98,14 +98,37 @@ export default function ClientsManagement() {
 
   const handleStatusChange = async (id: string, newStatus: 'ACTIF' | 'INACTIF' | 'SUPPRIME') => {
     try {
+      console.log(`🔄 Frontend: Changing client ${id} status to ${newStatus}`);
+      console.log(`🔍 Frontend: Electron mode: ${electronMode}`);
+      console.log(`🔍 Frontend: electronAPI available:`, !!window.electronAPI);
+      console.log(`🔍 Frontend: updateClientStatusGAS available:`, !!window.electronAPI?.updateClientStatusGAS);
+      
       if (electronMode && window.electronAPI?.updateClientStatusGAS) {
-        await window.electronAPI.updateClientStatusGAS({ id, statut: newStatus });
+        console.log(`📡 Frontend: Calling backend updateClientStatusGAS...`);
+        const result = await window.electronAPI.updateClientStatusGAS({ id, statut: newStatus });
+        console.log('✅ Frontend: Status change result:', result);
+        
+        // Show detailed results if it was a deactivation
+        if (newStatus === 'INACTIF' && result.sitesDeactivated !== undefined) {
+          alert(`Client désactivé avec succès!\n\n` +
+                `Résultats:\n` +
+                `• Client mis à jour: ${result.clientUpdated || 0}\n` +
+                `• Sites désactivés: ${result.sitesDeactivated || 0}\n` +
+                `• Déploiements fermés: ${result.deploymentsClosed || 0}\n` +
+                `• Affectations supprimées: ${result.employeeAssignmentsCleared || 0}`);
+        } else if (newStatus === 'INACTIF') {
+          alert(`Client désactivé, mais aucun détail sur les changements cascadés n'a été retourné.`);
+        }
+        
         setViewingClient(null);
         await loadData();
+      } else {
+        console.log(`❌ Frontend: Cannot change status - electronMode: ${electronMode}, API available: ${!!window.electronAPI?.updateClientStatusGAS}`);
+        alert('Cette fonctionnalité nécessite le mode Electron');
       }
     } catch (error) {
-      console.error('Erreur lors du changement de statut:', error);
-      alert('Erreur lors du changement de statut');
+      console.error('❌ Frontend: Erreur lors du changement de statut:', error);
+      alert('Erreur lors du changement de statut: ' + error.message);
     }
   };
 
@@ -509,6 +532,7 @@ export default function ClientsManagement() {
             setShowForm(true);
           }}
           onStatusChange={handleStatusChange}
+          onNavigateToSites={onNavigateToSites}
         />
       )}
     </div>
