@@ -124,6 +124,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRoteurs: (filters) => ipcRenderer.invoke('db-get-roteurs', filters),
   getRoteurAssignments: (filters) => ipcRenderer.invoke('db-get-roteur-assignments', filters),
   getSitesEligibleForRoteur: (filters) => ipcRenderer.invoke('db-get-sites-eligible-for-roteur', filters),
+  debugRoteurSites: () => ipcRenderer.invoke('db-debug-roteur-sites'),
+  testQuery: (query) => ipcRenderer.invoke('db-test-query', query),
   createRoteurAssignment: (assignment) => ipcRenderer.invoke('db-create-roteur-assignment', assignment),
   updateRoteurAssignment: (assignment) => ipcRenderer.invoke('db-update-roteur-assignment', assignment),
   convertRoteurToGuard: (data) => ipcRenderer.invoke('db-convert-roteur-to-guard', data),

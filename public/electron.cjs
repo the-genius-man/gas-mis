@@ -1435,6 +1435,111 @@ ipcMain.handle('db-convert-roteur-to-guard', async (event, { roteurId, reason })
   }
 });
 
+// Simple test to check database state
+ipcMain.handle('db-test-query', async (event, query) => {
+  try {
+    console.log(`🔍 TEST QUERY: ${query}`);
+    const result = db.prepare(query).all();
+    console.log(`📊 RESULT:`, result);
+    return result;
+  } catch (error) {
+    console.error('❌ TEST QUERY ERROR:', error);
+    throw error;
+  }
+});
+
+// Debug handler to check site and employee data
+ipcMain.handle('db-debug-roteur-sites', async (event) => {
+  try {
+    console.log('🔍 DEBUG: Checking roteur sites data...');
+    
+    // Check all sites
+    const allSites = db.prepare(`
+      SELECT s.id, s.nom_site, s.est_actif, c.nom_entreprise as client_nom
+      FROM sites_gas s
+      LEFT JOIN clients_gas c ON s.client_id = c.id
+      ORDER BY s.nom_site
+    `).all();
+    console.log(`📊 Total sites: ${allSites.length}`);
+    console.log('Sites:', allSites);
+    
+    // Check all employees
+    const allEmployees = db.prepare(`
+      SELECT e.id, e.nom_complet, e.poste, e.statut, e.site_affecte_id, s.nom_site
+      FROM employees_gas e
+      LEFT JOIN sites_gas s ON e.site_affecte_id = s.id
+      WHERE e.statut = 'ACTIF'
+      ORDER BY e.nom_complet
+    `).all();
+    console.log(`📊 Total active employees: ${allEmployees.length}`);
+    console.log('Employees:', allEmployees);
+    
+    // Check guards specifically
+    const guards = db.prepare(`
+      SELECT e.id, e.nom_complet, e.poste, e.statut, e.site_affecte_id, s.nom_site
+      FROM employees_gas e
+      LEFT JOIN sites_gas s ON e.site_affecte_id = s.id
+      WHERE e.statut = 'ACTIF' AND e.poste = 'GARDE'
+      ORDER BY e.nom_complet
+    `).all();
+    console.log(`📊 Active guards: ${guards.length}`);
+    console.log('Guards:', guards);
+    
+    // Check site guard counts
+    const siteGuardCounts = db.prepare(`
+      SELECT 
+        s.id, s.nom_site, s.est_actif,
+        COUNT(e.id) as guard_count,
+        GROUP_CONCAT(e.nom_complet) as guard_names
+      FROM sites_gas s
+      LEFT JOIN employees_gas e ON e.site_affecte_id = s.id 
+        AND e.statut = 'ACTIF' 
+        AND e.poste = 'GARDE'
+      WHERE s.est_actif = 1
+      GROUP BY s.id
+      ORDER BY s.nom_site
+    `).all();
+    console.log(`📊 Site guard counts: ${siteGuardCounts.length}`);
+    console.log('Site guard counts:', siteGuardCounts);
+    
+    // Check sites with exactly 1 guard
+    const eligibleSites = db.prepare(`
+      SELECT 
+        s.id, s.nom_site, s.est_actif,
+        COUNT(e.id) as guard_count,
+        GROUP_CONCAT(e.nom_complet) as guard_names
+      FROM sites_gas s
+      LEFT JOIN employees_gas e ON e.site_affecte_id = s.id 
+        AND e.statut = 'ACTIF' 
+        AND e.poste = 'GARDE'
+      WHERE s.est_actif = 1
+      GROUP BY s.id
+      HAVING COUNT(e.id) = 1
+      ORDER BY s.nom_site
+    `).all();
+    console.log(`📊 Sites with exactly 1 guard: ${eligibleSites.length}`);
+    console.log('Eligible sites:', eligibleSites);
+    
+    return {
+      totalSites: allSites.length,
+      totalEmployees: allEmployees.length,
+      totalGuards: guards.length,
+      sitesWithGuards: siteGuardCounts.length,
+      eligibleSites: eligibleSites.length,
+      data: {
+        allSites,
+        allEmployees,
+        guards,
+        siteGuardCounts,
+        eligibleSites
+      }
+    };
+  } catch (error) {
+    console.error('Error in debug handler:', error);
+    throw error;
+  }
+});
+
 // Get sites eligible for rôteur assignment (sites with exactly 1 guard)
 ipcMain.handle('db-get-sites-eligible-for-roteur', async (event, filters = {}) => {
   try {

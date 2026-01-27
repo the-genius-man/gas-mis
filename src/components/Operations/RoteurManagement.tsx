@@ -84,31 +84,40 @@ const RoteurManagement: React.FC = () => {
     try {
       setLoading(true);
       if (window.electronAPI) {
+        // Debug: Check the data
+        if (window.electronAPI.debugRoteurSites) {
+          const debugResult = await window.electronAPI.debugRoteurSites();
+          console.log('🔍 DEBUG: Roteur sites data:', debugResult);
+        }
+        
         const [emps, sitesData, assignmentsData, coverageGaps] = await Promise.all([
           window.electronAPI.getRoteurs?.() || window.electronAPI.getEmployeesGAS({ categorie: 'GARDE', poste: 'ROTEUR' }),
-          window.electronAPI.getSitesGAS(),
+          window.electronAPI.getSitesEligibleForRoteur?.() || window.electronAPI.getSitesGAS(),
           window.electronAPI.getRoteurAssignments?.() || Promise.resolve([]),
           window.electronAPI.getSiteCoverageGaps?.() || Promise.resolve([])
         ]);
+        
+        console.log('🔍 Sites data from getSitesEligibleForRoteur:', sitesData);
         
         setRoteurs(emps || []);
         setAssignments(assignmentsData || []);
         
         // Convert coverage gaps to sites with guard count format
-        const sitesWithCoverage: SiteWithGuardCount[] = (coverageGaps || []).map((gap: any) => ({
-          id: gap.site_id,
-          nom_site: gap.nom_site,
-          client_nom: gap.client_nom,
-          guard_count: gap.guard_count,
-          day_guards: gap.guard_count, // Simplified - all guards are considered day guards
+        const sitesWithCoverage: SiteWithGuardCount[] = (sitesData || []).map((site: any) => ({
+          id: site.id,
+          nom_site: site.nom_site,
+          client_nom: site.client_nom,
+          guard_count: site.guard_count || 0,
+          day_guards: site.guard_count || 0, // Simplified - all guards are considered day guards
           night_guards: 0,
-          needs_roteur: true, // All sites from coverage gaps need roteur
+          needs_roteur: site.guard_count === 1, // Sites with exactly 1 guard need roteur
           current_roteur: (assignmentsData || []).find((assignment: any) => 
-            assignment.site_id === gap.site_id && 
+            assignment.site_id === site.id && 
             assignment.statut === 'EN_COURS'
           )
         }));
         
+        console.log('🔍 Processed sites with coverage:', sitesWithCoverage);
         setSites(sitesWithCoverage);
       }
     } catch (error) {
