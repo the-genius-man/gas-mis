@@ -575,8 +575,6 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       alert('La date de fin doit être postérieure à la date de début');
       return;
     }
-      return;
-    }
 
     try {
       setSaving(true);
@@ -611,10 +609,6 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                 `Capacité utilisée: ${result.roteurCapacityUsed}/6 sites\n\n` +
                 `Détails des affectations:\n${assignmentDetails}`);
         }
-      }
-          notes: formData.notes,
-          statut: 'EN_COURS'
-        });
       }
       
       onSave();
