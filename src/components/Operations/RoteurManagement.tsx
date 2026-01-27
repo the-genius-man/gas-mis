@@ -39,8 +39,8 @@ const ActionDropdown: React.FC<ActionDropdownProps> = ({
       
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-10" onClick={onToggle}></div>
-          <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+          <div className="fixed inset-0 z-40" onClick={onToggle}></div>
+          <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-50">
             <div className="py-1">
               <button
                 onClick={onEdit}
@@ -378,8 +378,9 @@ const RoteurManagement: React.FC = () => {
           {activeTab === 'assignments' && (
             <div className="space-y-4">
               {activeAssignments.length > 0 ? (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
+                <div className="bg-white rounded-lg border border-gray-200">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rôteur</th>
@@ -419,7 +420,7 @@ const RoteurManagement: React.FC = () => {
                               {assignment.statut}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
                             <ActionDropdown
                               assignment={assignment}
                               isOpen={openDropdown === assignment.id}
@@ -438,6 +439,7 @@ const RoteurManagement: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12 text-gray-500">
