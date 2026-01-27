@@ -51,7 +51,7 @@ const OperationsModule: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto">
         {activeTab === 'agents' && <AgentsManagement />}
         {activeTab === 'roteurs' && <RoteurManagement />}
         {activeTab === 'clients' && <ClientsManagement />}

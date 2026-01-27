@@ -219,7 +219,7 @@ const RoteurManagement: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full overflow-auto">
+    <div className="p-6 min-h-full">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -429,7 +429,7 @@ const RoteurManagement: React.FC = () => {
         <div className="space-y-4">
           {activeAssignments.length > 0 ? (
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-visible">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
