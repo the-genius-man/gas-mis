@@ -4476,7 +4476,7 @@ ipcMain.handle('db-update-client-status', async (event, { id, statut }) => {
 ipcMain.handle('db-get-sites-gas', async () => {
   try {
     const stmt = db.prepare(`
-      SELECT s.*, c.nom_entreprise as client_nom
+      SELECT s.*, c.nom_entreprise as client_nom, c.est_actif as client_actif
       FROM sites_gas s
       LEFT JOIN clients_gas c ON s.client_id = c.id
       ORDER BY s.nom_site
@@ -4496,6 +4496,7 @@ ipcMain.handle('db-get-sites-gas', async () => {
       tarif_mensuel_client: row.tarif_mensuel_client,
       consignes_specifiques: row.consignes_specifiques,
       est_actif: row.est_actif === 1,
+      client_actif: row.client_actif === 1,
       cree_le: row.cree_le,
       client: row.client_nom ? { nom_entreprise: row.client_nom } : null
     }));
@@ -4574,6 +4575,30 @@ ipcMain.handle('db-update-site-status', async (event, { id, est_actif }) => {
   console.log(`🚨 BACKEND: db-update-site-status called with id=${id}, est_actif=${est_actif}`);
   try {
     console.log(`🔄 Starting site status update: Site ${id} -> ${est_actif ? 'ACTIF' : 'INACTIF'}`);
+    
+    // If trying to activate a site, check if the client is active
+    if (est_actif) {
+      const siteWithClient = db.prepare(`
+        SELECT s.nom_site, s.client_id, c.nom_entreprise, c.est_actif as client_actif
+        FROM sites_gas s
+        LEFT JOIN clients_gas c ON s.client_id = c.id
+        WHERE s.id = ?
+      `).get(id);
+      
+      console.log(`🔍 Site activation check:`, siteWithClient);
+      
+      if (!siteWithClient) {
+        throw new Error('Site non trouvé');
+      }
+      
+      if (!siteWithClient.client_actif) {
+        const errorMessage = `Impossible d'activer le site "${siteWithClient.nom_site}". Le client "${siteWithClient.nom_entreprise}" est inactif. Veuillez d'abord réactiver le client.`;
+        console.log(`❌ Client validation failed: ${errorMessage}`);
+        throw new Error(errorMessage);
+      }
+      
+      console.log(`✅ Client validation passed: Client "${siteWithClient.nom_entreprise}" is active`);
+    }
     
     // Start a transaction to ensure data consistency
     const updateSite = db.prepare('UPDATE sites_gas SET est_actif = ? WHERE id = ?');

@@ -323,6 +323,9 @@ export default function SitesManagement() {
                         {site.adresse_physique && (
                           <p className="text-xs text-gray-500 truncate max-w-xs">{site.adresse_physique}</p>
                         )}
+                        {!site.client_actif && (
+                          <p className="text-xs text-orange-600 font-medium">⚠️ Client inactif</p>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -370,12 +373,21 @@ export default function SitesManagement() {
                       </button>
                       <button
                         onClick={() => handleStatusChange(site.id, !site.est_actif)}
+                        disabled={!site.est_actif && !site.client_actif}
                         className={`p-1.5 rounded transition-colors ${
                           site.est_actif
                             ? 'text-orange-600 hover:bg-orange-50'
-                            : 'text-green-600 hover:bg-green-50'
+                            : site.client_actif
+                              ? 'text-green-600 hover:bg-green-50'
+                              : 'text-gray-400 cursor-not-allowed'
                         }`}
-                        title={site.est_actif ? 'Désactiver le site' : 'Activer le site'}
+                        title={
+                          site.est_actif 
+                            ? 'Désactiver le site' 
+                            : site.client_actif
+                              ? 'Activer le site'
+                              : 'Impossible d\'activer - Client inactif'
+                        }
                       >
                         {site.est_actif ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                       </button>
@@ -425,6 +437,9 @@ export default function SitesManagement() {
                         <Building2 className="h-3 w-3" />
                         {getClientName(site.client_id)}
                       </p>
+                      {!site.client_actif && (
+                        <p className="text-xs text-orange-600 font-medium">⚠️ Client inactif</p>
+                      )}
                     </div>
                   </div>
                   <span className={`px-2 py-1 text-xs font-medium rounded ${
@@ -516,12 +531,21 @@ export default function SitesManagement() {
                 </button>
                 <button
                   onClick={() => handleStatusChange(site.id, !site.est_actif)}
+                  disabled={!site.est_actif && !site.client_actif}
                   className={`flex-1 px-3 py-2 rounded-lg transition-colors flex items-center justify-center gap-1 text-sm font-medium ${
                     site.est_actif
                       ? 'bg-orange-50 text-orange-700 hover:bg-orange-100'
-                      : 'bg-green-50 text-green-700 hover:bg-green-100'
+                      : site.client_actif
+                        ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                        : 'bg-gray-50 text-gray-400 cursor-not-allowed'
                   }`}
-                  title={site.est_actif ? 'Désactiver' : 'Activer'}
+                  title={
+                    site.est_actif 
+                      ? 'Désactiver' 
+                      : site.client_actif
+                        ? 'Activer'
+                        : 'Impossible d\'activer - Client inactif'
+                  }
                 >
                   {site.est_actif ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                   <span>{site.est_actif ? 'Désactiver' : 'Activer'}</span>
