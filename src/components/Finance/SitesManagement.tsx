@@ -319,7 +319,12 @@ export default function SitesManagement() {
                         <MapPin className={`h-4 w-4 ${site.est_actif ? 'text-green-600' : 'text-gray-400'}`} />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{site.nom_site}</p>
+                        <button
+                          onClick={() => setViewingSite(site)}
+                          className="font-medium text-gray-900 hover:text-blue-600 transition-colors cursor-pointer"
+                        >
+                          {site.nom_site}
+                        </button>
                         {site.adresse_physique && (
                           <p className="text-xs text-gray-500 truncate max-w-xs">{site.adresse_physique}</p>
                         )}
@@ -432,7 +437,12 @@ export default function SitesManagement() {
                       <MapPin className={`h-6 w-6 ${site.est_actif ? 'text-green-600' : 'text-gray-400'}`} />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 line-clamp-1">{site.nom_site}</h3>
+                      <button
+                        onClick={() => setViewingSite(site)}
+                        className="font-semibold text-gray-900 line-clamp-1 hover:text-blue-600 transition-colors cursor-pointer text-left"
+                      >
+                        {site.nom_site}
+                      </button>
                       <p className="text-sm text-gray-600 flex items-center gap-1">
                         <Building2 className="h-3 w-3" />
                         {getClientName(site.client_id)}
