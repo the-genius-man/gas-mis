@@ -186,9 +186,22 @@ function createTables() {
       adresse_facturation TEXT,
       devise_preferee TEXT NOT NULL DEFAULT 'USD',
       delai_paiement_jours INTEGER NOT NULL DEFAULT 30,
+      est_actif INTEGER NOT NULL DEFAULT 1,
       cree_le DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add est_actif column to existing clients_gas table if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE clients_gas ADD COLUMN est_actif INTEGER NOT NULL DEFAULT 1`);
+    console.log('✅ Added est_actif column to clients_gas table');
+  } catch (error) {
+    if (error.message.includes('duplicate column name')) {
+      console.log('✅ est_actif column already exists in clients_gas table');
+    } else {
+      console.log('⚠️ Error adding est_actif column to clients_gas:', error.message);
+    }
+  }
 
   // Sites GAS (Lieux physiques sécurisés)
   db.exec(`
@@ -4291,8 +4304,8 @@ ipcMain.handle('db-add-client-gas', async (event, client) => {
       INSERT INTO clients_gas (
         id, type_client, nom_entreprise, nif, rccm, id_national, numero_contrat,
         contrat_url, contact_nom, contact_email, telephone, contact_urgence_nom,
-        contact_urgence_telephone, adresse_facturation, devise_preferee, delai_paiement_jours
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        contact_urgence_telephone, adresse_facturation, devise_preferee, delai_paiement_jours, est_actif
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     stmt.run(
@@ -4311,7 +4324,8 @@ ipcMain.handle('db-add-client-gas', async (event, client) => {
       client.contact_urgence_telephone || null,
       client.adresse_facturation || null,
       client.devise_preferee || 'USD',
-      client.delai_paiement_jours || 30
+      client.delai_paiement_jours || 30,
+      client.est_actif !== undefined ? (client.est_actif ? 1 : 0) : 1
     );
     
     return { success: true, id: client.id };
@@ -4328,7 +4342,7 @@ ipcMain.handle('db-update-client-gas', async (event, client) => {
         type_client = ?, nom_entreprise = ?, nif = ?, rccm = ?, id_national = ?,
         numero_contrat = ?, contrat_url = ?, contact_nom = ?, contact_email = ?,
         telephone = ?, contact_urgence_nom = ?, contact_urgence_telephone = ?,
-        adresse_facturation = ?, devise_preferee = ?, delai_paiement_jours = ?
+        adresse_facturation = ?, devise_preferee = ?, delai_paiement_jours = ?, est_actif = ?
       WHERE id = ?
     `);
     
@@ -4348,6 +4362,7 @@ ipcMain.handle('db-update-client-gas', async (event, client) => {
       client.adresse_facturation || null,
       client.devise_preferee || 'USD',
       client.delai_paiement_jours || 30,
+      client.est_actif !== undefined ? (client.est_actif ? 1 : 0) : 1,
       client.id
     );
     
@@ -5388,8 +5403,8 @@ ipcMain.handle('db-seed-data', async () => {
       INSERT INTO clients_gas (
         id, type_client, nom_entreprise, nif, rccm, id_national, numero_contrat,
         contact_nom, contact_email, telephone, contact_urgence_nom, contact_urgence_telephone,
-        adresse_facturation, devise_preferee, delai_paiement_jours
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        adresse_facturation, devise_preferee, delai_paiement_jours, est_actif
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const client of sampleClientsGAS) {
@@ -5398,7 +5413,8 @@ ipcMain.handle('db-seed-data', async () => {
         client.rccm || null, client.id_national || null, client.numero_contrat || null,
         client.contact_nom || null, client.contact_email || null, client.telephone || null,
         client.contact_urgence_nom || null, client.contact_urgence_telephone || null,
-        client.adresse_facturation || null, client.devise_preferee, client.delai_paiement_jours
+        client.adresse_facturation || null, client.devise_preferee, client.delai_paiement_jours,
+        1 // est_actif = true for sample data
       );
     }
 
