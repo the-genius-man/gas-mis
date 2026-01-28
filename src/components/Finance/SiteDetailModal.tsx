@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, MapPin, Building2, Users, Sun, Moon, DollarSign, 
   Calendar, ArrowRight, Navigation, UserCheck, History, 
-  Phone, Mail, Edit
+  Phone, Mail, Edit, Download, FileText
 } from 'lucide-react';
 import { SiteGAS, ClientGAS, HistoriqueDeployement } from '../../types';
 import Pagination from '../common/Pagination';
@@ -20,6 +20,15 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
   const [siteDetails, setSiteDetails] = useState<any>(null);
   const [deployments, setDeployments] = useState<HistoriqueDeployement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('profile');
+
+  // Tab configuration
+  const tabs = [
+    { id: 'profile', label: 'Profil', icon: Building2 },
+    { id: 'guards', label: 'Gardes', icon: UserCheck },
+    { id: 'history', label: 'Historique', icon: History },
+    { id: 'reports', label: 'Rapports', icon: FileText }
+  ];
 
   // Pagination for history table
   const ITEMS_PER_PAGE = 10;
@@ -28,6 +37,13 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
   const pastDeployments = deployments.filter(d => !d.est_actif);
   const historyPagination = usePagination({ 
     data: pastDeployments, 
+    itemsPerPage: ITEMS_PER_PAGE 
+  });
+
+  // Current deployments pagination (for guards table)
+  const currentDeployments = deployments.filter(d => d.est_actif);
+  const currentPagination = usePagination({ 
+    data: currentDeployments, 
     itemsPerPage: ITEMS_PER_PAGE 
   });
 
@@ -51,41 +67,6 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (date: string | undefined) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString('fr-FR');
-  };
-
-  const getMotifLabel = (motif: string) => {
-    const labels: Record<string, string> = {
-      'EMBAUCHE': 'Embauche',
-      'TRANSFERT': 'Transfert',
-      'DEMANDE_CLIENT': 'Demande client',
-      'DISCIPLINAIRE': 'Disciplinaire',
-      'REORGANISATION': 'Réorganisation',
-      'AUTRE': 'Autre'
-    };
-    return labels[motif] || motif;
-  };
-
-  const getMotifBadgeColor = (motif: string) => {
-    const colors: Record<string, string> = {
-      'EMBAUCHE': 'bg-green-100 text-green-800',
-      'TRANSFERT': 'bg-blue-100 text-blue-800',
-      'DEMANDE_CLIENT': 'bg-orange-100 text-orange-800',
-      'DISCIPLINAIRE': 'bg-red-100 text-red-800',
-      'REORGANISATION': 'bg-purple-100 text-purple-800',
-      'AUTRE': 'bg-gray-100 text-gray-800'
-    };
-    return colors[motif] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getPosteBadge = (poste: string) => {
-    if (poste === 'JOUR') return 'bg-yellow-100 text-yellow-800';
-    if (poste === 'NUIT') return 'bg-indigo-100 text-indigo-800';
-    return 'bg-gray-100 text-gray-800';
   };
 
   const formatDate = (date: string | undefined) => {
@@ -461,7 +442,7 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {pastPagination.paginatedData
+                            {historyPagination.paginatedData
                               .sort((a, b) => new Date(b.date_debut).getTime() - new Date(a.date_debut).getTime())
                               .map((deployment) => (
                                 <tr key={deployment.id} className="hover:bg-gray-50 transition-colors">
@@ -507,11 +488,11 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
                           </tbody>
                         </table>
                       </div>
-                      {pastPagination.totalPages > 1 && (
+                      {historyPagination.totalPages > 1 && (
                         <Pagination
-                          currentPage={pastPagination.currentPage}
-                          totalPages={pastPagination.totalPages}
-                          onPageChange={pastPagination.setCurrentPage}
+                          currentPage={historyPagination.currentPage}
+                          totalPages={historyPagination.totalPages}
+                          onPageChange={historyPagination.setCurrentPage}
                           itemsPerPage={ITEMS_PER_PAGE}
                           totalItems={pastDeployments.length}
                         />
