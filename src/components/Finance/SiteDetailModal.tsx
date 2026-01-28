@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, MapPin, Building2, Users, Sun, Moon, DollarSign, 
   Calendar, ArrowRight, History, 
-  Phone, Mail, Edit, UserPlus
+  Phone, Mail, Edit, UserPlus, RefreshCw
 } from 'lucide-react';
 import { SiteGAS, ClientGAS, HistoriqueDeployement } from '../../types';
 import Pagination from '../common/Pagination';
@@ -24,6 +24,7 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
   const [deployments, setDeployments] = useState<HistoriqueDeployement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeploymentForm, setShowDeploymentForm] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { utilisateur } = useAuth();
 
   // Check if user can deploy guards (operations permissions)
@@ -46,29 +47,52 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
     loadDetails();
   }, [site.id]);
 
+  // Add effect to reload when modal is opened/refreshed
+  useEffect(() => {
+    if (site.id) {
+      loadDetails();
+    }
+  }, [site.id, site]);
+
   const loadDetails = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Loading site details for site:', site.id);
       if (window.electronAPI) {
         const [details, history] = await Promise.all([
           window.electronAPI.getSiteGAS(site.id),
           window.electronAPI.getSiteDeploymentHistory(site.id)
         ]);
+        console.log('📊 Site details loaded:', details);
+        console.log('📋 Deployment history loaded:', history);
         setSiteDetails(details || site);
         setDeployments(history || []);
+        setLastUpdated(new Date());
       }
     } catch (error) {
-      console.error('Error loading site details:', error);
+      console.error('❌ Error loading site details:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeploymentSuccess = () => {
+  const handleDeploymentSuccess = async () => {
+    console.log('✅ Deployment successful, refreshing data...');
     setShowDeploymentForm(false);
-    loadDetails(); // Reload site details to show new deployment
-    if (onRefresh) {
-      onRefresh(); // Refresh parent component if needed
+    
+    // Force a complete refresh of the data
+    try {
+      setLoading(true);
+      await loadDetails();
+      
+      // Also refresh parent component if available
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing after deployment:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -133,6 +157,14 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={loadDetails}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+              title="Actualiser les données"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
             {onEdit && (
               <button
                 onClick={onEdit}
@@ -250,6 +282,12 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
                         </span>
                       )}
                     </p>
+                    {process.env.NODE_ENV === 'development' && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Debug: Total deployments: {deployments.length}, Active: {currentDeployments.length}
+                        {lastUpdated && ` | Last updated: ${lastUpdated.toLocaleTimeString()}`}
+                      </p>
+                    )}
                   </div>
                   {canDeployGuards && site.est_actif && (
                     <button
@@ -272,7 +310,7 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
                   )}
                 </div>
                 {currentDeployments.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div key={`deployments-${currentDeployments.length}-${Date.now()}`} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {currentDeployments.map((deployment) => (
                       <div key={deployment.id} className="bg-green-50 border border-green-200 rounded-lg p-4">
                         <div className="flex items-center gap-3 mb-2">
