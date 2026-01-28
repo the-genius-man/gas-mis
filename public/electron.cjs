@@ -1712,12 +1712,15 @@ ipcMain.handle('db-create-roteur-assignment', async (event, assignment) => {
 // Update rôteur assignment
 ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
   try {
-    console.log('🔍 Update assignment data:', assignment);
+    console.log('🔍 Update assignment data:', JSON.stringify(assignment, null, 2));
     console.log('🔍 Keys:', Object.keys(assignment));
+    console.log('🔍 Has roteur_id:', !!assignment.roteur_id);
+    console.log('🔍 Only has id and statut:', Object.keys(assignment).length === 2 && assignment.id && assignment.statut);
     
     // If only updating status (like canceling), do a partial update
     // Check if we only have id and statut, or if roteur_id is missing/null
-    if (assignment.statut && (!assignment.roteur_id || Object.keys(assignment).length <= 3)) {
+    if ((Object.keys(assignment).length === 2 && assignment.id && assignment.statut) || 
+        (assignment.statut === 'ANNULE' && !assignment.roteur_id)) {
       console.log('🔍 Doing partial update (status only)');
       const stmt = db.prepare(`
         UPDATE affectations_roteur SET
@@ -1725,7 +1728,8 @@ ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
         WHERE id = ?
       `);
 
-      stmt.run(assignment.statut, assignment.id);
+      const result = stmt.run(assignment.statut, assignment.id);
+      console.log('🔍 Partial update result:', result);
     } else {
       console.log('🔍 Doing full update');
       // Full update with all fields
@@ -1736,7 +1740,7 @@ ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
         WHERE id = ?
       `);
 
-      stmt.run(
+      const result = stmt.run(
         assignment.roteur_id,
         assignment.site_id,
         assignment.employe_remplace_id || null,
@@ -1747,6 +1751,7 @@ ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
         assignment.notes || null,
         assignment.id
       );
+      console.log('🔍 Full update result:', result);
     }
 
     return { success: true };
