@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, MapPin, Building2, Users, Sun, Moon, DollarSign, 
   Calendar, ArrowRight, History, 
-  Phone, Mail, Edit
+  Phone, Mail, Edit, UserPlus
 } from 'lucide-react';
 import { SiteGAS, ClientGAS, HistoriqueDeployement } from '../../types';
 import Pagination from '../common/Pagination';
 import { usePagination } from '../../hooks/usePagination';
+import { useAuth } from '../../contexts/AuthContext';
+import { hasPermission } from '../../utils/permissions';
+import DeploymentForm from '../HR/DeploymentForm';
 
 interface SiteDetailModalProps {
   site: SiteGAS;
@@ -20,6 +23,11 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
   const [siteDetails, setSiteDetails] = useState<any>(null);
   const [deployments, setDeployments] = useState<HistoriqueDeployement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDeploymentForm, setShowDeploymentForm] = useState(false);
+  const { utilisateur } = useAuth();
+
+  // Check if user can deploy guards (operations permissions)
+  const canDeployGuards = hasPermission(utilisateur?.role || null, 'operations.assign');
 
   // Pagination for history table
   const ITEMS_PER_PAGE = 10;
@@ -53,6 +61,14 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
       console.error('Error loading site details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeploymentSuccess = () => {
+    setShowDeploymentForm(false);
+    loadDetails(); // Reload site details to show new deployment
+    if (onRefresh) {
+      onRefresh(); // Refresh parent component if needed
     }
   };
 
@@ -223,7 +239,38 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
 
               {/* Current Guards */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Gardes Actuels</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Gardes Actuels</h3>
+                    <p className="text-sm text-gray-600">
+                      {currentDeployments.length} sur {site.effectif_jour_requis + site.effectif_nuit_requis} postes occupés
+                      {currentDeployments.length < (site.effectif_jour_requis + site.effectif_nuit_requis) && (
+                        <span className="text-orange-600 font-medium ml-2">
+                          ({(site.effectif_jour_requis + site.effectif_nuit_requis) - currentDeployments.length} postes libres)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {canDeployGuards && site.est_actif && (
+                    <button
+                      onClick={() => setShowDeploymentForm(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Affecter un Garde
+                    </button>
+                  )}
+                  {!canDeployGuards && site.est_actif && (
+                    <div className="text-xs text-gray-500 italic">
+                      Affectation réservée aux utilisateurs Opérations
+                    </div>
+                  )}
+                  {!site.est_actif && (
+                    <div className="text-xs text-orange-600 italic">
+                      Site inactif - Affectation impossible
+                    </div>
+                  )}
+                </div>
                 {currentDeployments.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {currentDeployments.map((deployment) => (
@@ -353,6 +400,15 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
           </button>
         </div>
       </div>
+
+      {/* Deployment Form Modal */}
+      {showDeploymentForm && (
+        <DeploymentForm
+          siteId={site.id}
+          onClose={() => setShowDeploymentForm(false)}
+          onSave={handleDeploymentSuccess}
+        />
+      )}
     </div>
   );
 };
