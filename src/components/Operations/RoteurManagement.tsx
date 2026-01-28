@@ -677,35 +677,6 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
 
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-4">
-                          setFormData({ 
-                            ...formData, 
-                            siteIds: formData.siteIds.filter(id => id !== site.id) 
-                          });
-                        }
-                      }}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm">
-                      {site.nom_site} ({site.guard_count} garde)
-                      {site.client_nom && (
-                        <span className="text-gray-500"> - {site.client_nom}</span>
-                      )}
-                    </span>
-                  </label>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500 p-2">Aucun site disponible pour affectation</p>
-              )}
-            </div>
-            {formData.siteIds.length > 0 && (
-              <p className="text-xs text-blue-600 mt-1">
-                {formData.siteIds.length} site(s) sélectionné(s) sur 6 maximum
-              </p>
-            )}
-          </div>
-
-          {/* Date Range */}
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date Début</label>
               <input
