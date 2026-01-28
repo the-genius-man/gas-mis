@@ -25,6 +25,7 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
   const [loading, setLoading] = useState(true);
   const [showDeploymentForm, setShowDeploymentForm] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { utilisateur } = useAuth();
 
   // Check if user can deploy guards (operations permissions)
@@ -54,10 +55,30 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
     }
   }, [site.id, site]);
 
+  // Add visibility change listener to refresh when window regains focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !showDeploymentForm) {
+        console.log('🔄 Window regained focus, refreshing site data...');
+        loadDetails();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [showDeploymentForm]);
+
   const loadDetails = async () => {
     try {
       setLoading(true);
       console.log('🔄 Loading site details for site:', site.id);
+      
+      // Clear existing data first to force re-render
+      setDeployments([]);
+      setSiteDetails(null);
+      
       if (window.electronAPI) {
         const [details, history] = await Promise.all([
           window.electronAPI.getSiteGAS(site.id),
@@ -65,9 +86,12 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
         ]);
         console.log('📊 Site details loaded:', details);
         console.log('📋 Deployment history loaded:', history);
+        console.log('📋 Active deployments:', history?.filter(d => d.est_actif) || []);
+        
         setSiteDetails(details || site);
         setDeployments(history || []);
         setLastUpdated(new Date());
+        setRefreshKey(prev => prev + 1); // Force re-render
       }
     } catch (error) {
       console.error('❌ Error loading site details:', error);
@@ -78,17 +102,26 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
 
   const handleDeploymentSuccess = async () => {
     console.log('✅ Deployment successful, refreshing data...');
-    setShowDeploymentForm(false);
     
     // Force a complete refresh of the data
     try {
       setLoading(true);
+      
+      // Close the form first
+      setShowDeploymentForm(false);
+      
+      // Wait a moment for the deployment to be fully processed
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Reload the data
       await loadDetails();
       
       // Also refresh parent component if available
       if (onRefresh) {
         await onRefresh();
       }
+      
+      console.log('✅ Data refresh completed');
     } catch (error) {
       console.error('❌ Error refreshing after deployment:', error);
     } finally {
@@ -270,7 +303,7 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
               </div>
 
               {/* Current Guards */}
-              <div>
+              <div key={`guards-section-${refreshKey}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">Gardes Actuels</h3>
@@ -443,7 +476,15 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
       {showDeploymentForm && (
         <DeploymentForm
           siteId={site.id}
-          onClose={() => setShowDeploymentForm(false)}
+          onClose={() => {
+            console.log('🚪 Deployment form closed');
+            setShowDeploymentForm(false);
+            // Refresh data when form is closed (in case deployment was successful)
+            setTimeout(() => {
+              console.log('🔄 Refreshing data after form close...');
+              loadDetails();
+            }, 500);
+          }}
           onSave={handleDeploymentSuccess}
         />
       )}
