@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, MapPin, User, Plus, Clock, AlertTriangle, Users, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Search, Calendar, MapPin, User, Plus, Clock, AlertTriangle, Users, Edit, Trash2 } from 'lucide-react';
 import { EmployeeGASFull, AffectationRoteur } from '../../types';
 
 interface SiteWithGuardCount {
@@ -13,78 +13,6 @@ interface SiteWithGuardCount {
   current_roteur?: AffectationRoteur;
 }
 
-interface ActionDropdownProps {
-  assignment: AffectationRoteur;
-  isOpen: boolean;
-  onToggle: () => void;
-  onEdit: () => void;
-  onCancel: () => void;
-}
-
-const ActionDropdown: React.FC<ActionDropdownProps> = ({
-  assignment,
-  isOpen,
-  onToggle,
-  onEdit,
-  onCancel
-}) => {
-  const [dropdownPosition, setDropdownPosition] = React.useState<'bottom' | 'top'>('bottom');
-  const buttonRef = React.useRef<HTMLButtonElement>(null);
-
-  React.useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      
-      // If there's less than 100px below but more than 100px above, position on top
-      if (spaceBelow < 100 && spaceAbove > 100) {
-        setDropdownPosition('top');
-      } else {
-        setDropdownPosition('bottom');
-      }
-    }
-  }, [isOpen]);
-
-  return (
-    <div className="relative">
-      <button
-        ref={buttonRef}
-        onClick={onToggle}
-        className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded hover:bg-gray-100 hover:border-gray-300 transition-colors"
-      >
-        <MoreVertical className="w-3 h-3" />
-      </button>
-      
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={onToggle}></div>
-          <div className={`absolute right-0 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-50 ${
-            dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
-          }`}>
-            <div className="py-1">
-              <button
-                onClick={onEdit}
-                className="w-full text-left px-3 py-2 text-xs text-blue-600 hover:bg-blue-50 flex items-center gap-2"
-              >
-                <Edit className="w-3 h-3" />
-                Modifier
-              </button>
-              <button
-                onClick={onCancel}
-                className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"
-              >
-                <Trash2 className="w-3 h-3" />
-                Annuler
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
 const RoteurManagement: React.FC = () => {
   const [roteurs, setRoteurs] = useState<EmployeeGASFull[]>([]);
   const [sites, setSites] = useState<SiteWithGuardCount[]>([]);
@@ -95,7 +23,6 @@ const RoteurManagement: React.FC = () => {
   const [selectedRoteur, setSelectedRoteur] = useState<EmployeeGASFull | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<AffectationRoteur | null>(null);
   const [activeTab, setActiveTab] = useState<'roteurs' | 'assignments' | 'coverage'>('roteurs');
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -491,20 +418,27 @@ const RoteurManagement: React.FC = () => {
                             {assignment.statut}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
-                          <ActionDropdown
-                            assignment={assignment}
-                            isOpen={openDropdown === assignment.id}
-                            onToggle={() => setOpenDropdown(openDropdown === assignment.id ? null : assignment.id)}
-                            onEdit={() => {
-                              handleEditAssignment(assignment);
-                              setOpenDropdown(null);
-                            }}
-                            onCancel={() => {
-                              handleCancelAssignment(assignment.id);
-                              setOpenDropdown(null);
-                            }}
-                          />
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                handleEditAssignment(assignment);
+                              }}
+                              className="inline-flex items-center p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                              title="Modifier l'affectation"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleCancelAssignment(assignment.id);
+                              }}
+                              className="inline-flex items-center p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              title="Annuler l'affectation"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
