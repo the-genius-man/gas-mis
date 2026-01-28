@@ -195,23 +195,27 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
                 {/* Guards Required */}
                 <div className="mt-6">
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Gardes Requis</h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center">
-                      <Sun className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-                      <p className="text-xl font-bold text-gray-900">{site.effectif_jour_requis}</p>
-                      <p className="text-xs text-gray-600">Jour</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3">
+                      <Sun className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500">Jour</p>
+                        <p className="text-sm font-medium">{site.effectif_jour_requis}</p>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <Moon className="w-6 h-6 text-indigo-600 mx-auto mb-2" />
-                      <p className="text-xl font-bold text-gray-900">{site.effectif_nuit_requis}</p>
-                      <p className="text-xs text-gray-600">Nuit</p>
+                    <div className="flex items-center gap-3">
+                      <Moon className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500">Nuit</p>
+                        <p className="text-sm font-medium">{site.effectif_nuit_requis}</p>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <Users className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                      <p className="text-xl font-bold text-gray-900">
-                        {site.effectif_jour_requis + site.effectif_nuit_requis}
-                      </p>
-                      <p className="text-xs text-gray-600">Total</p>
+                    <div className="flex items-center gap-3">
+                      <Users className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-xs text-gray-500">Total</p>
+                        <p className="text-sm font-medium">{site.effectif_jour_requis + site.effectif_nuit_requis}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
