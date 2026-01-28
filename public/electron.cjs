@@ -4226,11 +4226,9 @@ ipcMain.handle('db-get-clients-gas', async (event, options) => {
     const includeDeleted = options?.includeDeleted || false;
     const includeInactive = options?.includeInactive !== false; // Include inactive by default
     
-    let whereClause = "WHERE statut != 'SUPPRIME'";
-    if (includeDeleted) {
-      whereClause = "WHERE 1=1";
-    } else if (!includeInactive) {
-      whereClause = "WHERE statut = 'ACTIF'";
+    let whereClause = "WHERE 1=1"; // Always include all clients now, filtering by est_actif
+    if (!includeInactive) {
+      whereClause = "WHERE est_actif = 1";
     }
     
     const stmt = db.prepare(`
@@ -4255,7 +4253,8 @@ ipcMain.handle('db-get-clients-gas', async (event, options) => {
       adresse_facturation: row.adresse_facturation,
       devise_preferee: row.devise_preferee,
       delai_paiement_jours: row.delai_paiement_jours,
-      statut: row.statut || 'ACTIF',
+      est_actif: row.est_actif === 1,
+      statut: row.est_actif === 1 ? 'ACTIF' : 'INACTIF', // For backward compatibility
       cree_le: row.cree_le
     }));
   } catch (error) {
@@ -4268,7 +4267,7 @@ ipcMain.handle('db-get-clients-gas', async (event, options) => {
 ipcMain.handle('db-get-active-clients-gas', async () => {
   try {
     const stmt = db.prepare(`
-      SELECT * FROM clients_gas WHERE statut = 'ACTIF' ORDER BY nom_entreprise
+      SELECT * FROM clients_gas WHERE est_actif = 1 ORDER BY nom_entreprise
     `);
     const rows = stmt.all();
     
@@ -4395,17 +4394,11 @@ ipcMain.handle('db-update-client-status', async (event, { id, statut }) => {
   try {
     console.log(`🔄 Starting client status update: Client ${id} -> ${statut}`);
     
-    // First, ensure the statut column exists
-    try {
-      db.exec(`ALTER TABLE clients_gas ADD COLUMN statut TEXT DEFAULT 'ACTIF'`);
-      console.log('✅ Added statut column to clients_gas table');
-    } catch (e) {
-      // Column already exists, ignore
-      console.log('📝 statut column already exists in clients_gas table');
-    }
+    // Convert statut to est_actif boolean value
+    const est_actif = statut === 'ACTIF' ? 1 : 0;
     
     // Start a transaction to ensure data consistency
-    const updateClient = db.prepare('UPDATE clients_gas SET statut = ? WHERE id = ?');
+    const updateClient = db.prepare('UPDATE clients_gas SET est_actif = ? WHERE id = ?');
     const updateSites = db.prepare('UPDATE sites_gas SET est_actif = ? WHERE client_id = ?');
     const closeDeployments = db.prepare(`
       UPDATE historique_deployements 
@@ -4442,7 +4435,7 @@ ipcMain.handle('db-update-client-status', async (event, { id, statut }) => {
     // Begin transaction
     const transaction = db.transaction(() => {
       // Update client status
-      const clientResult = updateClient.run(statut, id);
+      const clientResult = updateClient.run(est_actif, id);
       console.log(`✅ Client status updated: ${clientResult.changes} row(s) affected`);
       
       // If client is being deactivated, cascade the deactivation
