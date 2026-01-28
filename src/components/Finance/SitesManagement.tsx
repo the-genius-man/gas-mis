@@ -613,6 +613,12 @@ export default function SitesManagement() {
           site={viewingSite}
           client={getClient(viewingSite.client_id)}
           onClose={() => setViewingSite(null)}
+          onEdit={() => {
+            setEditingSite(viewingSite);
+            setViewingSite(null);
+            setShowForm(true);
+          }}
+          onRefresh={loadData}
         />
       )}
     </div>
