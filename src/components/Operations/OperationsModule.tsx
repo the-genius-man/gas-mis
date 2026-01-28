@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { Users, Calendar, AlertTriangle, UserCheck, FileText, Building2, MapPin } from 'lucide-react';
+import { Users, Calendar, AlertTriangle, UserCheck, FileText, MapPin } from 'lucide-react';
 import RoteurManagement from './RoteurManagement';
 import PlanningCalendar from './PlanningCalendar';
 import AgentsManagement from './AgentsManagement';
 import ActionsManagement from '../Disciplinary/ActionsManagement';
 import OperationsReports from './OperationsReports';
-import ClientsManagement from '../Finance/ClientsManagement';
 import SitesManagement from '../Finance/SitesManagement';
 
-type TabType = 'agents' | 'roteurs' | 'clients' | 'sites' | 'planning' | 'discipline' | 'reports';
+type TabType = 'agents' | 'roteurs' | 'sites' | 'planning' | 'discipline' | 'reports';
 
 const OperationsModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('agents');
@@ -16,7 +15,6 @@ const OperationsModule: React.FC = () => {
   const tabs = [
     { id: 'agents' as TabType, label: 'Agents', icon: UserCheck },
     { id: 'roteurs' as TabType, label: 'Rôteurs', icon: Users },
-    { id: 'clients' as TabType, label: 'Clients', icon: Building2 },
     { id: 'sites' as TabType, label: 'Sites', icon: MapPin },
     { id: 'planning' as TabType, label: 'Planning', icon: Calendar },
     { id: 'discipline' as TabType, label: 'Discipline', icon: AlertTriangle },
@@ -54,7 +52,6 @@ const OperationsModule: React.FC = () => {
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
         {activeTab === 'agents' && <AgentsManagement />}
         {activeTab === 'roteurs' && <RoteurManagement />}
-        {activeTab === 'clients' && <ClientsManagement />}
         {activeTab === 'sites' && <SitesManagement />}
         {activeTab === 'planning' && <PlanningCalendar />}
         {activeTab === 'discipline' && <ActionsManagement />}
