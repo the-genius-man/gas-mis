@@ -80,15 +80,14 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
       setSiteDetails(null);
       
       if (window.electronAPI) {
-        const [details, history] = await Promise.all([
-          window.electronAPI.getSiteGAS(site.id),
-          window.electronAPI.getSiteDeploymentHistory(site.id)
-        ]);
-        console.log('📊 Site details loaded:', details);
+        // We already have site details from props, just get deployment history
+        const history = await window.electronAPI.getSiteDeploymentHistory(site.id);
+        
+        console.log('📊 Using site details from props:', site);
         console.log('📋 Deployment history loaded:', history);
         console.log('📋 Active deployments:', history?.filter(d => d.est_actif) || []);
         
-        setSiteDetails(details || site);
+        setSiteDetails(site); // Use the site from props
         setDeployments(history || []);
         setLastUpdated(new Date());
         setRefreshKey(prev => prev + 1); // Force re-render
