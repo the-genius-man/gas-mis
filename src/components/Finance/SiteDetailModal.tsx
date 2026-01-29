@@ -342,26 +342,62 @@ const SiteDetailModal: React.FC<SiteDetailModalProps> = ({ site, client, onClose
                   )}
                 </div>
                 {currentDeployments.length > 0 ? (
-                  <div key={`deployments-${currentDeployments.length}-${Date.now()}`} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {currentDeployments.map((deployment) => (
-                      <div key={deployment.id} className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm">
-                            {(deployment.employe_nom || 'G').charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{deployment.employe_nom || 'Garde inconnu'}</p>
-                            <span className={`px-2 py-1 text-xs font-medium rounded ${getPosteBadge(deployment.poste)}`}>
-                              {deployment.poste}
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500">Depuis: {formatDate(deployment.date_debut)}</p>
-                        <span className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded ${getMotifBadgeColor(deployment.motif_affectation)}`}>
-                          {getMotifLabel(deployment.motif_affectation)}
-                        </span>
-                      </div>
-                    ))}
+                  <div key={`deployments-${currentDeployments.length}-${Date.now()}`} className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Garde
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Poste
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Date Début
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Motif
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Notes
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {currentDeployments.map((deployment) => (
+                            <tr key={deployment.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm">
+                                    {(deployment.employe_nom || 'G').charAt(0)}
+                                  </div>
+                                  <span className="font-medium text-gray-900">{deployment.employe_nom || 'Garde inconnu'}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded ${getPosteBadge(deployment.poste)}`}>
+                                  {deployment.poste}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                {formatDate(deployment.date_debut)}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded ${getMotifBadgeColor(deployment.motif_affectation)}`}>
+                                  {getMotifLabel(deployment.motif_affectation)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-500 max-w-xs">
+                                <div className="truncate" title={deployment.notes || ''}>
+                                  {deployment.notes || '-'}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-8 bg-gray-50 rounded-lg">
