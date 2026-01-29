@@ -255,6 +255,7 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
             <span>Nouveau Client</span>
           </button>
         </div>
+      </div>
 
       {/* Filters & View Toggle */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
