@@ -192,5 +192,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAvailableQuickActions: (userRole) => ipcRenderer.invoke('db-get-available-quick-actions', userRole),
   changeUserPassword: (userId, currentPassword, newPassword) => ipcRenderer.invoke('db-change-user-password', userId, currentPassword, newPassword),
   exportUserData: (userId) => ipcRenderer.invoke('db-export-user-data', userId),
-  importUserData: (userId, data) => ipcRenderer.invoke('db-import-user-data', userId, data)
+  importUserData: (userId, data) => ipcRenderer.invoke('db-import-user-data', userId, data),
+
+  // ============================================================================
+  // EXCEL IMPORT
+  // ============================================================================
+  
+  importCustomersFromExcel: () => ipcRenderer.invoke('db-import-customers-from-excel')
 });

@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const Database = require('better-sqlite3');
 const crypto = require('crypto');
+const XLSX = require('xlsx');
 
 let mainWindow;
 let db;
@@ -82,6 +83,13 @@ function createTables() {
     // Column already exists, ignore
   }
 
+  // Add statut column if it doesn't exist (migration)
+  try {
+    db.exec(`ALTER TABLE clients_gas ADD COLUMN statut TEXT NOT NULL DEFAULT 'ACTIF'`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   // Sites GAS
   db.exec(`
     CREATE TABLE IF NOT EXISTS sites_gas (
@@ -105,6 +113,13 @@ function createTables() {
   // Add cout_unitaire_garde column to sites_gas if it doesn't exist (migration)
   try {
     db.exec(`ALTER TABLE sites_gas ADD COLUMN cout_unitaire_garde REAL NOT NULL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Add modifie_le column to sites_gas if it doesn't exist (migration)
+  try {
+    db.exec(`ALTER TABLE sites_gas ADD COLUMN modifie_le DATETIME DEFAULT CURRENT_TIMESTAMP`);
   } catch (e) {
     // Column already exists, ignore
   }
@@ -4245,5 +4260,198 @@ ipcMain.handle('db-import-user-data', async (event, userId, data) => {
   } catch (error) {
     console.error('Error importing user data:', error);
     throw error;
+  }
+});
+
+// ============================================================================
+// EXCEL IMPORT - Customer Import from Excel
+// ============================================================================
+
+ipcMain.handle('db-import-customers-from-excel', async (event) => {
+  try {
+    console.log('🔄 Starting Excel import process...');
+    
+    // 1. Read Excel file
+    const isDev = !app.isPackaged;
+    const excelPath = isDev 
+      ? path.join(__dirname, '..', 'public', 'customers.xlsx')
+      : path.join(process.resourcesPath, 'public', 'customers.xlsx');
+    
+    console.log(`📁 Reading Excel file from: ${excelPath}`);
+    
+    // Check if file exists
+    const fs = require('fs');
+    if (!fs.existsSync(excelPath)) {
+      throw new Error(`Fichier Excel non trouvé: ${excelPath}`);
+    }
+    
+    // Read the Excel file
+    const workbook = XLSX.readFile(excelPath);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(worksheet);
+    
+    console.log(`📊 Found ${data.length} rows in Excel file`);
+    
+    if (data.length === 0) {
+      return {
+        success: false,
+        error: 'Le fichier Excel est vide ou ne contient pas de données valides'
+      };
+    }
+    
+    // 2. Group data by company name to identify duplicates
+    const groupedData = {};
+    data.forEach((row, index) => {
+      // Use the actual column names from the Excel file
+      const companyName = row['nameCustomer'] || row['nom_entreprise'] || row['Nom Entreprise'] || 
+                         row['Company Name'] || row['nom'] || row['Nom'] || row['Name'] || 
+                         row['ENTREPRISE'] || row['entreprise'] || row['Client'] || row['CLIENT'];
+      
+      if (!companyName) {
+        console.warn(`⚠️ Row ${index + 1}: No company name found, skipping`);
+        return;
+      }
+      
+      const normalizedName = companyName.toString().trim().toUpperCase();
+      if (!groupedData[normalizedName]) {
+        groupedData[normalizedName] = [];
+      }
+      groupedData[normalizedName].push({ ...row, originalCompanyName: companyName, rowIndex: index + 1 });
+    });
+    
+    console.log(`🏢 Found ${Object.keys(groupedData).length} unique companies`);
+    
+    // 3. Process each group
+    let clientsCreated = 0;
+    let sitesCreated = 0;
+    const errors = [];
+    
+    // Prepare database statements
+    const insertClient = db.prepare(`
+      INSERT INTO clients_gas (
+        id, type_client, nom_entreprise, nif, contact_nom, telephone, 
+        contact_email, adresse_facturation, devise_preferee, statut
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    const insertSite = db.prepare(`
+      INSERT INTO sites_gas (
+        id, client_id, nom_site, adresse_physique, effectif_jour_requis, 
+        effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    const checkExistingClient = db.prepare(`
+      SELECT id FROM clients_gas WHERE UPPER(nom_entreprise) = ? AND statut != 'SUPPRIME'
+    `);
+    
+    // Process each company group
+    for (const [normalizedName, records] of Object.entries(groupedData)) {
+      try {
+        console.log(`🔄 Processing company: ${normalizedName} (${records.length} records)`);
+        
+        // Check if client already exists
+        const existingClient = checkExistingClient.get(normalizedName);
+        let clientId = existingClient?.id;
+        
+        // If client doesn't exist, create it from the first record
+        if (!existingClient) {
+          const firstRecord = records[0];
+          clientId = crypto.randomUUID();
+          
+          // Map Excel columns to client fields
+          const clientData = {
+            id: clientId,
+            type_client: firstRecord['type_client'] || firstRecord['Type Client'] || 'MORALE',
+            nom_entreprise: firstRecord.originalCompanyName,
+            nif: firstRecord['nif'] || firstRecord['NIF'] || firstRecord['Tax ID'] || null,
+            contact_nom: firstRecord['nameRepCustomer'] || firstRecord['contact_nom'] || firstRecord['Contact'] || firstRecord['contact'] || null,
+            telephone: firstRecord['phoneCustomer'] || firstRecord['telephone'] || firstRecord['phone'] || firstRecord['Phone'] || firstRecord['Tel'] || null,
+            contact_email: firstRecord['emailCustomer'] || firstRecord['email'] || firstRecord['Email'] || firstRecord['contact_email'] || null,
+            adresse_facturation: firstRecord['addressCustomer'] || firstRecord['adresse'] || firstRecord['Adresse'] || firstRecord['Address'] || null,
+            devise_preferee: firstRecord['devise'] || firstRecord['Currency'] || 'USD',
+            statut: 'ACTIF'
+          };
+          
+          insertClient.run(
+            clientData.id,
+            clientData.type_client,
+            clientData.nom_entreprise,
+            clientData.nif,
+            clientData.contact_nom,
+            clientData.telephone,
+            clientData.contact_email,
+            clientData.adresse_facturation,
+            clientData.devise_preferee,
+            clientData.statut
+          );
+          
+          clientsCreated++;
+          console.log(`✅ Created client: ${clientData.nom_entreprise}`);
+        } else {
+          console.log(`ℹ️ Using existing client: ${normalizedName}`);
+        }
+        
+        // Create sites for all records (including first one if client was new)
+        for (const record of records) {
+          const siteId = crypto.randomUUID();
+          
+          // Generate site name (use siteCodeName from Excel or fallback)
+          const siteName = record['siteCodeName'] || record['nom_site'] || record['Site Name'] || 
+                          record['site'] || record['location'] || record['Location'] || 
+                          `${record.originalCompanyName} - Site ${record.rowIndex}`;
+          
+          const siteData = {
+            id: siteId,
+            client_id: clientId,
+            nom_site: siteName,
+            adresse_physique: record['addressCustomer'] || record['adresse_physique'] || record['adresse'] || record['Address'] || record['Adresse'] || null,
+            effectif_jour_requis: parseInt(record['agents'] || record['effectif_jour'] || record['Guards Day'] || record['jour'] || '1') || 1,
+            effectif_nuit_requis: parseInt(record['effectif_nuit'] || record['Guards Night'] || record['nuit'] || '0') || 0,
+            tarif_mensuel_client: parseFloat(record['totalPrice'] || record['tarif_mensuel'] || record['Monthly Rate'] || record['tarif'] || '0') || 0,
+            cout_unitaire_garde: parseFloat(record['unitPrice'] || record['cout_unitaire'] || record['Unit Cost'] || record['cout'] || '0') || 0,
+            est_actif: 1
+          };
+          
+          insertSite.run(
+            siteData.id,
+            siteData.client_id,
+            siteData.nom_site,
+            siteData.adresse_physique,
+            siteData.effectif_jour_requis,
+            siteData.effectif_nuit_requis,
+            siteData.tarif_mensuel_client,
+            siteData.cout_unitaire_garde,
+            siteData.est_actif
+          );
+          
+          sitesCreated++;
+          console.log(`✅ Created site: ${siteData.nom_site}`);
+        }
+        
+      } catch (error) {
+        const errorMsg = `Erreur lors du traitement de ${normalizedName}: ${error.message}`;
+        console.error(`❌ ${errorMsg}`);
+        errors.push(errorMsg);
+      }
+    }
+    
+    console.log(`✅ Import completed: ${clientsCreated} clients, ${sitesCreated} sites created`);
+    
+    return {
+      success: true,
+      clientsCreated,
+      sitesCreated,
+      totalProcessed: data.length,
+      errors: errors.length > 0 ? errors : undefined
+    };
+    
+  } catch (error) {
+    console.error('❌ Excel import failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 });
