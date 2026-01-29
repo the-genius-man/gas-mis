@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, MapPin, User, Plus, Clock, AlertTriangle, Users, Edit, Trash2 } from 'lucide-react';
+import { Search, Calendar, MapPin, User, Plus, Clock, AlertTriangle, Users, Edit, Trash2, CalendarDays } from 'lucide-react';
 import { EmployeeGASFull, AffectationRoteur } from '../../types';
 
 interface SiteWithGuardCount {
@@ -22,7 +22,7 @@ const RoteurManagement: React.FC = () => {
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [selectedRoteur, setSelectedRoteur] = useState<EmployeeGASFull | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<AffectationRoteur | null>(null);
-  const [activeTab, setActiveTab] = useState<'roteurs' | 'assignments' | 'coverage'>('roteurs');
+  const [activeTab, setActiveTab] = useState<'roteurs' | 'assignments' | 'coverage' | 'calendar'>('roteurs');
 
   useEffect(() => {
     loadData();
@@ -51,19 +51,27 @@ const RoteurManagement: React.FC = () => {
         setAssignments(assignmentsData || []);
         
         // Convert coverage gaps to sites with guard count format
-        const sitesWithCoverage: SiteWithGuardCount[] = (sitesData || []).map((site: any) => ({
-          id: site.id,
-          nom_site: site.nom_site,
-          client_nom: site.client_nom,
-          guard_count: site.guard_count || 0,
-          day_guards: site.guard_count || 0, // Simplified - all guards are considered day guards
-          night_guards: 0,
-          needs_roteur: site.guard_count === 1, // Sites with exactly 1 guard need roteur
-          current_roteur: (assignmentsData || []).find((assignment: any) => 
+        const sitesWithCoverage: SiteWithGuardCount[] = (sitesData || []).map((site: any) => {
+          // Find current active roteur assignment for this site
+          const currentRoteurAssignment = (assignmentsData || []).find((assignment: any) => 
             assignment.site_id === site.id && 
-            assignment.statut === 'EN_COURS'
-          )
-        }));
+            (assignment.statut === 'EN_COURS' || assignment.statut === 'PLANIFIE')
+          );
+          
+          // A site needs roteur if it has exactly 1 guard AND no active roteur assignment
+          const needsRoteur = site.guard_count === 1 && !currentRoteurAssignment;
+          
+          return {
+            id: site.id,
+            nom_site: site.nom_site,
+            client_nom: site.client_nom,
+            guard_count: site.guard_count || 0,
+            day_guards: site.guard_count || 0,
+            night_guards: 0,
+            needs_roteur: needsRoteur,
+            current_roteur: currentRoteurAssignment
+          };
+        });
         
         console.log('🔍 Processed sites with coverage:', sitesWithCoverage);
         setSites(sitesWithCoverage);
@@ -228,11 +236,24 @@ const RoteurManagement: React.FC = () => {
                 <span>Couverture Sites ({sitesNeedingRoteur.length})</span>
               </div>
             </button>
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'calendar'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                <span>Calendrier</span>
+              </div>
+            </button>
           </nav>
         </div>
 
-        {/* Content for Roteurs and Coverage tabs (with padding) */}
-        {(activeTab === 'roteurs' || activeTab === 'coverage') && (
+        {/* Content for Roteurs, Coverage, and Calendar tabs (with padding) */}
+        {(activeTab === 'roteurs' || activeTab === 'coverage' || activeTab === 'calendar') && (
           <div className="p-6">
             {/* Search */}
             {activeTab === 'roteurs' && (
@@ -367,6 +388,11 @@ const RoteurManagement: React.FC = () => {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Calendar Tab */}
+            {activeTab === 'calendar' && (
+              <RoteurCalendarView assignments={activeAssignments} />
             )}
           </div>
         )}
@@ -745,6 +771,204 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
           </div>
         </form>
       </div>
+    </div>
+  );
+};
+
+// Calendar View Component
+interface RoteurCalendarViewProps {
+  assignments: AffectationRoteur[];
+}
+
+const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Get current month and year
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  
+  // Get first day of month and number of days
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+  const daysInMonth = lastDayOfMonth.getDate();
+  const startingDayOfWeek = firstDayOfMonth.getDay();
+  
+  // Generate calendar days
+  const calendarDays = [];
+  
+  // Add empty cells for days before month starts
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    calendarDays.push(null);
+  }
+  
+  // Add days of the month
+  for (let day = 1; day <= daysInMonth; day++) {
+    calendarDays.push(day);
+  }
+  
+  // Get assignments for a specific date
+  const getAssignmentsForDate = (day: number) => {
+    const date = new Date(currentYear, currentMonth, day);
+    
+    return assignments.filter(assignment => {
+      const startDate = new Date(assignment.date_debut);
+      const endDate = new Date(assignment.date_fin);
+      return date >= startDate && date <= endDate;
+    });
+  };
+  
+  // Navigate months
+  const previousMonth = () => {
+    setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
+  };
+  
+  const nextMonth = () => {
+    setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
+  };
+  
+  const monthNames = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ];
+  
+  const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  
+  return (
+    <div className="space-y-6">
+      {/* Calendar Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Calendrier des Affectations - {monthNames[currentMonth]} {currentYear}
+        </h3>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={previousMonth}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            ←
+          </button>
+          <button
+            onClick={nextMonth}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            →
+          </button>
+        </div>
+      </div>
+      
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-blue-200 rounded"></div>
+          <span>Affectation active</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-green-200 rounded"></div>
+          <span>Affectation planifiée</span>
+        </div>
+      </div>
+      
+      {/* Calendar Grid */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        {/* Day Headers */}
+        <div className="grid grid-cols-7 bg-gray-50">
+          {dayNames.map(day => (
+            <div key={day} className="p-3 text-center text-sm font-medium text-gray-500 border-r border-gray-200 last:border-r-0">
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        {/* Calendar Days */}
+        <div className="grid grid-cols-7">
+          {calendarDays.map((day, index) => {
+            if (day === null) {
+              return <div key={index} className="h-24 border-r border-b border-gray-200 last:border-r-0"></div>;
+            }
+            
+            const dayAssignments = getAssignmentsForDate(day);
+            const isToday = new Date().toDateString() === new Date(currentYear, currentMonth, day).toDateString();
+            
+            return (
+              <div
+                key={day}
+                className={`h-24 border-r border-b border-gray-200 last:border-r-0 p-1 ${
+                  isToday ? 'bg-blue-50' : 'bg-white'
+                }`}
+              >
+                <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                  {day}
+                </div>
+                <div className="space-y-1">
+                  {dayAssignments.slice(0, 2).map((assignment, idx) => (
+                    <div
+                      key={idx}
+                      className={`text-xs p-1 rounded truncate ${
+                        assignment.statut === 'EN_COURS' 
+                          ? 'bg-blue-200 text-blue-800' 
+                          : 'bg-green-200 text-green-800'
+                      }`}
+                      title={`${assignment.roteur_nom} → ${assignment.site_nom}`}
+                    >
+                      {assignment.roteur_nom?.split(' ')[0]} → {assignment.site_nom?.substring(0, 8)}...
+                    </div>
+                  ))}
+                  {dayAssignments.length > 2 && (
+                    <div className="text-xs text-gray-500 text-center">
+                      +{dayAssignments.length - 2} autres
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Assignment Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {assignments.map((assignment) => (
+          <div key={assignment.id} className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-start justify-between mb-2">
+              <h4 className="font-medium text-gray-900">{assignment.roteur_nom}</h4>
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                assignment.statut === 'EN_COURS' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+              }`}>
+                {assignment.statut}
+              </span>
+            </div>
+            <div className="space-y-1 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3 h-3" />
+                <span>{assignment.site_nom}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-3 h-3" />
+                <span>
+                  {new Date(assignment.date_debut).toLocaleDateString('fr-FR')} - {new Date(assignment.date_fin).toLocaleDateString('fr-FR')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-3 h-3" />
+                <span>{assignment.poste}</span>
+              </div>
+              {assignment.notes && (
+                <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+                  {assignment.notes}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {assignments.length === 0 && (
+        <div className="text-center py-12 text-gray-500">
+          <CalendarDays className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p>Aucune affectation de rôteur</p>
+          <p className="text-sm mt-1">Les affectations apparaîtront ici une fois créées</p>
+        </div>
+      )}
     </div>
   );
 };
