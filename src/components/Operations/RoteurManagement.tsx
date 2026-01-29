@@ -813,8 +813,36 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
     return assignments.filter(assignment => {
       const startDate = new Date(assignment.date_debut);
       const endDate = new Date(assignment.date_fin);
-      return date >= startDate && date <= endDate;
+      
+      // Check if this date falls within the assignment period
+      if (date >= startDate && date <= endDate) {
+        // For roteur assignments, we need to determine which site they're covering on this specific day
+        // This should be handled by the backend to distribute days across assigned sites
+        // For now, we'll show only one assignment per roteur per day
+        return true;
+      }
+      return false;
     });
+  };
+  
+  // Get the specific site assignment for a roteur on a given day
+  const getRoteurSiteForDay = (roteurId: string, day: number) => {
+    const date = new Date(currentYear, currentMonth, day);
+    const roteurAssignments = assignments.filter(assignment => 
+      assignment.roteur_id === roteurId &&
+      new Date(assignment.date_debut) <= date &&
+      new Date(assignment.date_fin) >= date
+    );
+    
+    if (roteurAssignments.length === 0) return null;
+    
+    // If roteur has multiple site assignments, determine which site for this day
+    // This could be based on a rotation pattern (e.g., round-robin)
+    // For now, we'll use a simple day-based rotation
+    const daysSinceStart = Math.floor((date.getTime() - new Date(roteurAssignments[0].date_debut).getTime()) / (1000 * 60 * 60 * 24));
+    const siteIndex = daysSinceStart % roteurAssignments.length;
+    
+    return roteurAssignments[siteIndex];
   };
   
   // Navigate months
@@ -857,7 +885,7 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
       </div>
       
       {/* Legend */}
-      <div className="flex items-center gap-4 text-sm">
+      <div className="flex items-center gap-6 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-blue-200 rounded"></div>
           <span>Affectation active</span>
@@ -865,6 +893,10 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-200 rounded"></div>
           <span>Affectation planifiée</span>
+        </div>
+        <div className="text-gray-600 text-xs">
+          • Un rôteur ne peut couvrir qu'un site par jour
+          • La rotation entre sites se fait automatiquement
         </div>
       </div>
       
@@ -886,7 +918,22 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
               return <div key={index} className="h-24 border-r border-b border-gray-200 last:border-r-0"></div>;
             }
             
+            // Get unique roteurs for this day (one assignment per roteur)
             const dayAssignments = getAssignmentsForDate(day);
+            const uniqueRoteurAssignments = [];
+            const seenRoteurs = new Set();
+            
+            for (const assignment of dayAssignments) {
+              if (!seenRoteurs.has(assignment.roteur_id)) {
+                // Get the specific site this roteur is covering today
+                const todayAssignment = getRoteurSiteForDay(assignment.roteur_id, day);
+                if (todayAssignment) {
+                  uniqueRoteurAssignments.push(todayAssignment);
+                  seenRoteurs.add(assignment.roteur_id);
+                }
+              }
+            }
+            
             const isToday = new Date().toDateString() === new Date(currentYear, currentMonth, day).toDateString();
             
             return (
@@ -900,7 +947,7 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
                   {day}
                 </div>
                 <div className="space-y-1">
-                  {dayAssignments.slice(0, 2).map((assignment, idx) => (
+                  {uniqueRoteurAssignments.slice(0, 3).map((assignment, idx) => (
                     <div
                       key={idx}
                       className={`text-xs p-1 rounded truncate ${
@@ -908,14 +955,14 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
                           ? 'bg-blue-200 text-blue-800' 
                           : 'bg-green-200 text-green-800'
                       }`}
-                      title={`${assignment.roteur_nom} → ${assignment.site_nom}`}
+                      title={`${assignment.roteur_nom} couvre ${assignment.site_nom} aujourd'hui`}
                     >
-                      {assignment.roteur_nom?.split(' ')[0]} → {assignment.site_nom?.substring(0, 8)}...
+                      {assignment.roteur_nom?.split(' ')[0]} @ {assignment.site_nom?.substring(0, 10)}
                     </div>
                   ))}
-                  {dayAssignments.length > 2 && (
+                  {uniqueRoteurAssignments.length > 3 && (
                     <div className="text-xs text-gray-500 text-center">
-                      +{dayAssignments.length - 2} autres
+                      +{uniqueRoteurAssignments.length - 3} autres
                     </div>
                   )}
                 </div>
@@ -925,41 +972,85 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
         </div>
       </div>
       
-      {/* Assignment Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {assignments.map((assignment) => (
-          <div key={assignment.id} className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="flex items-start justify-between mb-2">
-              <h4 className="font-medium text-gray-900">{assignment.roteur_nom}</h4>
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                assignment.statut === 'EN_COURS' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-              }`}>
-                {assignment.statut}
-              </span>
-            </div>
-            <div className="space-y-1 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-3 h-3" />
-                <span>{assignment.site_nom}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-3 h-3" />
-                <span>
-                  {new Date(assignment.date_debut).toLocaleDateString('fr-FR')} - {new Date(assignment.date_fin).toLocaleDateString('fr-FR')}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="w-3 h-3" />
-                <span>{assignment.poste}</span>
-              </div>
-              {assignment.notes && (
-                <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
-                  {assignment.notes}
+      {/* Assignment Summary with Rotation Schedule */}
+      <div className="space-y-6">
+        <h4 className="text-lg font-semibold text-gray-900">Planning de Rotation</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {assignments.map((assignment) => {
+            // Calculate rotation schedule for this assignment
+            const startDate = new Date(assignment.date_debut);
+            const endDate = new Date(assignment.date_fin);
+            const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+            
+            // Get all sites this roteur is assigned to during this period
+            const roteurAssignments = assignments.filter(a => 
+              a.roteur_id === assignment.roteur_id &&
+              a.date_debut === assignment.date_debut &&
+              a.date_fin === assignment.date_fin
+            );
+            
+            return (
+              <div key={assignment.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-medium text-gray-900">{assignment.roteur_nom}</h4>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    assignment.statut === 'EN_COURS' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                  }`}>
+                    {assignment.statut}
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
+                
+                <div className="space-y-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3 h-3" />
+                    <span>
+                      {startDate.toLocaleDateString('fr-FR')} - {endDate.toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3 h-3" />
+                    <span>{assignment.poste}</span>
+                  </div>
+                  
+                  {/* Current Site Assignment */}
+                  <div className="bg-blue-50 p-2 rounded">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MapPin className="w-3 h-3 text-blue-600" />
+                      <span className="font-medium text-blue-900">Site Actuel</span>
+                    </div>
+                    <span className="text-blue-800">{assignment.site_nom}</span>
+                  </div>
+                  
+                  {/* Rotation Pattern */}
+                  {roteurAssignments.length > 1 && (
+                    <div className="bg-gray-50 p-2 rounded">
+                      <div className="text-xs font-medium text-gray-700 mb-1">
+                        Rotation ({roteurAssignments.length} sites):
+                      </div>
+                      <div className="space-y-1">
+                        {roteurAssignments.map((site, idx) => (
+                          <div key={site.id} className="text-xs text-gray-600">
+                            {idx + 1}. {site.site_nom}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Rotation automatique chaque jour
+                      </div>
+                    </div>
+                  )}
+                  
+                  {assignment.notes && (
+                    <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+                      <strong>Notes:</strong> {assignment.notes}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
       
       {assignments.length === 0 && (
