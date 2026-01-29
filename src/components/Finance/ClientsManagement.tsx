@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { 
   Plus, Search, Building2, Edit, Trash2, Phone, MapPin, 
-  User, AlertCircle, Eye, List, LayoutGrid, Users, DollarSign
+  User, AlertCircle, Eye, List, LayoutGrid, Users, DollarSign, Upload
 } from 'lucide-react';
 import ClientFormWizard from './ClientFormWizard';
 import ClientDetailModal from './ClientDetailModal';
@@ -36,6 +36,8 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
   const [statusFilter, setStatusFilter] = useState<'all' | 'ACTIF' | 'INACTIF'>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -136,6 +138,48 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
     setViewingClient(client);
   };
 
+  const handleImportCustomers = async () => {
+    if (!window.electronAPI?.importCustomersFromExcel) {
+      alert('Fonctionnalité d\'importation non disponible');
+      return;
+    }
+
+    try {
+      setImporting(true);
+      console.log('🔄 Starting customer import from Excel...');
+      
+      const result = await window.electronAPI.importCustomersFromExcel();
+      
+      if (result.success) {
+        const message = `Import terminé avec succès!\n\n` +
+                       `Résultats:\n` +
+                       `• Clients créés: ${result.clientsCreated || 0}\n` +
+                       `• Sites créés: ${result.sitesCreated || 0}\n` +
+                       `• Lignes traitées: ${result.totalProcessed || 0}\n` +
+                       `• Erreurs: ${result.errors?.length || 0}`;
+        
+        if (result.errors && result.errors.length > 0) {
+          const errorDetails = result.errors.slice(0, 5).map(err => `  - ${err}`).join('\n');
+          alert(message + `\n\nPremières erreurs:\n${errorDetails}` + 
+                (result.errors.length > 5 ? `\n  ... et ${result.errors.length - 5} autres` : ''));
+        } else {
+          alert(message);
+        }
+        
+        // Refresh data
+        await loadData();
+        setShowImportModal(false);
+      } else {
+        alert(`Erreur lors de l'import: ${result.error || 'Erreur inconnue'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error importing customers:', error);
+      alert('Erreur lors de l\'importation: ' + error.message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const filteredClients = clientsWithStats.filter(client => {
     const matchesSearch =
       client.nom_entreprise.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -195,14 +239,22 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
             {clients.length} client{clients.length !== 1 ? 's' : ''} enregistré{clients.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Nouveau Client</span>
-        </button>
-      </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Importer Excel</span>
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Nouveau Client</span>
+          </button>
+        </div>
 
       {/* Filters & View Toggle */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -534,6 +586,63 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
           onStatusChange={handleStatusChange}
           onNavigateToSites={onNavigateToSites}
         />
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold mb-4">Importer des Clients depuis Excel</h3>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2">Instructions d'importation</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Le fichier customers.xlsx sera utilisé depuis le dossier public</li>
+                  <li>• Chaque ligne représente un client potentiel</li>
+                  <li>• Les clients en double deviennent des sites du même client</li>
+                  <li>• Les données existantes ne seront pas écrasées</li>
+                </ul>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-medium text-yellow-900 mb-2">⚠️ Attention</h4>
+                <p className="text-sm text-yellow-800">
+                  Cette opération va créer de nouveaux clients et sites. 
+                  Assurez-vous que le fichier Excel est correctement formaté.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-6">
+              <button
+                type="button"
+                onClick={() => setShowImportModal(false)}
+                disabled={importing}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleImportCustomers}
+                disabled={importing}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {importing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Importation...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Importer
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
