@@ -1,13 +1,14 @@
 -- Excel Import SQL Statements
--- Generated on: 2026-01-29T21:23:40.538Z
+-- Generated on: 2026-01-29T22:01:40.036Z
+-- Client Type Classification: ONG, Ste, ASBL = MORALE; Others = PHYSIQUE
 
--- Client: James Batende
+-- Client: James Batende (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'fb1b38f2-132a-43e5-b7a9-79632e594d19',
-  'MORALE',
+  'b5037314-b059-47cb-9d99-130aa5e5e802',
+  'PHYSIQUE',
   'James Batende',
   NULL,
   'James Batende',
@@ -23,8 +24,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'e676caf6-936b-4167-90fc-0e96766df615',
-  'fb1b38f2-132a-43e5-b7a9-79632e594d19',
+  '79d596d9-fad5-4e8c-b28d-0f4783a64c6e',
+  'b5037314-b059-47cb-9d99-130aa5e5e802',
   'Residence James',
   '276, Av Masisi, Q Katindo',
   1,
@@ -34,13 +35,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Souzy Musukali
+-- Client: Souzy Musukali (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '96ee202d-2ca7-46e3-9814-43fd2ea30c90',
-  'MORALE',
+  '225d2897-5683-41a3-a4e3-a22a615d5d0b',
+  'PHYSIQUE',
   'Souzy Musukali',
   NULL,
   'Souzy Musukali',
@@ -56,8 +57,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '3ab717de-2188-4615-af0f-823576510f47',
-  '96ee202d-2ca7-46e3-9814-43fd2ea30c90',
+  '5ec4536f-78ae-461e-b879-87dc61963440',
+  '225d2897-5683-41a3-a4e3-a22a615d5d0b',
   'Residence Souzy',
   'Q Himbi',
   2,
@@ -67,13 +68,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Ngeve Visso Philemon
+-- Client: Ngeve Visso Philemon (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '045c0a75-6202-4706-bda1-6a855324a122',
-  'MORALE',
+  '7579ee72-87d8-4981-9c62-26a7eaf28542',
+  'PHYSIQUE',
   'Ngeve Visso Philemon',
   NULL,
   'Ngeve Visso Philemon',
@@ -89,8 +90,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'ea1e2cfb-71ee-4272-8058-250d5caf2a9b',
-  '045c0a75-6202-4706-bda1-6a855324a122',
+  '821fe1c8-95c6-4bb0-a7b6-55e98f8115b4',
+  '7579ee72-87d8-4981-9c62-26a7eaf28542',
   'Emmanuel',
   '287, Av Lusaka, Q Kyeshero',
   2,
@@ -100,13 +101,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Bio Kivu
+-- Client: Bio Kivu (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'd370527b-70bc-478b-a20f-68dd6cc15e72',
-  'MORALE',
+  '98234567-b6b2-49db-84d3-77e133b8e3aa',
+  'PHYSIQUE',
   'Bio Kivu',
   NULL,
   NULL,
@@ -122,8 +123,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'afa3f209-214a-4c6a-84f1-410aecf5aff6',
-  'd370527b-70bc-478b-a20f-68dd6cc15e72',
+  '98b8f1c2-466b-4db9-9afc-e3763da75500',
+  '98234567-b6b2-49db-84d3-77e133b8e3aa',
   'Bio Kivu',
   'Q. Bujovu',
   2,
@@ -133,13 +134,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Ahadi Senge Phidias
+-- Client: Ahadi Senge Phidias (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '65acf53f-69a2-41a9-9410-403ed09b6125',
-  'MORALE',
+  '2f0821a3-1e59-4b9b-a2e5-bff4b046240c',
+  'PHYSIQUE',
   'Ahadi Senge Phidias',
   NULL,
   'Ahadi Senge Phidias',
@@ -155,8 +156,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'a7a8334b-bba0-4793-8a56-f8657860d6f9',
-  '65acf53f-69a2-41a9-9410-403ed09b6125',
+  '3cf905c2-11ca-4e11-8112-fb6b740cbc60',
+  '2f0821a3-1e59-4b9b-a2e5-bff4b046240c',
   'Residence Phidias',
   '12, Av des Rond-point, Q. Les Volcans, Rue Lyn Lussy',
   2,
@@ -166,13 +167,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Virunga
+-- Client: Virunga (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '8218dadc-2dfa-4f2c-86d7-7ddacdf766ce',
-  'MORALE',
+  '3ff6d1b3-9f19-4acb-bc80-301e48b70c7f',
+  'PHYSIQUE',
   'Virunga',
   NULL,
   NULL,
@@ -188,8 +189,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'd87f005d-99e9-4574-9d43-19c280654353',
-  '8218dadc-2dfa-4f2c-86d7-7ddacdf766ce',
+  '9947944b-c7f5-434d-958c-2aeb74c7a02c',
+  '3ff6d1b3-9f19-4acb-bc80-301e48b70c7f',
   'Entrepot Virunga',
   'Q. Virunga',
   1,
@@ -199,13 +200,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Bisimwa Rodrigue (Chantier)
+-- Client: Bisimwa Rodrigue (Chantier) (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'b7ee70ca-c94a-4932-a7c2-6ea867f4b438',
-  'MORALE',
+  '6bd54c24-2f9d-4304-a8ef-5c4a1a26c0c5',
+  'PHYSIQUE',
   'Bisimwa Rodrigue (Chantier)',
   NULL,
   'Bisimwa Rodrigue',
@@ -221,8 +222,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'e84461dd-0cab-48e6-9a26-8b5a9ff2d9d4',
-  'b7ee70ca-c94a-4932-a7c2-6ea867f4b438',
+  'a2826456-3a69-489e-b9a2-f84f974cdc70',
+  '6bd54c24-2f9d-4304-a8ef-5c4a1a26c0c5',
   'Bisimwa Rodrigue (Chantier) - Site 7',
   NULL,
   2,
@@ -232,13 +233,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Bisimwa Rodrigue (Famille)
+-- Client: Bisimwa Rodrigue (Famille) (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '265cddb5-0e29-4085-a324-63362ff8bc1d',
-  'MORALE',
+  '992c8248-b258-4ef8-8322-d2373c929f5b',
+  'PHYSIQUE',
   'Bisimwa Rodrigue (Famille)',
   NULL,
   'Bisimwa Rodrigue',
@@ -254,8 +255,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '765ada43-1183-4929-b2fb-fdd5078c26c8',
-  '265cddb5-0e29-4085-a324-63362ff8bc1d',
+  '1ca70ab0-6f87-4d24-9207-e6c410d2cad6',
+  '992c8248-b258-4ef8-8322-d2373c929f5b',
   'Bisimwa Rodrigue (Famille) - Site 8',
   NULL,
   1,
@@ -265,13 +266,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Makuru Amani Bienvenu
+-- Client: Makuru Amani Bienvenu (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '0a23b19c-5da7-4024-9b41-e5bf192198d4',
-  'MORALE',
+  '24fd63c4-ac64-409d-a5f9-0d4adaf454e1',
+  'PHYSIQUE',
   'Makuru Amani Bienvenu',
   NULL,
   'Makuru Amani Bienvenu',
@@ -287,8 +288,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'bfef96e0-89b4-4f40-9acb-cf9438255098',
-  '0a23b19c-5da7-4024-9b41-e5bf192198d4',
+  '23e1476e-88ae-4ee2-8860-84d431f581ba',
+  '24fd63c4-ac64-409d-a5f9-0d4adaf454e1',
   'Makuru Amani Bienvenu - Site 9',
   '16, Av Abattoir, Q Kyeshero',
   1,
@@ -298,13 +299,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: CMDIPRO
+-- Client: CMDIPRO (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '2c6143a4-abce-4a4d-84c6-73e06b3daceb',
-  'MORALE',
+  '887c9250-1c49-4cab-87a5-35a5b9e58f0f',
+  'PHYSIQUE',
   'CMDIPRO',
   NULL,
   NULL,
@@ -320,8 +321,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'a49344c1-4185-4c11-b489-54545bc4350d',
-  '2c6143a4-abce-4a4d-84c6-73e06b3daceb',
+  'ed53521e-52c3-4b86-b726-776c05fe49e6',
+  '887c9250-1c49-4cab-87a5-35a5b9e58f0f',
   'CMDIPRO - Site 10',
   'Q. Kyeshero',
   2,
@@ -331,13 +332,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Herman Hangi
+-- Client: Herman Hangi (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '12232ce2-2e86-4b42-817b-89b2bcb6853f',
-  'MORALE',
+  '3d0291c7-5fee-44f9-b87b-057aa5db0a54',
+  'PHYSIQUE',
   'Herman Hangi',
   NULL,
   'Herman Hangi',
@@ -353,8 +354,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '42d87c5b-4e9f-403e-8f59-5d2132a18ac2',
-  '12232ce2-2e86-4b42-817b-89b2bcb6853f',
+  'de4e97c0-ed85-4010-b6ba-d9a4170247a6',
+  '3d0291c7-5fee-44f9-b87b-057aa5db0a54',
   'Herman Hangi - Site 11',
   'Q. Kyeshero, Av. Lusaka',
   2,
@@ -364,13 +365,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Okasso Djungambulu Felix
+-- Client: Okasso Djungambulu Felix (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '835e82ec-4f5f-46fe-9211-42643137b623',
-  'MORALE',
+  'd536dd21-3bc6-45f5-809b-412be6d642ab',
+  'PHYSIQUE',
   'Okasso Djungambulu Felix',
   NULL,
   'Okasso Djungambulu Felix',
@@ -386,8 +387,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'f6503f30-7052-4c40-9d9f-cc3d5d9a95d4',
-  '835e82ec-4f5f-46fe-9211-42643137b623',
+  '933f4bc7-fcd7-4e9a-bd85-f8df827662e1',
+  'd536dd21-3bc6-45f5-809b-412be6d642ab',
   'Okasso Djungambulu Felix - Site 12',
   'Av. Orchide Q. Les Volcans',
   1,
@@ -397,13 +398,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Lucien Ntautabazi
+-- Client: Lucien Ntautabazi (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '753a1c0f-4eca-4d5e-8f6f-d844c1e6400d',
-  'MORALE',
+  'd24ddeb4-e4d2-448a-930f-d0de263d50b9',
+  'PHYSIQUE',
   'Lucien Ntautabazi',
   NULL,
   'Lucien Ntautabazi',
@@ -419,8 +420,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'efa25a67-e525-46b8-b7a7-a97e61956477',
-  '753a1c0f-4eca-4d5e-8f6f-d844c1e6400d',
+  'a8f40e6b-98f8-42ae-8a96-eb870963025f',
+  'd24ddeb4-e4d2-448a-930f-d0de263d50b9',
   'Lucien Ntautabazi - Site 13',
   'Q. Les Volcans, Rue Lyn Lusi, 061',
   1,
@@ -430,13 +431,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Zephirin
+-- Client: Zephirin (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'd8588765-f063-48c5-aa6b-9d6915cb22d6',
-  'MORALE',
+  '2eca1658-f893-4100-b4bc-0a5ed76d4729',
+  'PHYSIQUE',
   'Zephirin',
   NULL,
   'Zephirin',
@@ -452,8 +453,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '7d81416b-c389-4821-bee7-fba617d6c40f',
-  'd8588765-f063-48c5-aa6b-9d6915cb22d6',
+  '057b2b7a-4e72-440c-b74f-93eb3c7ea88d',
+  '2eca1658-f893-4100-b4bc-0a5ed76d4729',
   'Zephirin - Site 14',
   'Q. Kyeshero Av des Eglises',
   2,
@@ -463,13 +464,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Valentin Mudja
+-- Client: Valentin Mudja (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '54bfd61d-ce69-42ae-9ffe-d89f2c234349',
-  'MORALE',
+  'ae58f79e-b0df-4940-93ec-9bf0f182c015',
+  'PHYSIQUE',
   'Valentin Mudja',
   NULL,
   'Mr Valentin Mudja',
@@ -485,8 +486,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '08728682-6db1-4cd1-bc6b-1ae5ad670a7c',
-  '54bfd61d-ce69-42ae-9ffe-d89f2c234349',
+  '8a52358a-24c4-47a9-9b7a-69ea058e1eef',
+  'ae58f79e-b0df-4940-93ec-9bf0f182c015',
   'Valentin Mudja - Site 15',
   'Q. Les Volcans',
   1,
@@ -496,13 +497,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Beroya
+-- Client: Beroya (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '2eb3afeb-97c4-44ca-84ec-5bf732600ccb',
-  'MORALE',
+  '1923335b-b783-4264-bdf7-d4ffe5b5fa9f',
+  'PHYSIQUE',
   'Beroya',
   NULL,
   'Mulonda Myango',
@@ -518,8 +519,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '2a492d02-93e4-427f-8d53-970743b0966b',
-  '2eb3afeb-97c4-44ca-84ec-5bf732600ccb',
+  '7d0c7a41-6e35-4219-b339-5202ae11ee92',
+  '1923335b-b783-4264-bdf7-d4ffe5b5fa9f',
   'Beroya',
   'Q Katindo',
   1,
@@ -529,13 +530,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Bisimwa Rodrigue
+-- Client: Bisimwa Rodrigue (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '6cee5ed6-c088-469c-987b-db278ec23423',
-  'MORALE',
+  'a0962ef9-af28-460a-a145-b3fa90d1a364',
+  'PHYSIQUE',
   'Bisimwa Rodrigue',
   NULL,
   'Bisimwa Rodrigue',
@@ -551,8 +552,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'f692b63b-a379-4bc6-a93e-9fae2084d022',
-  '6cee5ed6-c088-469c-987b-db278ec23423',
+  'd084bdbb-e955-45e8-a88c-ca06dd442694',
+  'a0962ef9-af28-460a-a145-b3fa90d1a364',
   'Residence Rodrigue',
   'Q. Kyeshero',
   2,
@@ -562,13 +563,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Save Communities in Conflicts
+-- Client: Save Communities in Conflicts (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'd41c1123-6684-48d3-8021-22f461f00660',
-  'MORALE',
+  'd43fc2c0-21c3-4c12-af80-b126fccae044',
+  'PHYSIQUE',
   'Save Communities in Conflicts',
   NULL,
   NULL,
@@ -584,8 +585,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'a93ddf50-74a4-47d3-9d18-cfc2229d32c7',
-  'd41c1123-6684-48d3-8021-22f461f00660',
+  'fe997c7e-d86c-4af6-a1de-836e19ce7040',
+  'd43fc2c0-21c3-4c12-af80-b126fccae044',
   'Save Communities',
   '100, Av de la Conference, Q Kyeshero',
   2,
@@ -595,13 +596,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: UAVOU
+-- Client: UAVOU (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '5c855e00-72f0-483d-bddb-76f4090ca093',
-  'MORALE',
+  '3f953e1c-c94f-4731-97ab-3f12aa157ec8',
+  'PHYSIQUE',
   'UAVOU',
   NULL,
   NULL,
@@ -617,8 +618,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '3b3096a9-e629-4374-b49b-077b36c33b6f',
-  '5c855e00-72f0-483d-bddb-76f4090ca093',
+  'a2a3ffb8-00c2-489d-8f97-a50462306d51',
+  '3f953e1c-c94f-4731-97ab-3f12aa157ec8',
   'UAVOU - Site 19',
   NULL,
   1,
@@ -628,13 +629,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: SAFI
+-- Client: SAFI (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'efae93ee-8fc7-4202-9970-2bbf7c8ef1c5',
-  'MORALE',
+  '9c5bbfda-3e3e-4f1b-8172-1e8dc4658af7',
+  'PHYSIQUE',
   'SAFI',
   NULL,
   'SAFI',
@@ -650,8 +651,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'd9bb924b-407d-482c-bc28-380a1a545aac',
-  'efae93ee-8fc7-4202-9970-2bbf7c8ef1c5',
+  'ccc1c498-0b81-44ce-beca-a17ee1497434',
+  '9c5bbfda-3e3e-4f1b-8172-1e8dc4658af7',
   'SAFI - Site 20',
   'Av. Polyclinique, Q Kyeshero',
   4,
@@ -661,13 +662,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Balola Bichonne Justin
+-- Client: Balola Bichonne Justin (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'bd702aae-aa7c-4a2e-9d83-742afc66c50b',
-  'MORALE',
+  'a6d09183-9646-4666-8803-518519bfe4ab',
+  'PHYSIQUE',
   'Balola Bichonne Justin',
   NULL,
   'Balola Bichonne Justin',
@@ -683,8 +684,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '62cbc2bd-8aef-43ff-ad91-8307ee46b4d1',
-  'bd702aae-aa7c-4a2e-9d83-742afc66c50b',
+  '480b6197-d61d-45da-a75f-12aebbf7b384',
+  'a6d09183-9646-4666-8803-518519bfe4ab',
   'Balola Bichonne Justin - Site 21',
   'Q Virunga',
   4,
@@ -694,13 +695,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Willy Lombé Njaza
+-- Client: Willy Lombé Njaza (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '3c704e29-c20a-4c93-a817-2ffb58640600',
-  'MORALE',
+  '32274114-6b98-4eda-bb2a-44a4e41e791f',
+  'PHYSIQUE',
   'Willy Lombé Njaza',
   NULL,
   'Willy Lombé Njaza',
@@ -716,8 +717,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'ee081810-2b0b-40c3-9d35-7f6966d4484f',
-  '3c704e29-c20a-4c93-a817-2ffb58640600',
+  '8b29c076-0dd5-4760-93be-658faebd1fed',
+  '32274114-6b98-4eda-bb2a-44a4e41e791f',
   'Usine Rodrigue',
   'Q Kyeshero',
   1,
@@ -727,13 +728,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Kabinda Fikiri Lea restaurant
+-- Client: Kabinda Fikiri Lea restaurant (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'd766dd93-3bf6-4406-9ad8-173e08da6d68',
-  'MORALE',
+  'e1f649bb-d2b4-4ed7-8e69-68cbdf663c20',
+  'PHYSIQUE',
   'Kabinda Fikiri Lea restaurant',
   NULL,
   'Kabinda Fikiri Lea',
@@ -749,8 +750,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'e2f58c56-6695-4e64-9a38-4c125bce2b7a',
-  'd766dd93-3bf6-4406-9ad8-173e08da6d68',
+  '264dfe8b-b5d0-4748-9f1b-fe71261588f4',
+  'e1f649bb-d2b4-4ed7-8e69-68cbdf663c20',
   'Kabinda Fikiri Lea restaurant - Site 23',
   '267, Av. Du Lac, Q Katindo',
   1,
@@ -765,8 +766,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'a7018ed7-3815-45de-8dc1-eaba1e7a77c5',
-  'd766dd93-3bf6-4406-9ad8-173e08da6d68',
+  '2cf25d46-7275-4e18-8ce1-5bdfc4d6129b',
+  'e1f649bb-d2b4-4ed7-8e69-68cbdf663c20',
   'Kabinda fikiri Lea Restaurant - Site 67',
   '267,Av Duu Lac,Q.Katindo',
   1,
@@ -776,13 +777,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Bosconia
+-- Client: Bosconia (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'ff19b3e3-f582-49a7-b64c-8504f860d9b5',
-  'MORALE',
+  'fc5eef0d-9caf-4729-8f6c-f3c792065eaf',
+  'PHYSIQUE',
   'Bosconia',
   NULL,
   'Pere JP Tafunga',
@@ -798,8 +799,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '48dcec4c-015b-4ca1-9001-4cda5e94d4f7',
-  'ff19b3e3-f582-49a7-b64c-8504f860d9b5',
+  '26a4ffdb-54e1-41ac-9209-1d56bff5fbc6',
+  'fc5eef0d-9caf-4729-8f6c-f3c792065eaf',
   'Bosconia - Site 24',
   NULL,
   2,
@@ -809,13 +810,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Belle Vie Logistique
+-- Client: Belle Vie Logistique (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '1bf23235-7fa2-4e70-961a-4c03fec701cb',
-  'MORALE',
+  'c31ff408-7e26-441e-b7c6-c985bdf03ded',
+  'PHYSIQUE',
   'Belle Vie Logistique',
   NULL,
   'Sengi Buyibuyi',
@@ -831,8 +832,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '2d1091e4-46bb-4743-86d6-5fe9cc41d494',
-  '1bf23235-7fa2-4e70-961a-4c03fec701cb',
+  '2e3ca316-e1e7-4834-832c-2c60396bc43d',
+  'c31ff408-7e26-441e-b7c6-c985bdf03ded',
   'Garage Belle Vie',
   'Av. Bishweka, Q Les Volcans',
   1,
@@ -842,13 +843,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Yves Bwema
+-- Client: Yves Bwema (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'becbe030-2cdf-4e7c-b0f4-3eb222ec1f41',
-  'MORALE',
+  'eb003cc1-3006-4f97-9b9e-1119e5b2c1ee',
+  'PHYSIQUE',
   'Yves Bwema',
   NULL,
   'Yves Bwema',
@@ -864,8 +865,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'bb881ef0-7ce5-4c21-a359-e67d9b252897',
-  'becbe030-2cdf-4e7c-b0f4-3eb222ec1f41',
+  '75e855a5-7316-478a-8fe7-d03e00a3fe3f',
+  'eb003cc1-3006-4f97-9b9e-1119e5b2c1ee',
   'Yves Bwema - Site 26',
   'Q. Kyeshero',
   2,
@@ -875,13 +876,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Zero Panne
+-- Client: Zero Panne (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '6fd63d75-4705-4a11-b6b6-5e8e8b254f7d',
-  'MORALE',
+  '4c4818b9-b5c2-49d8-9fbf-d2232b8b4774',
+  'PHYSIQUE',
   'Zero Panne',
   NULL,
   'ZP',
@@ -897,8 +898,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'dafc0254-6cef-4ea0-9352-7f5cf9399433',
-  '6fd63d75-4705-4a11-b6b6-5e8e8b254f7d',
+  'd12cf4f9-075f-4e16-968b-bc326866dd9d',
+  '4c4818b9-b5c2-49d8-9fbf-d2232b8b4774',
   'Zero Panne - Site 27',
   'Q. Mabanga Nord',
   1,
@@ -913,8 +914,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'ce99ae8f-6d6f-401d-9f0f-57ab2ca30dcf',
-  '6fd63d75-4705-4a11-b6b6-5e8e8b254f7d',
+  '13fb7e88-6129-4ad0-92e2-a374ea17b4ad',
+  '4c4818b9-b5c2-49d8-9fbf-d2232b8b4774',
   'Zero Panne - Site 58',
   'Q.Mabanga Nord',
   1,
@@ -924,13 +925,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Fatuma Bukoko Gabrielle
+-- Client: Fatuma Bukoko Gabrielle (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'cad7288e-891f-4182-847d-fe2f0c32d9be',
-  'MORALE',
+  '4b927b19-f4f3-4474-bf68-2e46ac27de09',
+  'PHYSIQUE',
   'Fatuma Bukoko Gabrielle',
   NULL,
   'Gabrielle',
@@ -946,8 +947,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '21ef2bb6-f482-4930-9915-fc4355886faa',
-  'cad7288e-891f-4182-847d-fe2f0c32d9be',
+  'f08cde59-d33b-4df4-8ee6-516bbb40a362',
+  '4b927b19-f4f3-4474-bf68-2e46ac27de09',
   'boutique Fatuma',
   NULL,
   1,
@@ -957,13 +958,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Zaina Lunda
+-- Client: Zaina Lunda (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '36a0deef-1125-46c8-8fec-4bafacc6f1cb',
-  'MORALE',
+  '0e602fe3-c3e2-4be3-99a3-da0f7628a140',
+  'PHYSIQUE',
   'Zaina Lunda',
   NULL,
   'Zaina Lunda',
@@ -979,8 +980,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '2d801bf1-eb52-4e11-b585-672593a012a2',
-  '36a0deef-1125-46c8-8fec-4bafacc6f1cb',
+  'f8304373-dd1d-439f-aff1-96e193bfbfb4',
+  '0e602fe3-c3e2-4be3-99a3-da0f7628a140',
   'Zaina Lunda - Site 29',
   'Commune de Karisimbi Q. Mabanga',
   2,
@@ -990,13 +991,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Rachel Safari (RVA)
+-- Client: Rachel Safari (RVA) (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'a98bbe99-3ff7-48eb-a0ef-cb22a25f59aa',
-  'MORALE',
+  '4ad12586-ad80-4b72-a228-d2d491dea8d9',
+  'PHYSIQUE',
   'Rachel Safari (RVA)',
   NULL,
   'Bisimwa Rodrigue',
@@ -1012,8 +1013,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '26a0002f-1b92-4a84-8eaf-838c2d7edd21',
-  'a98bbe99-3ff7-48eb-a0ef-cb22a25f59aa',
+  '36875261-310d-4296-b579-489df1c31c73',
+  '4ad12586-ad80-4b72-a228-d2d491dea8d9',
   'Chantier RVA',
   'Q. Himbi',
   2,
@@ -1023,13 +1024,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Bishworld Auto
+-- Client: Bishworld Auto (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '8ad36566-e630-45d7-8f15-22fc590b839a',
-  'MORALE',
+  'eb0d653f-c219-4232-8519-824166deefdc',
+  'PHYSIQUE',
   'Bishworld Auto',
   NULL,
   'Bienfait Lunda',
@@ -1045,8 +1046,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '184e789a-091d-41fc-98ae-85327a2b61be',
-  '8ad36566-e630-45d7-8f15-22fc590b839a',
+  'a616b69a-aee9-4963-9412-b8e9e3f5d264',
+  'eb0d653f-c219-4232-8519-824166deefdc',
   'Bishworld',
   '05, Av Walikale, Q. Les Volcans',
   2,
@@ -1056,13 +1057,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Kangamutima Zabika Christophe
+-- Client: Kangamutima Zabika Christophe (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'dbdeaf68-cbb9-4fb0-a27d-e46de53f391d',
-  'MORALE',
+  '7f98e25a-5602-40c1-94f1-46b71bb777a3',
+  'PHYSIQUE',
   'Kangamutima Zabika Christophe',
   NULL,
   'Kangamutima Zabika Christophe',
@@ -1078,8 +1079,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'd0f0f9d3-ab7c-4a6d-97b1-54b64675fd18',
-  'dbdeaf68-cbb9-4fb0-a27d-e46de53f391d',
+  '42de553f-520c-48c3-a293-9677cd980d2e',
+  '7f98e25a-5602-40c1-94f1-46b71bb777a3',
   'Res Christophe',
   '35A, Av. De la mission, Q. Himbi',
   1,
@@ -1089,19 +1090,16 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Baseme Rwicha Victoire
-BASEME RWICHA Victoire
+-- Client: Baseme Rwicha Victoire BASEME RWICHA Victoire (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '98f9d0b2-0b79-4c05-b95e-57f86cc8890e',
-  'MORALE',
-  'Baseme Rwicha Victoire
-BASEME RWICHA Victoire',
+  'ce67fb48-7340-4f23-8088-27022cecf9ab',
+  'PHYSIQUE',
+  'Baseme Rwicha Victoire BASEME RWICHA Victoire',
   NULL,
-  'Baseme Rwicha Victoire
-BASEME RWICHA Victoire',
+  'Baseme Rwicha Victoire BASEME RWICHA Victoire',
   '0973615760',
   NULL,
   'Q. Kyeshero',
@@ -1114,8 +1112,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '278c7646-bf95-4f17-9b07-ade49a819845',
-  '98f9d0b2-0b79-4c05-b95e-57f86cc8890e',
+  '24f6afd4-19bf-4bef-a6b7-f9d9369c81bd',
+  'ce67fb48-7340-4f23-8088-27022cecf9ab',
   'Res. Victoire',
   'Q. Kyeshero',
   2,
@@ -1125,12 +1123,12 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Congo Handicap
+-- Client: Congo Handicap (MORALE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '3fe8267f-b56e-4938-bb36-40edd56c1425',
+  'bd39fd07-e62c-421d-bab4-5f1edd0b1314',
   'MORALE',
   'Congo Handicap',
   NULL,
@@ -1147,8 +1145,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '47e84ce1-0d0d-4b8c-b82d-dd382e9c618c',
-  '3fe8267f-b56e-4938-bb36-40edd56c1425',
+  '6a0cea75-2c2f-45f5-ac44-f0d8d51245d0',
+  'bd39fd07-e62c-421d-bab4-5f1edd0b1314',
   'Congo Handicap - Site 34',
   'Q. Mabanga Sud',
   2,
@@ -1158,13 +1156,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Rachell Safari (TMK)
+-- Client: Rachell Safari (TMK) (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'cf3a7160-ce1e-40d1-9d72-b09a7566ac77',
-  'MORALE',
+  'de3bd2b7-b085-4ba1-8e37-4eb42b6a2c08',
+  'PHYSIQUE',
   'Rachell Safari (TMK)',
   NULL,
   'Rachel Safari',
@@ -1180,8 +1178,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'cf73e75e-34e4-4759-8295-4828a20fb5aa',
-  'cf3a7160-ce1e-40d1-9d72-b09a7566ac77',
+  'f438b401-251c-407c-a7fe-b42ad22388fd',
+  'de3bd2b7-b085-4ba1-8e37-4eb42b6a2c08',
   'Rachell Safari (TMK) - Site 35',
   NULL,
   1,
@@ -1191,13 +1189,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: KABU MBOMBO Blandine
+-- Client: KABU MBOMBO Blandine (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'dee51301-66ae-408c-b8ed-ef085d757f9e',
-  'MORALE',
+  '4021f341-0614-484f-a3ca-beb52f4ca827',
+  'PHYSIQUE',
   'KABU MBOMBO Blandine',
   NULL,
   'BLANDINE',
@@ -1213,8 +1211,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '3e9f278e-e7c4-448f-8664-406968955c14',
-  'dee51301-66ae-408c-b8ed-ef085d757f9e',
+  '5d751a53-d60c-43e0-ab37-965451ec5084',
+  '4021f341-0614-484f-a3ca-beb52f4ca827',
   'Papeterie',
   'Q. le volcan AV. Boungain ville N.23',
   1,
@@ -1224,20 +1222,19 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: MWATI MAMBO
+-- Client: MWATI MAMBO (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '751ae6ec-4101-46c8-bccf-4dc052198433',
-  'MORALE',
+  'a31616fd-83ba-44c2-af5e-eda839e4ef73',
+  'PHYSIQUE',
   'MWATI MAMBO',
   NULL,
   'MWATI',
   NULL,
   NULL,
-  'Q. Kyeshero
-Q.keshero',
+  'Q. Kyeshero Q.keshero',
   'USD',
   'ACTIF'
 );
@@ -1247,11 +1244,10 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '5e35cf62-9366-4e55-acea-dcca24f2dc55',
-  '751ae6ec-4101-46c8-bccf-4dc052198433',
+  '9679b5ef-ccbf-460a-afe2-8c9cbb08807d',
+  'a31616fd-83ba-44c2-af5e-eda839e4ef73',
   'Chantier mwati',
-  'Q. Kyeshero
-Q.keshero',
+  'Q. Kyeshero Q.keshero',
   2,
   0,
   200,
@@ -1259,13 +1255,13 @@ Q.keshero',
   1
 );
 
--- Client: BALUARTE
+-- Client: BALUARTE (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '749a1f1d-9775-4339-8317-c252b65bee6f',
-  'MORALE',
+  'b9cd3e65-c844-45c5-a149-590438bc7253',
+  'PHYSIQUE',
   'BALUARTE',
   NULL,
   'CLAUDIA SHALUKOMA',
@@ -1281,8 +1277,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'a55a9003-cb96-4b25-b37d-df3086155975',
-  '749a1f1d-9775-4339-8317-c252b65bee6f',
+  '6fc8f36e-c33d-4c83-8f21-6f61139ba501',
+  'b9cd3e65-c844-45c5-a149-590438bc7253',
   'Orphelinat',
   'Q.Keshero AV. Kituku N.53',
   2,
@@ -1292,13 +1288,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: BIENFAIT LUNDA
+-- Client: BIENFAIT LUNDA (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'a5d28c63-f7f5-4640-831d-9a2f74a4724e',
-  'MORALE',
+  '928e9f66-b379-453a-9ce2-a82655f49ec4',
+  'PHYSIQUE',
   'BIENFAIT LUNDA',
   NULL,
   'LUNDA',
@@ -1314,8 +1310,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '577f31dd-36b6-492d-b0aa-2d13acce0119',
-  'a5d28c63-f7f5-4640-831d-9a2f74a4724e',
+  '0fc32349-e56c-4c75-a294-2d00e467a9a6',
+  '928e9f66-b379-453a-9ce2-a82655f49ec4',
   'Petit pari',
   NULL,
   2,
@@ -1325,13 +1321,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: EDOUARD MUSHAGALUSA
+-- Client: EDOUARD MUSHAGALUSA (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '4c4b3843-92dd-4c5d-b620-8b01e83f95ab',
-  'MORALE',
+  '4a682cd8-817b-43e4-85c2-54ec2fad4632',
+  'PHYSIQUE',
   'EDOUARD MUSHAGALUSA',
   NULL,
   'Mr Edouard',
@@ -1347,8 +1343,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'c0c686b0-b311-46b4-844d-3fdf5a8682eb',
-  '4c4b3843-92dd-4c5d-b620-8b01e83f95ab',
+  'e8b828d4-3dad-4c5d-a62f-105e7229f85c',
+  '4a682cd8-817b-43e4-85c2-54ec2fad4632',
   'Res. Edouard',
   'Q. Kyeshoro Av. Magene',
   1,
@@ -1358,13 +1354,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: MPARANYI MURHULA BAUDOUIN
+-- Client: MPARANYI MURHULA BAUDOUIN (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '27b159bf-6358-4f6f-be43-a114419963d0',
-  'MORALE',
+  'b2abbcb3-d567-4f69-9da4-3920fc5c6151',
+  'PHYSIQUE',
   'MPARANYI MURHULA BAUDOUIN',
   NULL,
   'BAUDOUIN',
@@ -1380,8 +1376,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'fcc413ca-0d1f-4b14-b1ee-54a609038ce0',
-  '27b159bf-6358-4f6f-be43-a114419963d0',
+  'acc47e4e-dd4b-4bc6-88be-88128fb06bc7',
+  'b2abbcb3-d567-4f69-9da4-3920fc5c6151',
   'MPARANYI MURHULA BAUDOUIN - Site 41',
   'GOMA Q.Kyeshero, kituku',
   1,
@@ -1391,13 +1387,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: GUILLAIN
+-- Client: GUILLAIN (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'd57c2cad-43d0-494f-9155-54ecfb7afb3b',
-  'MORALE',
+  'b077b1dd-75c3-4312-826b-e1582b5aef11',
+  'PHYSIQUE',
   'GUILLAIN',
   NULL,
   'GUILLAIN',
@@ -1413,8 +1409,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '1331a5d1-4256-4ac6-89e8-98802209d22e',
-  'd57c2cad-43d0-494f-9155-54ecfb7afb3b',
+  'b55d0422-6317-499f-b355-e86d3cb16eee',
+  'b077b1dd-75c3-4312-826b-e1582b5aef11',
   'GUILLAIN - Site 42',
   'Q. le volcan',
   2,
@@ -1424,13 +1420,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: CLAUDIA
+-- Client: CLAUDIA (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'a2d2c8a0-509b-4f07-b13a-c1d6f0fb2326',
-  'MORALE',
+  '8aa7f484-e071-47c9-938e-7b814c62434b',
+  'PHYSIQUE',
   'CLAUDIA',
   NULL,
   'CLAUDIA',
@@ -1446,8 +1442,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '5f517b09-50ce-4e6d-b957-bc8d79615149',
-  'a2d2c8a0-509b-4f07-b13a-c1d6f0fb2326',
+  '45a6d18c-df7a-4749-b225-eda0e9bdf786',
+  '8aa7f484-e071-47c9-938e-7b814c62434b',
   'CLAUDIA - Site 43',
   'Q. Keshero',
   1,
@@ -1457,13 +1453,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: COEUR SANS FRONTIERES
+-- Client: COEUR SANS FRONTIERES (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '201b38ec-2849-4b8a-b6e9-0a1f96e777ea',
-  'MORALE',
+  '19057807-e45c-4fdf-ac18-951abafb145a',
+  'PHYSIQUE',
   'COEUR SANS FRONTIERES',
   NULL,
   'Mr Adolphhe Babu Bonendebe',
@@ -1479,8 +1475,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '14ac96e4-7b01-4bbf-aff3-6a57017c3a98',
-  '201b38ec-2849-4b8a-b6e9-0a1f96e777ea',
+  'bc996369-d26c-42cf-8b3f-b3d52b25491e',
+  '19057807-e45c-4fdf-ac18-951abafb145a',
   'COEUR SANS FRONTIERES - Site 44',
   'Q. Himbi Av. Du lac',
   2,
@@ -1490,13 +1486,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Mumuza Muhindo Musubao(Sarah)
+-- Client: Mumuza Muhindo Musubao(Sarah) (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '4e0080d2-369b-4ca1-9cdb-f7af9f7d2e8a',
-  'MORALE',
+  '35fd74d7-9614-4d43-873a-efaef330fa1c',
+  'PHYSIQUE',
   'Mumuza Muhindo Musubao(Sarah)',
   NULL,
   'Sarah',
@@ -1512,8 +1508,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'a6912f78-2758-4041-829f-fab6f1a5d36d',
-  '4e0080d2-369b-4ca1-9cdb-f7af9f7d2e8a',
+  'ecbc5050-317b-4ea5-a8b3-a1d8afd167f2',
+  '35fd74d7-9614-4d43-873a-efaef330fa1c',
   'Mumuza Muhindo Musubao(Sarah) - Site 45',
   'Q. Himbi',
   2,
@@ -1523,13 +1519,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Yannick Musoso
+-- Client: Yannick Musoso (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'fb79d64f-b77e-47be-8df5-cae8514f1cb5',
-  'MORALE',
+  'c79cd12b-01a9-4825-84ec-6bf681b3166e',
+  'PHYSIQUE',
   'Yannick Musoso',
   NULL,
   'Yannick',
@@ -1545,8 +1541,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'b5c29eff-24a1-439c-ac1b-af290dde082b',
-  'fb79d64f-b77e-47be-8df5-cae8514f1cb5',
+  '8b4cb91f-63c8-477c-90c9-fbe901407327',
+  'c79cd12b-01a9-4825-84ec-6bf681b3166e',
   'Yannick Musoso - Site 46',
   'Maganga N 108',
   1,
@@ -1556,13 +1552,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Herman Hangi (poulailller)
+-- Client: Herman Hangi (poulailller) (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'aa38684f-6859-416a-9b88-06b97b48bf09',
-  'MORALE',
+  '63da05b2-db8b-45a9-9030-7034e9e42649',
+  'PHYSIQUE',
   'Herman Hangi (poulailller)',
   NULL,
   'Herman',
@@ -1578,8 +1574,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '71813e43-b070-45d7-92fe-170c430bd17b',
-  'aa38684f-6859-416a-9b88-06b97b48bf09',
+  '69b13725-4bef-4fdc-bbf3-00489df1f097',
+  '63da05b2-db8b-45a9-9030-7034e9e42649',
   'Herman Hangi (poulailller) - Site 47',
   NULL,
   1,
@@ -1589,13 +1585,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: ITEGWA NCHIKO DESIRE
+-- Client: ITEGWA NCHIKO DESIRE (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '04b40229-4320-45d4-ab8e-5faddfe6a221',
-  'MORALE',
+  '246752bb-32e0-41ee-9759-5f8cdf21eb14',
+  'PHYSIQUE',
   'ITEGWA NCHIKO DESIRE',
   NULL,
   'ITEGWA NCHIKO DESIRE',
@@ -1611,8 +1607,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'df9d2f67-3ff6-4715-97ab-d24175a13529',
-  '04b40229-4320-45d4-ab8e-5faddfe6a221',
+  '97940a79-1959-4f78-bc7a-9e2bcc464ff3',
+  '246752bb-32e0-41ee-9759-5f8cdf21eb14',
   'ITEGWA NCHIKO DESIRE - Site 48',
   'Kyeshoro AV. Topographe N.5',
   2,
@@ -1622,13 +1618,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Bulimwengu Walanga Albert
+-- Client: Bulimwengu Walanga Albert (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '4f814169-202f-42ff-9d9f-c79944a72ee3',
-  'MORALE',
+  '871890ba-2194-48da-9a83-b62a78be4323',
+  'PHYSIQUE',
   'Bulimwengu Walanga Albert',
   NULL,
   'Mr ALBERT',
@@ -1644,8 +1640,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'f76d4309-2fca-4ebb-85f2-31228415aabe',
-  '4f814169-202f-42ff-9d9f-c79944a72ee3',
+  '84b495c7-3fe5-4ae1-8cec-e8c9fbc69dd6',
+  '871890ba-2194-48da-9a83-b62a78be4323',
   'Bulimwengu Walanga Albert - Site 49',
   'Keshero Av. Kizito',
   1,
@@ -1655,13 +1651,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Albert BULIMWENGU
+-- Client: Albert BULIMWENGU (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '13cad842-7a06-4617-ae28-105821f70ee5',
-  'MORALE',
+  'a27bc0ce-8bd9-43d7-a2d5-1280593c7de6',
+  'PHYSIQUE',
   'Albert BULIMWENGU',
   NULL,
   NULL,
@@ -1677,8 +1673,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '62d146ab-2b24-4a77-91b1-95ac9cd4ba91',
-  '13cad842-7a06-4617-ae28-105821f70ee5',
+  '84480acc-19b8-4c18-958e-d915a6d70de9',
+  'a27bc0ce-8bd9-43d7-a2d5-1280593c7de6',
   'Albert BULIMWENGU - Site 50',
   NULL,
   1,
@@ -1688,16 +1684,14 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Freedom Plazza Restaurant
-Freedom Plazza Restaurant
+-- Client: Freedom Plazza Restaurant Freedom Plazza Restaurant (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '1a77dd47-6bb9-46ca-9f97-75c59a220c6b',
-  'MORALE',
-  'Freedom Plazza Restaurant
-Freedom Plazza Restaurant',
+  'a68f2523-ba18-4c3c-812d-4628470c5bf2',
+  'PHYSIQUE',
+  'Freedom Plazza Restaurant Freedom Plazza Restaurant',
   NULL,
   'SIMINI BAHATI DANIEL',
   '0991369565',
@@ -1712,8 +1706,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'f6771e0a-5919-4a18-99d3-481d5771fc16',
-  '1a77dd47-6bb9-46ca-9f97-75c59a220c6b',
+  '862c702e-46f8-4583-88ba-d093c2355e4b',
+  'a68f2523-ba18-4c3c-812d-4628470c5bf2',
   'Himbi, av. Felix,c.goma',
   'imbi, Av Felix, c. Goma',
   1,
@@ -1723,13 +1717,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: LEA KABINDA RESIDENCE
+-- Client: LEA KABINDA RESIDENCE (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '7125d30e-7222-4eae-b0e5-c6f875cc8be4',
-  'MORALE',
+  '2fb8ec15-3f76-4a58-90f1-81651e2460b4',
+  'PHYSIQUE',
   'LEA KABINDA RESIDENCE',
   NULL,
   'LEA KABINDA RESIDENCE',
@@ -1745,8 +1739,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '13eaa50b-e8de-49de-8a9e-1f292f76ce02',
-  '7125d30e-7222-4eae-b0e5-c6f875cc8be4',
+  '8966cddc-8e93-4ff2-a779-c5f04f229dd0',
+  '2fb8ec15-3f76-4a58-90f1-81651e2460b4',
   'RESIDENCE LEA KABINDA',
   'Q.HIMBI',
   1,
@@ -1756,13 +1750,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: PAPY ABEDI USSENI
+-- Client: PAPY ABEDI USSENI (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '987513af-d34e-4c9a-adc9-1701677df395',
-  'MORALE',
+  'd4c583a0-7a33-42f3-9a6f-7a5da5eefc48',
+  'PHYSIQUE',
   'PAPY ABEDI USSENI',
   NULL,
   'PAPY ABEDI USSENI',
@@ -1778,8 +1772,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '95f96b5b-86fd-4080-a644-6c68e0e3a175',
-  '987513af-d34e-4c9a-adc9-1701677df395',
+  'a9907f56-e75c-4d63-b161-7f1b4d2d4b33',
+  'd4c583a0-7a33-42f3-9a6f-7a5da5eefc48',
   'PAPY ABEDI USSENI - Site 53',
   'Av. CARMEL, N 06,Q.KATINDO,C/GOMA',
   2,
@@ -1789,13 +1783,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Freedom Plazza Batiment
+-- Client: Freedom Plazza Batiment (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '552367a4-6ea4-4613-95bb-083443dd0100',
-  'MORALE',
+  '26de9b86-128b-4080-ad94-876fac758a40',
+  'PHYSIQUE',
   'Freedom Plazza Batiment',
   NULL,
   'SIMINI BAHATI DANIEL',
@@ -1811,8 +1805,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '1578259b-206d-49ad-8661-0da9f5a6b87a',
-  '552367a4-6ea4-4613-95bb-083443dd0100',
+  'b549215a-40a5-4740-a595-98528247e19c',
+  '26de9b86-128b-4080-ad94-876fac758a40',
   'Freedom Plazza Batiment - Site 54',
   'HIMBI,AV FELIX,C.GOMA',
   1,
@@ -1822,13 +1816,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: NGUBA JOSEPH
+-- Client: NGUBA JOSEPH (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '09d4836d-3088-4b71-a3f0-d1a1e5708ad8',
-  'MORALE',
+  '02aeccd3-34cb-4e99-8290-4de5dfb6cfae',
+  'PHYSIQUE',
   'NGUBA JOSEPH',
   NULL,
   'NGUBA JOSEPH',
@@ -1844,8 +1838,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '97b839e1-4974-488c-a162-dc6614cfacf5',
-  '09d4836d-3088-4b71-a3f0-d1a1e5708ad8',
+  'b77bb4ae-5f54-423f-b450-d270fba60091',
+  '02aeccd3-34cb-4e99-8290-4de5dfb6cfae',
   'NGUBA JOSEPH - Site 55',
   'Q.HIMBI,AV MAGANGA',
   1,
@@ -1855,13 +1849,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: CENTRE HOSPITALIER. HESHIMA
+-- Client: CENTRE HOSPITALIER. HESHIMA (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'fb6e86cb-3ff1-432e-8eea-96edf388d0f1',
-  'MORALE',
+  'fe95c21f-85c4-4569-ab82-96e1b03aad15',
+  'PHYSIQUE',
   'CENTRE HOSPITALIER. HESHIMA',
   NULL,
   'Dr BOSE',
@@ -1877,8 +1871,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '055408bb-a12a-4f2d-b97e-bcff1900a215',
-  'fb6e86cb-3ff1-432e-8eea-96edf388d0f1',
+  '455e097d-69e1-44fd-9207-baed50ecdc1a',
+  'fe95c21f-85c4-4569-ab82-96e1b03aad15',
   'CENTRE HOSPITALIER. HESHIMA - Site 56',
   'Q,KKYYESHERO,AV KARIBU',
   2,
@@ -1888,13 +1882,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: ANUNGA THERESE HABITATION
+-- Client: ANUNGA THERESE HABITATION (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '2b0bb39e-7bfd-4c77-ba38-74e284eec3a2',
-  'MORALE',
+  '0a9bb9d4-3c67-4891-ad03-415f05cfc6d9',
+  'PHYSIQUE',
   'ANUNGA THERESE HABITATION',
   NULL,
   'ANUNGA THERESE HHABITATION',
@@ -1910,8 +1904,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'e1a45863-c497-44a4-909f-e313597b8fb7',
-  '2b0bb39e-7bfd-4c77-ba38-74e284eec3a2',
+  '5cb03ebb-914c-42bf-a7d6-95ac48635557',
+  '0a9bb9d4-3c67-4891-ad03-415f05cfc6d9',
   'ANUNGA THERESE HABITATION - Site 57',
   'KESHERO',
   1,
@@ -1921,13 +1915,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Residence Joelle MWAMINI
+-- Client: Residence Joelle MWAMINI (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'db02c477-1d96-4513-9cda-51ed6f651264',
-  'MORALE',
+  '2042300e-766c-4260-8cc9-9157d2e9c33f',
+  'PHYSIQUE',
   'Residence Joelle MWAMINI',
   NULL,
   'JOELLE MWAMINI',
@@ -1943,8 +1937,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'a504ce7b-3193-4540-a19c-fcee4cfd45cc',
-  'db02c477-1d96-4513-9cda-51ed6f651264',
+  '2ca54846-c3e1-4b1f-8a79-512e8f606f0c',
+  '2042300e-766c-4260-8cc9-9157d2e9c33f',
   'Residence Joelle MWAMINI - Site 59',
   'Q.KESHHERO, Av Abbatoir',
   1,
@@ -1954,13 +1948,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Pacifique
+-- Client: Pacifique (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '0d162625-b0b2-40e3-ad62-5e079a19c56a',
-  'MORALE',
+  '10d3a526-c71b-470d-8b91-30395a454251',
+  'PHYSIQUE',
   'Pacifique',
   NULL,
   'Pacifique',
@@ -1976,8 +1970,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '97f98bd3-3a23-4b33-bddb-333fda60cdb3',
-  '0d162625-b0b2-40e3-ad62-5e079a19c56a',
+  'a6ee993a-176a-4243-a2ae-717c72d096d1',
+  '10d3a526-c71b-470d-8b91-30395a454251',
   'Pacifique - Site 60',
   NULL,
   1,
@@ -1987,13 +1981,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: MAKURU BIENVENU
+-- Client: MAKURU BIENVENU (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'c1c13da5-b3dc-4c74-bee8-43b958a1a4de',
-  'MORALE',
+  '9bd5b98f-1d0c-4b24-adb8-ba57c28a21c5',
+  'PHYSIQUE',
   'MAKURU BIENVENU',
   NULL,
   'MAKURU BIENVENU',
@@ -2009,8 +2003,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'b547ebb2-5443-4759-a4d2-fe3e58a5fa78',
-  'c1c13da5-b3dc-4c74-bee8-43b958a1a4de',
+  'aa951380-375f-4b85-a328-ad93c1f6b20b',
+  '9bd5b98f-1d0c-4b24-adb8-ba57c28a21c5',
   'MAKURU BIENVENU - Site 61',
   NULL,
   1,
@@ -2020,13 +2014,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Coeur Sans Frontieres/ KIWANJA
+-- Client: Coeur Sans Frontieres/ KIWANJA (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'd649b658-5c45-4fb6-9f64-126ff9f9d19c',
-  'MORALE',
+  '4d3376e5-8d9f-494d-9e3c-4eab903f6d14',
+  'PHYSIQUE',
   'Coeur Sans Frontieres/ KIWANJA',
   NULL,
   'Coeur Sans Frontieres KIWANJA',
@@ -2042,8 +2036,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '3fba0135-ac78-4513-b3c9-051190183d0e',
-  'd649b658-5c45-4fb6-9f64-126ff9f9d19c',
+  '271ccd6f-a58d-49b6-b306-2bdf8caa210c',
+  '4d3376e5-8d9f-494d-9e3c-4eab903f6d14',
   'Coeur Sans Frontieres/ KIWANJA - Site 62',
   'Kiwanja',
   2,
@@ -2053,13 +2047,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Coeur Sans Frontieres KIWANJA
+-- Client: Coeur Sans Frontieres KIWANJA (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'e57b9ba7-b004-4e71-b41c-11569fa2574e',
-  'MORALE',
+  '4eb1080d-62ce-47bf-b21f-c3a66915fb0e',
+  'PHYSIQUE',
   'Coeur Sans Frontieres KIWANJA',
   NULL,
   'Coeur Sans Fro',
@@ -2075,8 +2069,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'fa4687f1-a874-471c-8a81-7953cba8aec9',
-  'e57b9ba7-b004-4e71-b41c-11569fa2574e',
+  '3273e2aa-b8e5-4fce-a570-950c755174a2',
+  '4eb1080d-62ce-47bf-b21f-c3a66915fb0e',
   'Coeur Sans Frontieres KIWANJA - Site 63',
   'kiwanja',
   2,
@@ -2086,13 +2080,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Coeur-Sans- Frontiere
+-- Client: Coeur-Sans- Frontiere (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '4ea1801d-8903-4a64-806d-97a59bb249fc',
-  'MORALE',
+  '7f6cdeaf-8779-4c69-a6e1-4ec6ec253072',
+  'PHYSIQUE',
   'Coeur-Sans- Frontiere',
   NULL,
   'Coeur- Sans -Frontiere',
@@ -2108,8 +2102,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'c9e20106-487a-40a3-a66e-80d42e39dae8',
-  '4ea1801d-8903-4a64-806d-97a59bb249fc',
+  'f1565186-a946-4b6e-af46-f46701c50955',
+  '7f6cdeaf-8779-4c69-a6e1-4ec6ec253072',
   'Coeur-Sans- Frontiere - Site 64',
   'Q.HIMBI',
   2,
@@ -2119,12 +2113,12 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Congo- Handicap
+-- Client: Congo- Handicap (MORALE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '9a5b7e40-4611-4d6d-bec9-f729a316ad9e',
+  '16751b21-f544-4891-9b04-90d569c5b307',
   'MORALE',
   'Congo- Handicap',
   NULL,
@@ -2141,8 +2135,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '90e33528-2e7b-4bd2-a55a-147f6436e6c5',
-  '9a5b7e40-4611-4d6d-bec9-f729a316ad9e',
+  'b147ae79-cbed-447b-800b-a3233ac11f68',
+  '16751b21-f544-4891-9b04-90d569c5b307',
   'Congo- Handicap - Site 65',
   NULL,
   2,
@@ -2152,13 +2146,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: MATABISHI MARCELLIN
+-- Client: MATABISHI MARCELLIN (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '33b48e4c-057e-4a0f-972c-3b03687c1fba',
-  'MORALE',
+  '58c9d507-1254-4cba-b517-612db93fa9bd',
+  'PHYSIQUE',
   'MATABISHI MARCELLIN',
   NULL,
   'MATABISHI MARCELLIN',
@@ -2174,8 +2168,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'fcfedbd8-2960-4ae3-851a-5828b18ca3bd',
-  '33b48e4c-057e-4a0f-972c-3b03687c1fba',
+  'b50d82e6-75d2-4ae1-b2d1-ab489efe1f5a',
+  '58c9d507-1254-4cba-b517-612db93fa9bd',
   'MATABISHI MARCELLIN - Site 66',
   'Q.LES VOLCANS',
   1,
@@ -2185,13 +2179,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: JOELLE MWAMINI
+-- Client: JOELLE MWAMINI (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '7a956f8b-39ad-48d4-84a5-7a7c9e5d2075',
-  'MORALE',
+  '81b60f1b-cee1-4e81-bdcb-c2554a0fd262',
+  'PHYSIQUE',
   'JOELLE MWAMINI',
   NULL,
   NULL,
@@ -2207,8 +2201,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '3bf6f327-20e8-4fb7-8472-8c8b69464047',
-  '7a956f8b-39ad-48d4-84a5-7a7c9e5d2075',
+  '0f3ba061-1f58-4c39-939b-ee37e632a5e8',
+  '81b60f1b-cee1-4e81-bdcb-c2554a0fd262',
   'JOELLE MWAMINI - Site 68',
   NULL,
   1,
@@ -2218,13 +2212,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: QUICK COLOR SOLUTION
+-- Client: QUICK COLOR SOLUTION (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '5e14c8bb-fd66-4ed4-b9d4-f41a37f4b105',
-  'MORALE',
+  'caa80371-d279-4d41-bd06-8a00e05c229c',
+  'PHYSIQUE',
   'QUICK COLOR SOLUTION',
   NULL,
   'Mr Yannick THUMBA',
@@ -2240,8 +2234,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '0a49e7b3-9f57-47fe-8d8a-73f5efae741c',
-  '5e14c8bb-fd66-4ed4-b9d4-f41a37f4b105',
+  '5c10999d-e5d3-413f-9307-f51162452091',
+  'caa80371-d279-4d41-bd06-8a00e05c229c',
   'QUICK COLOR SOLUTION - Site 69',
   'Q.Kyeshero, Av. Abattoir',
   1,
@@ -2251,13 +2245,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: KIBANCHA FABRICE
+-- Client: KIBANCHA FABRICE (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '5ca96c23-24d8-443b-9c6f-3c4f8155d56e',
-  'MORALE',
+  'ac72d1d6-2abb-4ac3-8a59-acbd361a5991',
+  'PHYSIQUE',
   'KIBANCHA FABRICE',
   NULL,
   'KIBANCHA FABRICE',
@@ -2273,8 +2267,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'bbed56d1-8b34-43ca-bba0-ae04020c7f33',
-  '5ca96c23-24d8-443b-9c6f-3c4f8155d56e',
+  '555049ed-4480-46d1-9618-99eda75c6b91',
+  'ac72d1d6-2abb-4ac3-8a59-acbd361a5991',
   'KIBANCHA FABRICE - Site 70',
   'Q.HIMBI,AV.DU LAC,N 319',
   1,
@@ -2284,13 +2278,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: FAIDA JUSTINE
+-- Client: FAIDA JUSTINE (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'cb93d742-bf7d-424f-a5af-e1f77181c88c',
-  'MORALE',
+  '48412c79-238c-429a-9362-244976b48f00',
+  'PHYSIQUE',
   'FAIDA JUSTINE',
   NULL,
   'FAIDA JUSTINE',
@@ -2306,8 +2300,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '772682c5-d038-4566-921c-ef0308251361',
-  'cb93d742-bf7d-424f-a5af-e1f77181c88c',
+  '909fcdea-9652-44d5-a18e-f2de6bfe2f29',
+  '48412c79-238c-429a-9362-244976b48f00',
   'FAIDA JUSTINE - Site 71',
   'Q.HIMBI,AV UVIRA',
   1,
@@ -2322,8 +2316,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '42a6ac16-cbaa-4676-8afc-5d866bc17235',
-  'cb93d742-bf7d-424f-a5af-e1f77181c88c',
+  'c4afb49e-2796-4555-9a12-13bf0661170a',
+  '48412c79-238c-429a-9362-244976b48f00',
   'FAIDA JUSTINE - Site 76',
   'Q.HIMBI,AV UVIRA',
   1,
@@ -2333,13 +2327,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: UFEDOC
+-- Client: UFEDOC (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'ba9bb928-babe-44d1-8200-29e074e9c798',
-  'MORALE',
+  'f91e0bff-4474-4dbd-b87d-fb27fe7ccc65',
+  'PHYSIQUE',
   'UFEDOC',
   NULL,
   'Mme ANUNGA TERESE',
@@ -2355,8 +2349,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '8b8b0374-274a-401c-942a-22aed0e42b48',
-  'ba9bb928-babe-44d1-8200-29e074e9c798',
+  'a66184f3-c260-4afd-b2ff-6e46c99ad873',
+  'f91e0bff-4474-4dbd-b87d-fb27fe7ccc65',
   'UFEDOC - Site 72',
   'Q.HIMBI',
   1,
@@ -2366,13 +2360,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Mr Bazuzi Nickel
+-- Client: Mr Bazuzi Nickel (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '3bc118f9-c335-4731-952c-85b7990e0de6',
-  'MORALE',
+  '283c8b28-cc8e-405f-9b8c-fd1fae9a9568',
+  'PHYSIQUE',
   'Mr Bazuzi Nickel',
   NULL,
   'Mr Bazuzi Nickel',
@@ -2388,8 +2382,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '4ee135d8-9846-430f-91df-384c51dee901',
-  '3bc118f9-c335-4731-952c-85b7990e0de6',
+  'cc2da1d5-b67c-4e15-9a26-1dd2a6eadd2e',
+  '283c8b28-cc8e-405f-9b8c-fd1fae9a9568',
   'Mr Bazuzi Nickel - Site 73',
   'Q.KYESHERO,Faculte de Droit',
   1,
@@ -2399,13 +2393,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Impala Bar
+-- Client: Impala Bar (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '1ea0fefd-d99e-4d20-9447-86b029ff1f30',
-  'MORALE',
+  '26c71952-caed-4077-a59c-2e44ff000c59',
+  'PHYSIQUE',
   'Impala Bar',
   NULL,
   'Bazuzi Nickel',
@@ -2421,8 +2415,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'fd5fc78d-77d5-4674-ac91-a31fae9e8947',
-  '1ea0fefd-d99e-4d20-9447-86b029ff1f30',
+  'cfcef0df-c7e8-4c4e-a46d-6a49b13746d8',
+  '26c71952-caed-4077-a59c-2e44ff000c59',
   'Impala Bar - Site 74',
   'Q.KATOYI',
   1,
@@ -2432,13 +2426,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: ALBERT
+-- Client: ALBERT (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'c524782b-15fe-4794-b49b-264ab2249e61',
-  'MORALE',
+  '39a830da-f205-4d4c-9f20-84065d6929e3',
+  'PHYSIQUE',
   'ALBERT',
   NULL,
   'Mr ALBERT',
@@ -2454,8 +2448,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'a12207c9-3dcb-49d4-8443-a199c2cc0013',
-  'c524782b-15fe-4794-b49b-264ab2249e61',
+  'd45c16ec-e8e4-4eff-b49f-fdd93da50ec9',
+  '39a830da-f205-4d4c-9f20-84065d6929e3',
   'ALBERT - Site 75',
   'Q.KYESHERO',
   1,
@@ -2465,13 +2459,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: Save Communities in Conflits (SCC)
+-- Client: Save Communities in Conflits (SCC) (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '7f426dd5-c402-44a3-b5b4-e945b16460bf',
-  'MORALE',
+  '283ad8b1-dbc6-4ed4-a76c-537e9849821e',
+  'PHYSIQUE',
   'Save Communities in Conflits (SCC)',
   NULL,
   NULL,
@@ -2487,8 +2481,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'de5a397c-6f03-4b7b-bcc9-343c7d78ea34',
-  '7f426dd5-c402-44a3-b5b4-e945b16460bf',
+  '274c2ab7-5ec0-4f1b-8d1c-4216465cb0ae',
+  '283ad8b1-dbc6-4ed4-a76c-537e9849821e',
   'Save Communities in Conflits (SCC) - Site 77',
   'Q.HIMBI',
   2,
@@ -2498,13 +2492,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: COEUR SANS FRONTIERES SAKE
+-- Client: COEUR SANS FRONTIERES SAKE (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '03c1f90e-e814-4e74-8703-2799351a1533',
-  'MORALE',
+  'd0391a51-3c5a-41c0-8029-cf0a6c6e5274',
+  'PHYSIQUE',
   'COEUR SANS FRONTIERES SAKE',
   NULL,
   'Mr ADOLPHE BABU BONENDEBE',
@@ -2520,8 +2514,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '10d19745-329a-4842-a97e-7bcc53ccfd13',
-  '03c1f90e-e814-4e74-8703-2799351a1533',
+  'c3d4e49c-2b43-45ec-9a28-a029cdc8d869',
+  'd0391a51-3c5a-41c0-8029-cf0a6c6e5274',
   'COEUR SANS FRONTIERES SAKE - Site 78',
   'SAKE',
   1,
@@ -2531,13 +2525,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: COEUR SANS FRONTIERES KIHINDO
+-- Client: COEUR SANS FRONTIERES KIHINDO (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  'c0b84101-59d1-4cbe-ba9a-6b2860cb1f87',
-  'MORALE',
+  '2df32d8a-96f9-4c0c-a6d1-4481c084c212',
+  'PHYSIQUE',
   'COEUR SANS FRONTIERES KIHINDO',
   NULL,
   'Mr ADOLPHE BABU BONENDEBE',
@@ -2553,8 +2547,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  'c1f30dbf-25bf-4cb7-9d26-7fb524f4ce97',
-  'c0b84101-59d1-4cbe-ba9a-6b2860cb1f87',
+  'aa08d264-d8e9-426b-8bd2-30a5ae9bfe68',
+  '2df32d8a-96f9-4c0c-a6d1-4481c084c212',
   'COEUR SANS FRONTIERES KIHINDO - Site 79',
   'KIHINDO',
   1,
@@ -2564,13 +2558,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: CSF KANYARUCHINYA
+-- Client: CSF KANYARUCHINYA (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '18150f36-e146-4931-b62b-49cabf0e5e7a',
-  'MORALE',
+  '8091dbae-f950-4bc3-86eb-e3bccf0d868a',
+  'PHYSIQUE',
   'CSF KANYARUCHINYA',
   NULL,
   'Mr ADOLPHE BABU BONENDELE',
@@ -2586,8 +2580,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '8d380abe-60d9-4825-8404-c55c2a08e32b',
-  '18150f36-e146-4931-b62b-49cabf0e5e7a',
+  '320317fd-8e3a-4d53-a4eb-c21e7e8605db',
+  '8091dbae-f950-4bc3-86eb-e3bccf0d868a',
   'CSF KANYARUCHINYA - Site 80',
   'KANYARUCHINA',
   1,
@@ -2597,13 +2591,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: PACIFIQUE 2
+-- Client: PACIFIQUE 2 (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '81ddb94d-8dbc-4ce5-a3dc-482d8ed1794b',
-  'MORALE',
+  '7debb31b-6273-45b9-8458-1e6cebc4df8b',
+  'PHYSIQUE',
   'PACIFIQUE 2',
   NULL,
   'PACIFIQUE',
@@ -2619,8 +2613,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '2f148365-fa36-4875-9631-9a8fd9b78355',
-  '81ddb94d-8dbc-4ce5-a3dc-482d8ed1794b',
+  '5952cd99-098b-4044-9dab-1d0ec8279bfb',
+  '7debb31b-6273-45b9-8458-1e6cebc4df8b',
   'PACIFIQUE 2 - Site 81',
   'Q.KYESHERO',
   1,
@@ -2630,13 +2624,13 @@ INSERT INTO sites_gas (
   1
 );
 
--- Client: FURAHA AMANI
+-- Client: FURAHA AMANI (PHYSIQUE)
 INSERT OR IGNORE INTO clients_gas (
   id, type_client, nom_entreprise, nif, contact_nom, telephone,
   contact_email, adresse_facturation, devise_preferee, statut
 ) VALUES (
-  '684784ab-ff84-4a68-86b1-c4fb1ff1bfc9',
-  'MORALE',
+  'a9ea9dc7-660c-43c1-a674-86b6da27544f',
+  'PHYSIQUE',
   'FURAHA AMANI',
   NULL,
   'FURAHA AMANI',
@@ -2652,8 +2646,8 @@ INSERT INTO sites_gas (
   id, client_id, nom_site, adresse_physique, effectif_jour_requis,
   effectif_nuit_requis, tarif_mensuel_client, cout_unitaire_garde, est_actif
 ) VALUES (
-  '26536d37-98ea-4658-a3d1-b6cfefb3e321',
-  '684784ab-ff84-4a68-86b1-c4fb1ff1bfc9',
+  '9a9b0032-19a6-47f4-a747-bdc7c70d7fc4',
+  'a9ea9dc7-660c-43c1-a674-86b6da27544f',
   'FURAHA AMANI - Site 82',
   'Q.KYESHERO,AV ENSEIGNANT',
   1,
@@ -2667,3 +2661,4 @@ INSERT INTO sites_gas (
 -- Clients to create: 79
 -- Sites to create: 82
 -- Total rows processed: 82
+-- Client Types: 2 MORALE (companies), 77 PHYSIQUE (individuals)

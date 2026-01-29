@@ -27,6 +27,27 @@ async function generateImportSQL() {
       throw new Error('Le fichier Excel est vide ou ne contient pas de données valides');
     }
     
+    // Helper function to determine client type
+    function getClientType(companyName) {
+      const name = companyName.toUpperCase();
+      if (name.includes('ONG') || name.includes('STE') || name.includes('ASBL')) {
+        return 'MORALE';
+      }
+      return 'PHYSIQUE';
+    }
+    
+    // Helper function to clean text for SQL
+    function cleanTextForSQL(text) {
+      if (!text) return null;
+      return text.toString()
+        .replace(/\r\n/g, ' ')  // Replace Windows line breaks
+        .replace(/\n/g, ' ')    // Replace Unix line breaks
+        .replace(/\r/g, ' ')    // Replace Mac line breaks
+        .replace(/'/g, "''")    // Escape single quotes
+        .replace(/\s+/g, ' ')   // Replace multiple spaces with single space
+        .trim();
+    }
+    
     // 2. Group data by company name to identify duplicates
     const groupedData = {};
     data.forEach((row, index) => {
@@ -37,11 +58,17 @@ async function generateImportSQL() {
         return;
       }
       
-      const normalizedName = companyName.toString().trim().toUpperCase();
+      const cleanedName = cleanTextForSQL(companyName);
+      const normalizedName = cleanedName.toUpperCase();
+      
       if (!groupedData[normalizedName]) {
         groupedData[normalizedName] = [];
       }
-      groupedData[normalizedName].push({ ...row, originalCompanyName: companyName, rowIndex: index + 1 });
+      groupedData[normalizedName].push({ 
+        ...row, 
+        originalCompanyName: cleanedName, 
+        rowIndex: index + 1 
+      });
     });
     
     console.log(`🏢 Found ${Object.keys(groupedData).length} unique companies`);
@@ -50,9 +77,12 @@ async function generateImportSQL() {
     let sqlStatements = [];
     let clientsCreated = 0;
     let sitesCreated = 0;
+    let moraleCount = 0;
+    let physiqueCount = 0;
     
     sqlStatements.push('-- Excel Import SQL Statements');
     sqlStatements.push('-- Generated on: ' + new Date().toISOString());
+    sqlStatements.push('-- Client Type Classification: ONG, Ste, ASBL = MORALE; Others = PHYSIQUE');
     sqlStatements.push('');
     
     // Process each company group
@@ -61,22 +91,29 @@ async function generateImportSQL() {
       
       const firstRecord = records[0];
       const clientId = crypto.randomUUID();
+      const clientType = getClientType(firstRecord.originalCompanyName);
+      
+      if (clientType === 'MORALE') {
+        moraleCount++;
+      } else {
+        physiqueCount++;
+      }
       
       // Generate client insert statement
       const clientData = {
         id: clientId,
-        type_client: 'MORALE',
-        nom_entreprise: firstRecord.originalCompanyName.replace(/'/g, "''"), // Escape single quotes
+        type_client: clientType,
+        nom_entreprise: firstRecord.originalCompanyName,
         nif: null,
-        contact_nom: firstRecord['nameRepCustomer'] ? firstRecord['nameRepCustomer'].replace(/'/g, "''") : null,
-        telephone: firstRecord['phoneCustomer'] || null,
-        contact_email: firstRecord['emailCustomer'] || null,
-        adresse_facturation: firstRecord['addressCustomer'] ? firstRecord['addressCustomer'].replace(/'/g, "''") : null,
+        contact_nom: cleanTextForSQL(firstRecord['nameRepCustomer']),
+        telephone: cleanTextForSQL(firstRecord['phoneCustomer']),
+        contact_email: cleanTextForSQL(firstRecord['emailCustomer']),
+        adresse_facturation: cleanTextForSQL(firstRecord['addressCustomer']),
         devise_preferee: 'USD',
         statut: 'ACTIF'
       };
       
-      sqlStatements.push(`-- Client: ${clientData.nom_entreprise}`);
+      sqlStatements.push(`-- Client: ${clientData.nom_entreprise} (${clientType})`);
       sqlStatements.push(`INSERT OR IGNORE INTO clients_gas (`);
       sqlStatements.push(`  id, type_client, nom_entreprise, nif, contact_nom, telephone,`);
       sqlStatements.push(`  contact_email, adresse_facturation, devise_preferee, statut`);
@@ -99,13 +136,13 @@ async function generateImportSQL() {
       // Generate site insert statements for all records
       for (const record of records) {
         const siteId = crypto.randomUUID();
-        const siteName = (record['siteCodeName'] || `${record.originalCompanyName} - Site ${record.rowIndex}`).replace(/'/g, "''");
+        const siteName = cleanTextForSQL(record['siteCodeName'] || `${record.originalCompanyName} - Site ${record.rowIndex}`);
         
         const siteData = {
           id: siteId,
           client_id: clientId,
           nom_site: siteName,
-          adresse_physique: record['addressCustomer'] ? record['addressCustomer'].replace(/'/g, "''") : null,
+          adresse_physique: cleanTextForSQL(record['addressCustomer']),
           effectif_jour_requis: parseInt(record['agents'] || '1') || 1,
           effectif_nuit_requis: 0,
           tarif_mensuel_client: parseFloat(record['totalPrice'] || '0') || 0,
@@ -139,6 +176,7 @@ async function generateImportSQL() {
     sqlStatements.push(`-- Clients to create: ${clientsCreated}`);
     sqlStatements.push(`-- Sites to create: ${sitesCreated}`);
     sqlStatements.push(`-- Total rows processed: ${data.length}`);
+    sqlStatements.push(`-- Client Types: ${moraleCount} MORALE (companies), ${physiqueCount} PHYSIQUE (individuals)`);
     
     // Write SQL file
     const sqlContent = sqlStatements.join('\n');
@@ -151,6 +189,9 @@ async function generateImportSQL() {
     console.log(`   • Clients to create: ${clientsCreated}`);
     console.log(`   • Sites to create: ${sitesCreated}`);
     console.log(`   • Total rows processed: ${data.length}`);
+    console.log(`   • Client Types:`);
+    console.log(`     - MORALE (companies): ${moraleCount}`);
+    console.log(`     - PHYSIQUE (individuals): ${physiqueCount}`);
     console.log(`\n📋 Next steps:`);
     console.log(`   1. Review the generated SQL file: import-customers.sql`);
     console.log(`   2. Execute the SQL statements in your database`);
@@ -160,6 +201,8 @@ async function generateImportSQL() {
       clientsCreated,
       sitesCreated,
       totalProcessed: data.length,
+      moraleCount,
+      physiqueCount,
       sqlFilePath
     };
     
