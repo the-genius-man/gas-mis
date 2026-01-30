@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, MapPin, User, Plus, Clock, AlertTriangle, Users, Edit, Trash2 } from 'lucide-react';
+import { Search, Calendar, User, Plus, Clock, AlertTriangle, Users, Edit, Trash2 } from 'lucide-react';
 import { EmployeeGASFull, AffectationRoteur } from '../../types';
 
 interface SiteWithGuardCount {
@@ -524,7 +524,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
   const [formData, setFormData] = useState({
     roteurId: assignment?.roteur_id || roteur?.id || '',
     dateDebut: assignment?.date_debut?.split('T')[0] || new Date().toISOString().split('T')[0],
-    poste: (assignment?.poste || 'JOUR') as 'JOUR' | 'NUIT',
+    poste: (assignment?.poste || 'NUIT') as 'JOUR' | 'NUIT',
     notes: assignment?.notes || ''
   });
   
@@ -642,7 +642,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
         [field]: value
       } : {
         siteId: field === 'siteId' ? value : availableSites[0]?.id || '',
-        poste: field === 'poste' ? value as 'JOUR' | 'NUIT' : formData.poste,
+        poste: field === 'poste' ? value as 'JOUR' | 'NUIT' : 'NUIT',
         notes: field === 'notes' ? value : ''
       }
     }));
@@ -889,8 +889,8 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                   onChange={(e) => setFormData({ ...formData, poste: e.target.value as 'JOUR' | 'NUIT' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="JOUR">Jour</option>
                   <option value="NUIT">Nuit</option>
+                  <option value="JOUR">Jour</option>
                 </select>
               </div>
 
@@ -1005,8 +1005,8 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                                   onChange={(e) => updateDayAssignment(day.value, 'poste', e.target.value)}
                                   className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                                 >
-                                  <option value="JOUR">Jour</option>
                                   <option value="NUIT">Nuit</option>
+                                  <option value="JOUR">Jour</option>
                                 </select>
                               </div>
                             </div>
