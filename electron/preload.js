@@ -98,6 +98,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRoteurAssignments: (filters) => ipcRenderer.invoke('db-get-roteur-assignments', filters),
   createRoteurAssignment: (assignment) => ipcRenderer.invoke('db-create-roteur-assignment', assignment),
   updateRoteurAssignment: (assignment) => ipcRenderer.invoke('db-update-roteur-assignment', assignment),
+  checkRoteurWeeklyAvailability: (data) => ipcRenderer.invoke('db-check-roteur-weekly-availability', data),
   getSiteCoverageGaps: (filters) => ipcRenderer.invoke('db-get-site-coverage-gaps', filters),
   getRoteurAvailability: (data) => ipcRenderer.invoke('db-get-roteur-availability', data),
   

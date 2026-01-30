@@ -542,9 +542,49 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     notes: assignment?.notes || ''
   });
   const [saving, setSaving] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const isEditing = !!assignment;
   const modalTitle = isEditing ? 'Modifier l\'affectation' : 'Nouvelle affectation de rôteur';
+
+  // Real-time validation when form data changes
+  useEffect(() => {
+    const validateAssignment = async () => {
+      if (!formData.roteurId || formData.siteIds.length === 0 || !formData.dateDebut || !formData.dateFin) {
+        setValidationErrors([]);
+        return;
+      }
+
+      setCheckingAvailability(true);
+      try {
+        if (window.electronAPI?.checkRoteurWeeklyAvailability) {
+          const result = await window.electronAPI.checkRoteurWeeklyAvailability({
+            roteurId: formData.roteurId,
+            siteIds: formData.siteIds,
+            dateDebut: formData.dateDebut,
+            dateFin: formData.dateFin,
+            excludeAssignmentId: assignment?.id
+          });
+
+          if (!result.available) {
+            setValidationErrors(result.conflicts.map(c => c.error));
+          } else {
+            setValidationErrors([]);
+          }
+        }
+      } catch (error) {
+        console.error('Error validating assignment:', error);
+        setValidationErrors(['Erreur lors de la validation']);
+      } finally {
+        setCheckingAvailability(false);
+      }
+    };
+
+    // Debounce validation
+    const timeoutId = setTimeout(validateAssignment, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.roteurId, formData.siteIds, formData.dateDebut, formData.dateFin, assignment?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -561,6 +601,12 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     // Validate dates
     if (new Date(formData.dateFin) <= new Date(formData.dateDebut)) {
       alert('La date de fin doit être postérieure à la date de début');
+      return;
+    }
+
+    // Check for validation errors
+    if (validationErrors.length > 0) {
+      alert('Veuillez corriger les erreurs de validation avant de continuer:\n\n' + validationErrors.join('\n'));
       return;
     }
 
@@ -589,20 +635,21 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
         // Show success message with assignment details
         if (result.success && result.assignments) {
           const assignmentDetails = result.assignments.map(a => 
-            `• Site assigné le ${a.jour_semaine}`
+            `• ${a.site_nom} - ${a.jour_semaine}`
           ).join('\n');
           
           alert(`Affectation créée avec succès!\n\n` +
                 `Rôteur assigné à ${result.totalSitesAssigned} site(s)\n` +
                 `Capacité utilisée: ${result.roteurCapacityUsed}/6 sites\n\n` +
-                `Détails des affectations:\n${assignmentDetails}`);
+                `Détails des affectations:\n${assignmentDetails}\n\n` +
+                `Note: Le rôteur ne peut servir qu'une fois par semaine au même site.`);
         }
       }
       
       onSave();
     } catch (error) {
       console.error('Error saving assignment:', error);
-      alert('Erreur lors de l\'enregistrement de l\'affectation');
+      alert('Erreur lors de l\'enregistrement de l\'affectation:\n\n' + error.message);
     } finally {
       setSaving(false);
     }
@@ -634,6 +681,46 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
         )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Weekly Constraint Information */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">Contrainte hebdomadaire</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Un rôteur ne peut servir qu'une fois par semaine au même site. 
+                  Cette règle garantit une rotation équitable et évite la surcharge.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-900">Erreurs de validation</p>
+                  <ul className="text-sm text-red-700 mt-1 space-y-1">
+                    {validationErrors.map((error, index) => (
+                      <li key={index}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Availability Check Status */}
+          {checkingAvailability && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex gap-3">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                <p className="text-sm text-yellow-700">Vérification de la disponibilité...</p>
+              </div>
+            </div>
+          )}
           {/* Roteur Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Rôteur</label>
@@ -751,6 +838,9 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               placeholder="Instructions spéciales, jour de la semaine à couvrir, etc..."
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Le système applique automatiquement la contrainte: maximum une affectation par semaine au même site.
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
@@ -763,10 +853,11 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={saving || (availableSites.length === 0 && !isEditing)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              disabled={saving || checkingAvailability || validationErrors.length > 0 || (availableSites.length === 0 && !isEditing)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {saving ? 'Enregistrement...' : (isEditing ? 'Modifier' : 'Affecter')}
+              {saving && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+              {checkingAvailability ? 'Vérification...' : (saving ? 'Enregistrement...' : (isEditing ? 'Modifier' : 'Affecter'))}
             </button>
           </div>
         </form>
@@ -896,6 +987,7 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
         </div>
         <div className="text-gray-600 text-xs">
           • Un rôteur ne peut couvrir qu'un site par jour
+          • Maximum une fois par semaine au même site
           • La rotation entre sites se fait automatiquement
         </div>
       </div>
