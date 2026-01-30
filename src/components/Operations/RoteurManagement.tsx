@@ -536,13 +536,12 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
   const [formData, setFormData] = useState({
     roteurId: assignment?.roteur_id || roteur?.id || '',
     dateDebut: assignment?.date_debut?.split('T')[0] || new Date().toISOString().split('T')[0],
-    dateFin: assignment?.date_fin?.split('T')[0] || '',
     poste: (assignment?.poste || 'JOUR') as 'JOUR' | 'NUIT',
     notes: assignment?.notes || ''
   });
   
-  const [dailyAssignments, setDailyAssignments] = useState<Array<{
-    date: string;
+  const [weeklyAssignments, setWeeklyAssignments] = useState<Array<{
+    dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
     siteId: string;
     poste: 'JOUR' | 'NUIT';
     notes?: string;
@@ -551,40 +550,24 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
 
   const isEditing = !!assignment;
   const modalTitle = isEditing ? 'Modifier l\'affectation' : 'Nouvelle affectation de rôteur';
 
-  // Generate available dates when date range changes
-  useEffect(() => {
-    if (formData.dateDebut && formData.dateFin) {
-      const dates = generateDateRange(formData.dateDebut, formData.dateFin);
-      setAvailableDates(dates);
-      
-      // Clear daily assignments if date range changed
-      setDailyAssignments([]);
-    }
-  }, [formData.dateDebut, formData.dateFin]);
+  const daysOfWeek = [
+    { value: 1, label: 'Lundi' },
+    { value: 2, label: 'Mardi' },
+    { value: 3, label: 'Mercredi' },
+    { value: 4, label: 'Jeudi' },
+    { value: 5, label: 'Vendredi' },
+    { value: 6, label: 'Samedi' },
+    { value: 0, label: 'Dimanche' }
+  ];
 
-  // Helper function to generate date range
-  const generateDateRange = (startDate: string, endDate: string): string[] => {
-    const dates = [];
-    const current = new Date(startDate);
-    const end = new Date(endDate);
-    
-    while (current <= end) {
-      dates.push(current.toISOString().split('T')[0]);
-      current.setDate(current.getDate() + 1);
-    }
-    
-    return dates;
-  };
-
-  // Real-time validation for daily assignments
+  // Real-time validation for weekly assignments
   useEffect(() => {
-    const validateDailyAssignments = async () => {
-      if (dailyAssignments.length === 0) {
+    const validateWeeklyAssignments = async () => {
+      if (weeklyAssignments.length === 0) {
         setValidationErrors([]);
         return;
       }
@@ -593,25 +576,27 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       const errors: string[] = [];
 
       try {
-        // Check each daily assignment for conflicts
-        for (const dailyAssignment of dailyAssignments) {
-          if (window.electronAPI?.checkDailySiteAvailability) {
-            const result = await window.electronAPI.checkDailySiteAvailability({
-              siteId: dailyAssignment.siteId,
-              date: dailyAssignment.date,
-              poste: dailyAssignment.poste,
+        // Check each weekly assignment for conflicts
+        for (const weeklyAssignment of weeklyAssignments) {
+          if (window.electronAPI?.checkWeeklyRoteurAvailability) {
+            const result = await window.electronAPI.checkWeeklyRoteurAvailability({
+              roteurId: formData.roteurId,
+              siteId: weeklyAssignment.siteId,
+              dayOfWeek: weeklyAssignment.dayOfWeek,
+              poste: weeklyAssignment.poste,
               excludeAssignmentId: assignment?.id
             });
 
             if (!result.available) {
-              errors.push(...result.conflicts.map(c => c.error));
+              const dayName = daysOfWeek.find(d => d.value === weeklyAssignment.dayOfWeek)?.label;
+              errors.push(...result.conflicts.map(c => `${dayName}: ${c.error}`));
             }
           }
         }
 
         setValidationErrors(errors);
       } catch (error) {
-        console.error('Error validating daily assignments:', error);
+        console.error('Error validating weekly assignments:', error);
         setValidationErrors(['Erreur lors de la validation']);
       } finally {
         setCheckingAvailability(false);
@@ -619,62 +604,56 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     };
 
     // Debounce validation
-    const timeoutId = setTimeout(validateDailyAssignments, 500);
+    const timeoutId = setTimeout(validateWeeklyAssignments, 500);
     return () => clearTimeout(timeoutId);
-  }, [dailyAssignments, assignment?.id]);
+  }, [weeklyAssignments, formData.roteurId, assignment?.id]);
 
-  const addDailyAssignment = () => {
-    if (availableDates.length === 0) {
-      alert('Veuillez d\'abord définir une période (date début et fin)');
+  const addWeeklyAssignment = () => {
+    if (availableSites.length === 0) {
+      alert('Aucun site disponible pour les affectations de rôteur');
       return;
     }
 
-    // Find first available date not already assigned
-    const usedDates = dailyAssignments.map(da => da.date);
-    const availableDate = availableDates.find(date => !usedDates.includes(date));
+    // Find first available day not already assigned
+    const usedDays = weeklyAssignments.map(wa => wa.dayOfWeek);
+    const availableDay = daysOfWeek.find(day => !usedDays.includes(day.value));
 
-    if (!availableDate) {
-      alert('Toutes les dates de la période sont déjà assignées');
+    if (!availableDay) {
+      alert('Tous les jours de la semaine sont déjà assignés');
       return;
     }
 
-    const firstAvailableSite = sites.length > 0 ? sites[0].id : '';
+    const firstAvailableSite = availableSites[0].id;
 
-    setDailyAssignments([...dailyAssignments, {
-      date: availableDate,
+    setWeeklyAssignments([...weeklyAssignments, {
+      dayOfWeek: availableDay.value,
       siteId: firstAvailableSite,
       poste: formData.poste,
       notes: ''
     }]);
   };
 
-  const updateDailyAssignment = (index: number, field: string, value: string) => {
-    const updated = [...dailyAssignments];
+  const updateWeeklyAssignment = (index: number, field: string, value: string | number) => {
+    const updated = [...weeklyAssignments];
     updated[index] = { ...updated[index], [field]: value };
-    setDailyAssignments(updated);
+    setWeeklyAssignments(updated);
   };
 
-  const removeDailyAssignment = (index: number) => {
-    const updated = dailyAssignments.filter((_, i) => i !== index);
-    setDailyAssignments(updated);
+  const removeWeeklyAssignment = (index: number) => {
+    const updated = weeklyAssignments.filter((_, i) => i !== index);
+    setWeeklyAssignments(updated);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.roteurId || !formData.dateDebut || !formData.dateFin) {
+    if (!formData.roteurId || !formData.dateDebut) {
       alert('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    if (dailyAssignments.length === 0) {
-      alert('Veuillez ajouter au moins une affectation journalière');
-      return;
-    }
-
-    // Validate dates
-    if (new Date(formData.dateFin) <= new Date(formData.dateDebut)) {
-      alert('La date de fin doit être postérieure à la date de début');
+    if (weeklyAssignments.length === 0) {
+      alert('Veuillez ajouter au moins une affectation hebdomadaire');
       return;
     }
 
@@ -687,33 +666,32 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     try {
       setSaving(true);
       
-      if (window.electronAPI?.createRoteurAssignment) {
-        const result = await window.electronAPI.createRoteurAssignment({
+      if (window.electronAPI?.createRoteurWeeklyAssignment) {
+        const result = await window.electronAPI.createRoteurWeeklyAssignment({
           roteur_id: formData.roteurId,
-          site_id: dailyAssignments.length > 0 ? dailyAssignments[0].siteId : '', // Primary site for backward compatibilitys[0]?.siteId || '', // Primary site for backward compatibility
           date_debut: formData.dateDebut,
-          date_fin: formData.dateFin,
           poste: formData.poste,
           notes: formData.notes,
-          daily_assignments: dailyAssignments.map(da => ({
-            date: da.date,
-            site_id: da.siteId,
-            poste: da.poste,
-            notes: da.notes
+          weekly_assignments: weeklyAssignments.map(wa => ({
+            day_of_week: wa.dayOfWeek,
+            site_id: wa.siteId,
+            poste: wa.poste,
+            notes: wa.notes
           })),
           statut: 'PLANIFIE'
         });
         
         // Show success message with assignment details
-        if (result.success && result.daily_assignments) {
-          const assignmentDetails = result.daily_assignments.map(a => 
-            `• ${a.jour_semaine} ${new Date(a.date).toLocaleDateString('fr-FR')} - ${a.site_nom} (${a.poste})`
-          ).join('\n');
+        if (result.success && result.weekly_assignments) {
+          const assignmentDetails = result.weekly_assignments.map(a => {
+            const dayName = daysOfWeek.find(d => d.value === a.day_of_week)?.label;
+            return `• ${dayName} - ${a.site_nom} (${a.poste})`;
+          }).join('\n');
           
-          alert(`Affectation créée avec succès!\n\n` +
-                `${result.total_days_assigned} jour(s) assigné(s) manuellement\n\n` +
-                `Détails des affectations:\n${assignmentDetails}\n\n` +
-                `Note: Chaque site ne peut avoir qu'un seul rôteur par jour.`);
+          alert(`Affectation hebdomadaire créée avec succès!\n\n` +
+                `${result.weekly_assignments.length} jour(s) assigné(s) par semaine\n\n` +
+                `Rotation hebdomadaire:\n${assignmentDetails}\n\n` +
+                `Note: Cette rotation continuera jusqu'à annulation manuelle.`);
         }
       }
       
@@ -752,15 +730,15 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
         )}
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Daily Assignment Information */}
+          {/* Weekly Assignment Information */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex gap-3">
               <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-blue-900">Affectation journalière manuelle</p>
+                <p className="text-sm font-medium text-blue-900">Affectation hebdomadaire récurrente</p>
                 <p className="text-sm text-blue-700 mt-1">
-                  Sélectionnez manuellement les jours et sites pour chaque affectation. 
-                  Un seul rôteur peut être assigné par site par jour.
+                  Sélectionnez les jours de la semaine et les sites pour chaque jour. 
+                  Cette rotation continuera jusqu'à annulation manuelle.
                 </p>
               </div>
             </div>
@@ -814,40 +792,19 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
               </div>
 
               {/* Date Range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date Début</label>
-                  <input
-                    type="date"
-                    value={formData.dateDebut}
-                    onChange={(e) => setFormData({ ...formData, dateDebut: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date Fin</label>
-                  <input
-                    type="date"
-                    value={formData.dateFin}
-                    onChange={(e) => setFormData({ ...formData, dateFin: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date de Début</label>
+                <input
+                  type="date"
+                  value={formData.dateDebut}
+                  onChange={(e) => setFormData({ ...formData, dateDebut: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Date à partir de laquelle la rotation hebdomadaire commence
+                </p>
               </div>
-
-              {/* Date Range Helper */}
-              {formData.dateDebut && formData.dateFin && availableDates.length > 0 && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                  <p className="text-sm text-green-800">
-                    ✓ Période définie: {availableDates.length} jour(s) disponible(s)
-                  </p>
-                  <p className="text-xs text-green-600 mt-1">
-                    Vous pouvez maintenant ajouter des affectations journalières →
-                  </p>
-                </div>
-              )}
 
               {/* Default Shift */}
               <div>
@@ -875,16 +832,16 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
               </div>
             </div>
 
-            {/* Right Column - Daily Assignments */}
+            {/* Right Column - Weekly Assignments */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-gray-700">Affectations journalières</label>
+                <label className="block text-sm font-medium text-gray-700">Rotation hebdomadaire</label>
                 <button
                   type="button"
-                  onClick={addDailyAssignment}
-                  disabled={availableDates.length === 0 || availableSites.length === 0}
+                  onClick={addWeeklyAssignment}
+                  disabled={availableSites.length === 0}
                   className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={availableDates.length === 0 ? "Définissez d'abord une période" : availableSites.length === 0 ? "Aucun site disponible" : "Ajouter une affectation journalière"}
+                  title={availableSites.length === 0 ? "Aucun site disponible" : "Ajouter un jour de rotation"}
                 >
                   <Plus className="w-4 h-4" />
                   Ajouter jour
@@ -892,15 +849,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
               </div>
 
               {/* Instructions */}
-              {availableDates.length === 0 && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
-                    📅 Définissez d'abord une période (dates début et fin) pour pouvoir ajouter des affectations journalières.
-                  </p>
-                </div>
-              )}
-
-              {availableDates.length > 0 && availableSites.length === 0 && (
+              {availableSites.length === 0 && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                   <p className="text-sm text-orange-800">
                     ⚠️ Aucun site disponible pour les affectations de rôteur.
@@ -911,10 +860,10 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                 </div>
               )}
 
-              {availableDates.length > 0 && availableSites.length > 0 && dailyAssignments.length === 0 && (
+              {availableSites.length > 0 && weeklyAssignments.length === 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                   <p className="text-sm text-green-800">
-                    ✅ Prêt! Cliquez sur "Ajouter jour" pour sélectionner les sites et créer les affectations.
+                    ✅ Prêt! Cliquez sur "Ajouter jour" pour définir la rotation hebdomadaire.
                   </p>
                   <p className="text-xs text-green-600 mt-1">
                     {availableSites.length} site(s) disponible(s): {availableSites.map(s => s.nom_site).join(', ')}
@@ -923,20 +872,20 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
               )}
 
               <div className="max-h-80 overflow-y-auto space-y-3 border border-gray-200 rounded-lg p-3">
-                {dailyAssignments.length === 0 ? (
+                {weeklyAssignments.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">
-                    Aucune affectation journalière. Cliquez sur "Ajouter jour" pour commencer.
+                    Aucune rotation définie. Cliquez sur "Ajouter jour" pour commencer.
                   </p>
                 ) : (
-                  dailyAssignments.map((dailyAssignment, index) => (
+                  weeklyAssignments.map((weeklyAssignment, index) => (
                     <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-gray-700">
-                          Jour {index + 1}
+                          Rotation {index + 1}
                         </span>
                         <button
                           type="button"
-                          onClick={() => removeDailyAssignment(index)}
+                          onClick={() => removeWeeklyAssignment(index)}
                           className="text-red-600 hover:text-red-800"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -945,19 +894,15 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Jour de la semaine</label>
                           <select
-                            value={dailyAssignment.date}
-                            onChange={(e) => updateDailyAssignment(index, 'date', e.target.value)}
+                            value={weeklyAssignment.dayOfWeek}
+                            onChange={(e) => updateWeeklyAssignment(index, 'dayOfWeek', parseInt(e.target.value))}
                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                           >
-                            {availableDates.map(date => (
-                              <option key={date} value={date}>
-                                {new Date(date).toLocaleDateString('fr-FR', { 
-                                  weekday: 'short', 
-                                  day: 'numeric', 
-                                  month: 'short' 
-                                })}
+                            {daysOfWeek.map(day => (
+                              <option key={day.value} value={day.value}>
+                                {day.label}
                               </option>
                             ))}
                           </select>
@@ -966,8 +911,8 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Poste</label>
                           <select
-                            value={dailyAssignment.poste}
-                            onChange={(e) => updateDailyAssignment(index, 'poste', e.target.value)}
+                            value={weeklyAssignment.poste}
+                            onChange={(e) => updateWeeklyAssignment(index, 'poste', e.target.value)}
                             className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                           >
                             <option value="JOUR">Jour</option>
@@ -979,8 +924,8 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">Site</label>
                         <select
-                          value={dailyAssignment.siteId}
-                          onChange={(e) => updateDailyAssignment(index, 'siteId', e.target.value)}
+                          value={weeklyAssignment.siteId}
+                          onChange={(e) => updateWeeklyAssignment(index, 'siteId', e.target.value)}
                           className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                         >
                           {availableSites.map(site => (
@@ -996,8 +941,8 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                         <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
                         <input
                           type="text"
-                          value={dailyAssignment.notes || ''}
-                          onChange={(e) => updateDailyAssignment(index, 'notes', e.target.value)}
+                          value={weeklyAssignment.notes || ''}
+                          onChange={(e) => updateWeeklyAssignment(index, 'notes', e.target.value)}
                           placeholder="Notes spécifiques pour ce jour..."
                           className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                         />
@@ -1007,9 +952,9 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                 )}
               </div>
 
-              {dailyAssignments.length > 0 && (
+              {weeklyAssignments.length > 0 && (
                 <p className="text-xs text-blue-600">
-                  {dailyAssignments.length} jour(s) assigné(s) sur {availableDates.length} disponible(s)
+                  {weeklyAssignments.length} jour(s) de rotation défini(s) sur 7 possibles
                 </p>
               )}
             </div>
@@ -1025,11 +970,11 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={saving || checkingAvailability || validationErrors.length > 0 || dailyAssignments.length === 0}
+              disabled={saving || checkingAvailability || validationErrors.length > 0 || weeklyAssignments.length === 0}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
-              {checkingAvailability ? 'Vérification...' : (saving ? 'Enregistrement...' : 'Créer l\'affectation')}
+              {checkingAvailability ? 'Vérification...' : (saving ? 'Enregistrement...' : 'Créer la rotation')}
             </button>
           </div>
         </form>
