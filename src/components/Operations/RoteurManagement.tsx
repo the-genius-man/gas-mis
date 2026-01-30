@@ -994,10 +994,59 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
   );
 };
 
+const AssignmentModal: React.FC<AssignmentModalProps> = ({
+  isOpen,
+  onClose,
+  assignment,
+  onSave,
+  sites,
+  agents
+}) => {
+  const [formData, setFormData] = useState<AssignmentFormData>({
+    agent_id: assignment?.agent_id || '',
+    site_id: assignment?.site_id || '',
+    start_date: assignment?.start_date || '',
+    end_date: assignment?.end_date || '',
+    daily_assignments: assignment?.daily_assignments || []
+  });
+  
+  const [saving, setSaving] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [dailyAssignments, setDailyAssignments] = useState<DailyAssignment[]>(
+    assignment?.daily_assignments || []
+  );
+
+  const isEditing = !!assignment;
+  const modalTitle = isEditing ? 'Modifier l\'affectation' : 'Nouvelle affectation';
+
   // Filter sites to only show those needing roteur coverage
   const availableSites = sites.filter(site => 
     site.needs_roteur && (!site.current_roteur || site.current_roteur.id === assignment?.id)
   );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (validationErrors.length > 0) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await onSave({
+        ...formData,
+        daily_assignments: dailyAssignments
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error saving assignment:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
