@@ -695,30 +695,39 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     try {
       setSaving(true);
       
-      if (window.electronAPI?.createRoteurWeeklyAssignment) {
-        console.log('🔄 [ROTEUR] Using createRoteurWeeklyAssignment');
+      // Ensure weekly_assignments is properly formatted
+      const formattedWeeklyAssignments = weeklyAssignments.map(wa => ({
+        day_of_week: parseInt(wa.dayOfWeek),
+        site_id: wa.siteId,
+        poste: wa.poste || 'NUIT',
+        notes: wa.notes || ''
+      }));
+      
+      console.log('🔍 [ROTEUR] Formatted weekly assignments:', formattedWeeklyAssignments);
+      
+      if (window.electronAPI?.createRoteurAssignment) {
+        console.log('🔄 [ROTEUR] Using createRoteurAssignment with weekly data');
         
         const assignmentData = {
           roteur_id: formData.roteurId,
+          site_id: formattedWeeklyAssignments.length > 0 ? formattedWeeklyAssignments[0].site_id : '',
           date_debut: formData.dateDebut,
+          date_fin: '2099-12-31', // Far future date for ongoing rotation
           poste: formData.poste,
           notes: formData.notes,
-          weekly_assignments: weeklyAssignments.map(wa => ({
-            day_of_week: wa.dayOfWeek,
-            site_id: wa.siteId,
-            poste: wa.poste,
-            notes: wa.notes
-          })),
+          weekly_assignments: JSON.stringify(formattedWeeklyAssignments), // Ensure it's a JSON string
           statut: 'PLANIFIE'
         };
         
         console.log('🔍 [ROTEUR] Sending assignment data:', assignmentData);
         
-        const result = await window.electronAPI.createRoteurWeeklyAssignment(assignmentData);
+        const result = await window.electronAPI.createRoteurAssignment(assignmentData);
+        
+        console.log('🔍 [ROTEUR] Backend response:', result);
         
         // Show success message with assignment details
         if (result.success && result.weekly_assignments) {
-          const assignmentDetails = result.weekly_assignments.map(a => {
+          const assignmentDetails = result.weekly_assignments.map((a: any) => {
             const dayName = daysOfWeek.find(d => d.value === a.day_of_week)?.label;
             return `• ${dayName} - ${a.site_nom} (${a.poste})`;
           }).join('\n');
@@ -727,34 +736,9 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                 `${result.weekly_assignments.length} jour(s) assigné(s) par semaine\n\n` +
                 `Rotation hebdomadaire:\n${assignmentDetails}\n\n` +
                 `Note: Cette rotation continuera jusqu'à annulation manuelle.`);
-        }
-      } else if (window.electronAPI?.createRoteurAssignment) {
-        // Fallback to regular assignment creation with weekly_assignments data
-        console.log('🔄 [ROTEUR] Using fallback createRoteurAssignment with weekly data');
-        
-        const assignmentData = {
-          roteur_id: formData.roteurId,
-          site_id: weeklyAssignments.length > 0 ? weeklyAssignments[0].siteId : '',
-          date_debut: formData.dateDebut,
-          date_fin: '2099-12-31', // Far future date for ongoing rotation
-          poste: formData.poste,
-          notes: formData.notes,
-          weekly_assignments: weeklyAssignments.map(wa => ({
-            day_of_week: wa.dayOfWeek,
-            site_id: wa.siteId,
-            poste: wa.poste,
-            notes: wa.notes
-          })),
-          statut: 'PLANIFIE'
-        };
-        
-        console.log('🔍 [ROTEUR] Sending fallback assignment data:', assignmentData);
-        
-        const result = await window.electronAPI.createRoteurAssignment(assignmentData);
-        
-        if (result.success) {
+        } else if (result.success) {
           alert(`Affectation hebdomadaire créée avec succès!\n\n` +
-                `${weeklyAssignments.length} jour(s) assigné(s) par semaine\n\n` +
+                `${formattedWeeklyAssignments.length} jour(s) assigné(s) par semaine\n\n` +
                 `Note: Cette rotation continuera jusqu'à annulation manuelle.`);
         }
       } else {

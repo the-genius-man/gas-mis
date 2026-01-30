@@ -28,7 +28,7 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
         const processedAssignments = (assignmentsData || []).map(assignment => {
           let weeklyAssignments = assignment.weekly_assignments;
           
-          // If weekly_assignments is a string, parse it as JSON
+          // Handle different formats of weekly_assignments
           if (typeof weeklyAssignments === 'string') {
             try {
               weeklyAssignments = JSON.parse(weeklyAssignments);
@@ -36,11 +36,23 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
               console.warn('Failed to parse weekly_assignments JSON:', weeklyAssignments);
               weeklyAssignments = [];
             }
+          } else if (!Array.isArray(weeklyAssignments)) {
+            // If it's not a string or array, default to empty array
+            weeklyAssignments = [];
           }
+          
+          // Ensure each assignment has the correct structure
+          weeklyAssignments = weeklyAssignments.map(wa => ({
+            day_of_week: parseInt(wa.day_of_week),
+            site_id: wa.site_id,
+            site_nom: wa.site_nom,
+            poste: wa.poste || 'NUIT',
+            notes: wa.notes || ''
+          }));
           
           return {
             ...assignment,
-            weekly_assignments: weeklyAssignments || []
+            weekly_assignments: weeklyAssignments
           };
         });
 
@@ -57,10 +69,15 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
         // Log each assignment's weekly_assignments structure
         activeAssignments.forEach((assignment, index) => {
           console.log(`🔍 [PLANNING] Assignment ${index + 1}:`, {
+            id: assignment.id,
+            roteur_id: assignment.roteur_id,
             roteur_nom: assignment.roteur_nom,
+            site_id: assignment.site_id,
+            site_nom: assignment.site_nom,
             weekly_assignments_type: typeof assignment.weekly_assignments,
             weekly_assignments_content: assignment.weekly_assignments,
-            weekly_assignments_length: assignment.weekly_assignments?.length || 0
+            weekly_assignments_length: assignment.weekly_assignments?.length || 0,
+            raw_weekly_assignments: assignmentsData.find(a => a.id === assignment.id)?.weekly_assignments
           });
         });
       }
