@@ -26,6 +26,10 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
 
         setRoteurAssignments(assignmentsData?.filter(a => a.statut === 'EN_COURS' || a.statut === 'PLANIFIE') || []);
         setRoteurs(roteursData || []);
+        
+        // Debug: Log the assignments data to see what we're getting
+        console.log('🔍 [PLANNING] Loaded roteur assignments:', assignmentsData);
+        console.log('🔍 [PLANNING] Filtered active assignments:', assignmentsData?.filter(a => a.statut === 'EN_COURS' || a.statut === 'PLANIFIE'));
       }
     } catch (error) {
       console.error('Error loading weekly planning data:', error);
@@ -115,6 +119,15 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
                       const dayAssignment = roteur.weekly_assignments?.find(
                         wa => wa.day_of_week === day.value
                       );
+
+                      // Debug: Log what we're looking for vs what we have
+                      if (index === 0) { // Only log for first roteur to avoid spam
+                        console.log(`🔍 [PLANNING] Day ${day.label} (${day.value}):`, {
+                          roteur: roteur.roteur_nom,
+                          weekly_assignments: roteur.weekly_assignments,
+                          dayAssignment: dayAssignment
+                        });
+                      }
 
                       return (
                         <td key={`${roteur.roteur_id}-${day.value}-${index}`} className="px-6 py-4 text-center">

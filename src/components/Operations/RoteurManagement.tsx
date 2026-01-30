@@ -681,6 +681,33 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                 `Rotation hebdomadaire:\n${assignmentDetails}\n\n` +
                 `Note: Cette rotation continuera jusqu'à annulation manuelle.`);
         }
+      } else if (window.electronAPI?.createRoteurAssignment) {
+        // Fallback to regular assignment creation with weekly_assignments data
+        console.log('🔄 [ROTEUR] Using fallback createRoteurAssignment with weekly data');
+        
+        const result = await window.electronAPI.createRoteurAssignment({
+          roteur_id: formData.roteurId,
+          site_id: weeklyAssignments.length > 0 ? weeklyAssignments[0].siteId : '',
+          date_debut: formData.dateDebut,
+          date_fin: null, // No end date for ongoing rotation
+          poste: formData.poste,
+          notes: formData.notes,
+          weekly_assignments: weeklyAssignments.map(wa => ({
+            day_of_week: wa.dayOfWeek,
+            site_id: wa.siteId,
+            poste: wa.poste,
+            notes: wa.notes
+          })),
+          statut: 'PLANIFIE'
+        });
+        
+        if (result.success) {
+          alert(`Affectation hebdomadaire créée avec succès!\n\n` +
+                `${weeklyAssignments.length} jour(s) assigné(s) par semaine\n\n` +
+                `Note: Cette rotation continuera jusqu'à annulation manuelle.`);
+        }
+      } else {
+        throw new Error('Aucune fonction d\'affectation disponible');
       }
       
       onSave();
