@@ -690,7 +690,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       if (window.electronAPI?.createRoteurAssignment) {
         const result = await window.electronAPI.createRoteurAssignment({
           roteur_id: formData.roteurId,
-          site_id: dailyAssignments[0]?.siteId || '', // Primary site for backward compatibility
+          site_id: dailyAssignments.length > 0 ? dailyAssignments[0].siteId : '', // Primary site for backward compatibilitys[0]?.siteId || '', // Primary site for backward compatibility
           date_debut: formData.dateDebut,
           date_fin: formData.dateFin,
           poste: formData.poste,
