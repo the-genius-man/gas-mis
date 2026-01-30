@@ -24,12 +24,45 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
           window.electronAPI.getRoteurs?.({ statut: 'ACTIF' }) || Promise.resolve([])
         ]);
 
-        setRoteurAssignments(assignmentsData?.filter(a => a.statut === 'EN_COURS' || a.statut === 'PLANIFIE') || []);
+        // Process assignments and parse weekly_assignments if it's a JSON string
+        const processedAssignments = (assignmentsData || []).map(assignment => {
+          let weeklyAssignments = assignment.weekly_assignments;
+          
+          // If weekly_assignments is a string, parse it as JSON
+          if (typeof weeklyAssignments === 'string') {
+            try {
+              weeklyAssignments = JSON.parse(weeklyAssignments);
+            } catch (error) {
+              console.warn('Failed to parse weekly_assignments JSON:', weeklyAssignments);
+              weeklyAssignments = [];
+            }
+          }
+          
+          return {
+            ...assignment,
+            weekly_assignments: weeklyAssignments || []
+          };
+        });
+
+        const activeAssignments = processedAssignments.filter(a => a.statut === 'EN_COURS' || a.statut === 'PLANIFIE');
+        
+        setRoteurAssignments(activeAssignments);
         setRoteurs(roteursData || []);
         
-        // Debug: Log the assignments data to see what we're getting
-        console.log('🔍 [PLANNING] Loaded roteur assignments:', assignmentsData);
-        console.log('🔍 [PLANNING] Filtered active assignments:', assignmentsData?.filter(a => a.statut === 'EN_COURS' || a.statut === 'PLANIFIE'));
+        // Enhanced Debug: Log the assignments data to see what we're getting
+        console.log('🔍 [PLANNING] Raw assignments data:', assignmentsData);
+        console.log('🔍 [PLANNING] Processed assignments:', processedAssignments);
+        console.log('🔍 [PLANNING] Active assignments:', activeAssignments);
+        
+        // Log each assignment's weekly_assignments structure
+        activeAssignments.forEach((assignment, index) => {
+          console.log(`🔍 [PLANNING] Assignment ${index + 1}:`, {
+            roteur_nom: assignment.roteur_nom,
+            weekly_assignments_type: typeof assignment.weekly_assignments,
+            weekly_assignments_content: assignment.weekly_assignments,
+            weekly_assignments_length: assignment.weekly_assignments?.length || 0
+          });
+        });
       }
     } catch (error) {
       console.error('Error loading weekly planning data:', error);
@@ -120,29 +153,51 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
                         wa => wa.day_of_week === day.value
                       );
 
-                      // Debug: Log what we're looking for vs what we have
+                      // Enhanced Debug: Log what we're looking for vs what we have
                       if (index === 0) { // Only log for first roteur to avoid spam
                         console.log(`🔍 [PLANNING] Day ${day.label} (${day.value}):`, {
                           roteur: roteur.roteur_nom,
+                          weekly_assignments_type: typeof roteur.weekly_assignments,
                           weekly_assignments: roteur.weekly_assignments,
-                          dayAssignment: dayAssignment
+                          weekly_assignments_length: roteur.weekly_assignments?.length,
+                          dayAssignment: dayAssignment,
+                          looking_for_day: day.value
                         });
+                        
+                        // Log each weekly assignment for this roteur
+                        if (roteur.weekly_assignments && Array.isArray(roteur.weekly_assignments)) {
+                          roteur.weekly_assignments.forEach((wa, waIndex) => {
+                            console.log(`  Weekly Assignment ${waIndex}:`, {
+                              day_of_week: wa.day_of_week,
+                              day_of_week_type: typeof wa.day_of_week,
+                              site_id: wa.site_id,
+                              site_nom: wa.site_nom,
+                              poste: wa.poste,
+                              matches_current_day: wa.day_of_week === day.value
+                            });
+                          });
+                        }
                       }
 
                       return (
                         <td key={`${roteur.roteur_id}-${day.value}-${index}`} className="px-6 py-4 text-center">
                           {dayAssignment ? (
                             <div className="space-y-1">
-                              <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
-                                {dayAssignment.site_nom}
+                              <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]" title={dayAssignment.site_nom}>
+                                {dayAssignment.site_nom || 'Site non défini'}
                               </div>
                               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                 dayAssignment.poste === 'JOUR' 
                                   ? 'bg-yellow-100 text-yellow-800' 
                                   : 'bg-blue-100 text-blue-800'
                               }`}>
-                                {dayAssignment.poste}
+                                {dayAssignment.poste || 'JOUR'}
                               </span>
+                              {dayAssignment.notes && (
+                                <div className="text-xs text-gray-500 truncate max-w-[120px]" title={dayAssignment.notes}>
+                                  {dayAssignment.notes}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div className="text-gray-400 text-sm">
