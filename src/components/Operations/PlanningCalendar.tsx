@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MapPin, Clock, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
+import { Users, Calendar as CalendarIcon } from 'lucide-react';
 import { AffectationRoteur, EmployeeGASFull } from '../../types';
 
 interface WeeklyPlanningProps {
@@ -44,45 +44,6 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
     { value: 0, label: 'Dimanche', shortLabel: 'Dim' }
   ];
 
-  // Get assignments for a specific day of the week
-  const getAssignmentsForDay = (dayOfWeek: number) => {
-    const dayAssignments: Array<{
-      roteur_nom: string;
-      site_nom: string;
-      poste: string;
-      statut: string;
-      roteur_id: string;
-    }> = [];
-
-    roteurAssignments.forEach(assignment => {
-      if (assignment.weekly_assignments && assignment.weekly_assignments.length > 0) {
-        // New weekly assignment format
-        assignment.weekly_assignments.forEach(wa => {
-          if (wa.day_of_week === dayOfWeek) {
-            dayAssignments.push({
-              roteur_nom: assignment.roteur_nom,
-              site_nom: wa.site_nom,
-              poste: wa.poste,
-              statut: assignment.statut,
-              roteur_id: assignment.roteur_id
-            });
-          }
-        });
-      } else {
-        // Fallback for old-style assignments - show on all days
-        dayAssignments.push({
-          roteur_nom: assignment.roteur_nom,
-          site_nom: assignment.site_nom,
-          poste: assignment.poste,
-          statut: assignment.statut,
-          roteur_id: assignment.roteur_id
-        });
-      }
-    });
-
-    return dayAssignments;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -107,72 +68,90 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
         </div>
       </div>
 
-      {/* Weekly Grid */}
+      {/* Weekly Table Layout */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-7 divide-x divide-gray-200">
-          {daysOfWeek.map((day) => {
-            const dayAssignments = getAssignmentsForDay(day.value);
-            
-            return (
-              <div key={day.value} className="min-h-[300px]">
-                {/* Day Header */}
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <h3 className="font-medium text-gray-900 text-center">{day.label}</h3>
-                  <p className="text-xs text-gray-500 text-center mt-1">
-                    {dayAssignments.length} affectation(s)
-                  </p>
-                </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            {/* Table Header */}
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rôteurs
+                </th>
+                {daysOfWeek.map((day) => (
+                  <th key={day.value} className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {day.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-                {/* Day Content */}
-                <div className="p-3 space-y-2">
-                  {dayAssignments.length > 0 ? (
-                    dayAssignments.map((assignment, index) => (
-                      <div
-                        key={`${assignment.roteur_id}-${index}`}
-                        className={`p-3 rounded-lg border text-sm ${
-                          assignment.statut === 'EN_COURS'
-                            ? 'bg-blue-50 border-blue-200'
-                            : 'bg-green-50 border-green-200'
-                        }`}
-                      >
-                        <div className="flex items-start gap-2 mb-2">
-                          <Users className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 truncate">
-                              {assignment.roteur_nom}
-                            </p>
+            {/* Table Body */}
+            <tbody className="bg-white divide-y divide-gray-200">
+              {roteurAssignments.length > 0 ? (
+                roteurAssignments.map((roteur) => (
+                  <tr key={roteur.roteur_id} className="hover:bg-gray-50">
+                    {/* Roteur Name */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <Users className="h-5 w-5 text-blue-600" />
                           </div>
                         </div>
-                        
-                        <div className="flex items-center gap-2 mb-1">
-                          <MapPin className="w-3 h-3 text-gray-500" />
-                          <p className="text-gray-700 text-xs truncate">
-                            {assignment.site_nom}
-                          </p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3 h-3 text-gray-500" />
-                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                            assignment.poste === 'JOUR' 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {assignment.poste}
-                          </span>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {roteur.roteur_nom}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {roteur.statut === 'EN_COURS' ? 'Actif' : 'Planifié'}
+                          </div>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-gray-400">
-                      <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                      <p className="text-sm">Aucune affectation</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                    </td>
+
+                    {/* Days of Week */}
+                    {daysOfWeek.map((day) => {
+                      const dayAssignment = roteur.weekly_assignments?.find(
+                        wa => wa.day_of_week === day.value
+                      );
+
+                      return (
+                        <td key={day.value} className="px-6 py-4 text-center">
+                          {dayAssignment ? (
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
+                                {dayAssignment.site_nom}
+                              </div>
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                dayAssignment.poste === 'JOUR' 
+                                  ? 'bg-yellow-100 text-yellow-800' 
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {dayAssignment.poste}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="text-gray-400 text-sm">
+                              -
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                    <CalendarIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>Aucune affectation de rôteur</p>
+                    <p className="text-sm mt-1">Les affectations apparaîtront ici une fois créées</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -205,7 +184,10 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
           <div className="text-center">
             <div className="text-2xl font-bold text-purple-600">
               {daysOfWeek.reduce((total, day) => {
-                return total + (getAssignmentsForDay(day.value).length > 0 ? 1 : 0);
+                const hasAssignments = roteurAssignments.some(assignment => 
+                  assignment.weekly_assignments?.some(wa => wa.day_of_week === day.value)
+                );
+                return total + (hasAssignments ? 1 : 0);
               }, 0)}
             </div>
             <div className="text-gray-600">Jours Actifs</div>
