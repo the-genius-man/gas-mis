@@ -528,12 +528,32 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     notes: assignment?.notes || ''
   });
   
-  const [weeklyAssignments, setWeeklyAssignments] = useState<Array<{
-    dayOfWeek: number; // 0 = Sunday, 1 = Monday, etc.
+  const [weeklySchedule, setWeeklySchedule] = useState<Record<number, {
     siteId: string;
     poste: 'JOUR' | 'NUIT';
     notes?: string;
-  }>>([]);
+  } | null>>(() => {
+    // Initialize from existing assignment if editing
+    if (assignment?.weekly_assignments) {
+      const schedule: Record<number, any> = {
+        1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 0: null
+      };
+      
+      assignment.weekly_assignments.forEach(wa => {
+        schedule[wa.day_of_week] = {
+          siteId: wa.site_id,
+          poste: wa.poste,
+          notes: wa.notes
+        };
+      });
+      
+      return schedule;
+    }
+    
+    return {
+      1: null, 2: null, 3: null, 4: null, 5: null, 6: null, 0: null
+    };
+  });
   
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -552,10 +572,12 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     { value: 0, label: 'Dimanche' }
   ];
 
-  // Real-time validation for weekly assignments
+  // Real-time validation for weekly schedule
   useEffect(() => {
-    const validateWeeklyAssignments = async () => {
-      if (weeklyAssignments.length === 0) {
+    const validateWeeklySchedule = async () => {
+      const activeAssignments = Object.entries(weeklySchedule).filter(([_, assignment]) => assignment !== null);
+      
+      if (activeAssignments.length === 0) {
         setValidationErrors([]);
         return;
       }
@@ -564,19 +586,35 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       const errors: string[] = [];
 
       try {
-        // Check each weekly assignment for conflicts
-        for (const weeklyAssignment of weeklyAssignments) {
-          if (window.electronAPI?.checkWeeklyRoteurAvailability) {
+        // Check for duplicate sites across days
+        const usedSites = new Set<string>();
+        const siteConflicts: string[] = [];
+
+        for (const [dayOfWeek, assignment] of activeAssignments) {
+          if (assignment && usedSites.has(assignment.siteId)) {
+            const dayName = daysOfWeek.find(d => d.value === parseInt(dayOfWeek))?.label;
+            const siteName = availableSites.find(s => s.id === assignment.siteId)?.nom_site;
+            siteConflicts.push(`${dayName}: Site "${siteName}" déjà assigné un autre jour`);
+          } else if (assignment) {
+            usedSites.add(assignment.siteId);
+          }
+        }
+
+        errors.push(...siteConflicts);
+
+        // Check each assignment for conflicts with backend
+        for (const [dayOfWeek, assignment] of activeAssignments) {
+          if (assignment && window.electronAPI?.checkWeeklyRoteurAvailability) {
             const result = await window.electronAPI.checkWeeklyRoteurAvailability({
               roteurId: formData.roteurId,
-              siteId: weeklyAssignment.siteId,
-              dayOfWeek: weeklyAssignment.dayOfWeek,
-              poste: weeklyAssignment.poste,
+              siteId: assignment.siteId,
+              dayOfWeek: parseInt(dayOfWeek),
+              poste: assignment.poste,
               excludeAssignmentId: assignment?.id
             });
 
             if (!result.available) {
-              const dayName = daysOfWeek.find(d => d.value === weeklyAssignment.dayOfWeek)?.label;
+              const dayName = daysOfWeek.find(d => d.value === parseInt(dayOfWeek))?.label;
               errors.push(...result.conflicts.map(c => `${dayName}: ${c.error}`));
             }
           }
@@ -584,7 +622,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
 
         setValidationErrors(errors);
       } catch (error) {
-        console.error('Error validating weekly assignments:', error);
+        console.error('Error validating weekly schedule:', error);
         setValidationErrors(['Erreur lors de la validation']);
       } finally {
         setCheckingAvailability(false);
@@ -592,44 +630,29 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     };
 
     // Debounce validation
-    const timeoutId = setTimeout(validateWeeklyAssignments, 500);
+    const timeoutId = setTimeout(validateWeeklySchedule, 500);
     return () => clearTimeout(timeoutId);
-  }, [weeklyAssignments, formData.roteurId, assignment?.id]);
+  }, [weeklySchedule, formData.roteurId, assignment?.id]);
 
-  const addWeeklyAssignment = () => {
-    if (availableSites.length === 0) {
-      alert('Aucun site disponible pour les affectations de rôteur');
-      return;
-    }
-
-    // Find first available day not already assigned
-    const usedDays = weeklyAssignments.map(wa => wa.dayOfWeek);
-    const availableDay = daysOfWeek.find(day => !usedDays.includes(day.value));
-
-    if (!availableDay) {
-      alert('Tous les jours de la semaine sont déjà assignés');
-      return;
-    }
-
-    const firstAvailableSite = availableSites[0].id;
-
-    setWeeklyAssignments([...weeklyAssignments, {
-      dayOfWeek: availableDay.value,
-      siteId: firstAvailableSite,
-      poste: formData.poste,
-      notes: ''
-    }]);
+  const updateDayAssignment = (dayOfWeek: number, field: 'siteId' | 'poste' | 'notes', value: string) => {
+    setWeeklySchedule(prev => ({
+      ...prev,
+      [dayOfWeek]: prev[dayOfWeek] ? {
+        ...prev[dayOfWeek]!,
+        [field]: value
+      } : {
+        siteId: field === 'siteId' ? value : availableSites[0]?.id || '',
+        poste: field === 'poste' ? value as 'JOUR' | 'NUIT' : formData.poste,
+        notes: field === 'notes' ? value : ''
+      }
+    }));
   };
 
-  const updateWeeklyAssignment = (index: number, field: string, value: string | number) => {
-    const updated = [...weeklyAssignments];
-    updated[index] = { ...updated[index], [field]: value };
-    setWeeklyAssignments(updated);
-  };
-
-  const removeWeeklyAssignment = (index: number) => {
-    const updated = weeklyAssignments.filter((_, i) => i !== index);
-    setWeeklyAssignments(updated);
+  const clearDayAssignment = (dayOfWeek: number) => {
+    setWeeklySchedule(prev => ({
+      ...prev,
+      [dayOfWeek]: null
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -640,8 +663,23 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       return;
     }
 
+    if (Object.values(weeklySchedule).every(assignment => assignment === null)) {
+      alert('Veuillez définir au moins une affectation hebdomadaire');
+      return;
+    }
+
+    // Convert weeklySchedule to weeklyAssignments format
+    const weeklyAssignments = Object.entries(weeklySchedule)
+      .filter(([_, assignment]) => assignment !== null)
+      .map(([dayOfWeek, assignment]) => ({
+        dayOfWeek: parseInt(dayOfWeek),
+        siteId: assignment!.siteId,
+        poste: assignment!.poste,
+        notes: assignment!.notes
+      }));
+
     if (weeklyAssignments.length === 0) {
-      alert('Veuillez ajouter au moins une affectation hebdomadaire');
+      alert('Veuillez définir au moins une affectation hebdomadaire');
       return;
     }
 
@@ -857,20 +895,13 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
               </div>
             </div>
 
-            {/* Right Column - Weekly Assignments */}
+            {/* Right Column - Weekly Schedule Grid */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-gray-700">Rotation hebdomadaire</label>
-                <button
-                  type="button"
-                  onClick={addWeeklyAssignment}
-                  disabled={availableSites.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={availableSites.length === 0 ? "Aucun site disponible" : "Ajouter un jour de rotation"}
-                >
-                  <Plus className="w-4 h-4" />
-                  Ajouter jour
-                </button>
+                <label className="block text-sm font-medium text-gray-700">Planning hebdomadaire</label>
+                <div className="text-xs text-gray-500">
+                  {Object.values(weeklySchedule).filter(a => a !== null).length} jour(s) assigné(s)
+                </div>
               </div>
 
               {/* Instructions */}
@@ -885,10 +916,10 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                 </div>
               )}
 
-              {availableSites.length > 0 && weeklyAssignments.length === 0 && (
+              {availableSites.length > 0 && Object.values(weeklySchedule).every(a => a === null) && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                   <p className="text-sm text-green-800">
-                    ✅ Prêt! Cliquez sur "Ajouter jour" pour définir la rotation hebdomadaire.
+                    ✅ Prêt! Sélectionnez les sites pour chaque jour de la semaine.
                   </p>
                   <p className="text-xs text-green-600 mt-1">
                     {availableSites.length} site(s) disponible(s): {availableSites.map(s => s.nom_site).join(', ')}
@@ -896,91 +927,108 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
                 </div>
               )}
 
-              <div className="max-h-80 overflow-y-auto space-y-3 border border-gray-200 rounded-lg p-3">
-                {weeklyAssignments.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    Aucune rotation définie. Cliquez sur "Ajouter jour" pour commencer.
-                  </p>
-                ) : (
-                  weeklyAssignments.map((weeklyAssignment, index) => (
-                    <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-700">
-                          Rotation {index + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeWeeklyAssignment(index)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+              {/* Weekly Grid */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                {daysOfWeek.map((day) => {
+                  const dayAssignment = weeklySchedule[day.value];
+                  const isAssigned = dayAssignment !== null;
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Jour de la semaine</label>
-                          <select
-                            value={weeklyAssignment.dayOfWeek}
-                            onChange={(e) => updateWeeklyAssignment(index, 'dayOfWeek', parseInt(e.target.value))}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                          >
-                            {daysOfWeek.map(day => (
-                              <option key={day.value} value={day.value}>
-                                {day.label}
-                              </option>
-                            ))}
-                          </select>
+                  return (
+                    <div key={day.value} className={`border-b border-gray-200 last:border-b-0 ${isAssigned ? 'bg-blue-50' : 'bg-white'}`}>
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-700">{day.label}</span>
+                            {isAssigned && (
+                              <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                Assigné
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {isAssigned ? (
+                              <button
+                                type="button"
+                                onClick={() => clearDayAssignment(day.value)}
+                                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 hover:bg-red-50 rounded"
+                              >
+                                Supprimer
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => updateDayAssignment(day.value, 'siteId', availableSites[0]?.id || '')}
+                                disabled={availableSites.length === 0}
+                                className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 hover:bg-blue-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Assigner
+                              </button>
+                            )}
+                          </div>
                         </div>
 
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Poste</label>
-                          <select
-                            value={weeklyAssignment.poste}
-                            onChange={(e) => updateWeeklyAssignment(index, 'poste', e.target.value)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                          >
-                            <option value="JOUR">Jour</option>
-                            <option value="NUIT">Nuit</option>
-                          </select>
-                        </div>
-                      </div>
+                        {isAssigned && dayAssignment && (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Site</label>
+                                <select
+                                  value={dayAssignment.siteId}
+                                  onChange={(e) => updateDayAssignment(day.value, 'siteId', e.target.value)}
+                                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                >
+                                  {availableSites.map(site => (
+                                    <option key={site.id} value={site.id}>
+                                      {site.nom_site}
+                                      {site.client_nom && ` - ${site.client_nom}`}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
 
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Site</label>
-                        <select
-                          value={weeklyAssignment.siteId}
-                          onChange={(e) => updateWeeklyAssignment(index, 'siteId', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                        >
-                          {availableSites.map(site => (
-                            <option key={site.id} value={site.id}>
-                              {site.nom_site} ({site.guard_count} garde)
-                              {site.client_nom && ` - ${site.client_nom}`}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Poste</label>
+                                <select
+                                  value={dayAssignment.poste}
+                                  onChange={(e) => updateDayAssignment(day.value, 'poste', e.target.value)}
+                                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                >
+                                  <option value="JOUR">Jour</option>
+                                  <option value="NUIT">Nuit</option>
+                                </select>
+                              </div>
+                            </div>
 
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
-                        <input
-                          type="text"
-                          value={weeklyAssignment.notes || ''}
-                          onChange={(e) => updateWeeklyAssignment(index, 'notes', e.target.value)}
-                          placeholder="Notes spécifiques pour ce jour..."
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                        />
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                              <input
+                                type="text"
+                                value={dayAssignment.notes || ''}
+                                onChange={(e) => updateDayAssignment(day.value, 'notes', e.target.value)}
+                                placeholder="Notes pour ce jour..."
+                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {!isAssigned && availableSites.length > 0 && (
+                          <div className="text-xs text-gray-500 italic">
+                            Cliquez sur "Assigner" pour définir une rotation ce jour
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))
-                )}
+                  );
+                })}
               </div>
 
-              {weeklyAssignments.length > 0 && (
-                <p className="text-xs text-blue-600">
-                  {weeklyAssignments.length} jour(s) de rotation défini(s) sur 7 possibles
-                </p>
+              {Object.values(weeklySchedule).some(a => a !== null) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs text-blue-800">
+                    💡 Astuce: Un même site ne peut être assigné qu'une seule fois par semaine pour éviter les conflits.
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -995,7 +1043,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={saving || checkingAvailability || validationErrors.length > 0 || weeklyAssignments.length === 0}
+              disabled={saving || checkingAvailability || validationErrors.length > 0 || Object.values(weeklySchedule).every(a => a === null)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
