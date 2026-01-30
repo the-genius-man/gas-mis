@@ -655,6 +655,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       setSaving(true);
       
       if (window.electronAPI?.createRoteurWeeklyAssignment) {
+        console.log('🔄 [ROTEUR] Using createRoteurWeeklyAssignment');
         const result = await window.electronAPI.createRoteurWeeklyAssignment({
           roteur_id: formData.roteurId,
           date_debut: formData.dateDebut,
@@ -689,7 +690,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
           roteur_id: formData.roteurId,
           site_id: weeklyAssignments.length > 0 ? weeklyAssignments[0].siteId : '',
           date_debut: formData.dateDebut,
-          date_fin: null, // No end date for ongoing rotation
+          date_fin: '2099-12-31', // Far future date for ongoing rotation
           poste: formData.poste,
           notes: formData.notes,
           weekly_assignments: weeklyAssignments.map(wa => ({
@@ -713,7 +714,16 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       onSave();
     } catch (error) {
       console.error('Error saving assignment:', error);
-      alert('Erreur lors de l\'enregistrement de l\'affectation:\n\n' + error.message);
+      
+      // More specific error message
+      let errorMessage = 'Erreur lors de l\'enregistrement de l\'affectation';
+      if (error.message.includes('NOT NULL constraint failed')) {
+        errorMessage += '\n\nErreur de base de données: Un champ obligatoire est manquant.';
+      } else if (error.message.includes('createRoteurWeeklyAssignment')) {
+        errorMessage += '\n\nLa fonction d\'affectation hebdomadaire n\'est pas disponible.';
+      }
+      
+      alert(errorMessage + '\n\nDétails: ' + error.message);
     } finally {
       setSaving(false);
     }
