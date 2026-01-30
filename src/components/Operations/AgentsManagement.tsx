@@ -3,6 +3,7 @@ import { Search, Users, UserCheck, Filter, Eye, Edit, MapPin, MoreVertical } fro
 import { EmployeeGASFull } from '../../types';
 import DeploymentForm from '../HR/DeploymentForm';
 import EmployeeDetailModal from '../HR/EmployeeDetailModal';
+import BulkActions, { createBulkActions } from '../common/BulkActions';
 
 interface ActionDropdownProps {
   employee: EmployeeGASFull;
@@ -57,6 +58,10 @@ const AgentsManagement: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeGASFull | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  
+  // Bulk actions state
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -125,6 +130,75 @@ const AgentsManagement: React.FC = () => {
   const handleDeploy = (employee: EmployeeGASFull) => {
     setDeployingEmployee(employee);
     setShowDeploymentForm(true);
+  };
+
+  // Bulk action handlers
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedAgents(filteredEmployees.map(emp => emp.id));
+    } else {
+      setSelectedAgents([]);
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedAgents([]);
+  };
+
+  const handleBulkAction = async (actionId: string, selectedIds: string[]) => {
+    setBulkActionLoading(true);
+    try {
+      switch (actionId) {
+        case 'activate':
+          await handleBulkActivate(selectedIds);
+          break;
+        case 'deactivate':
+          await handleBulkDeactivate(selectedIds);
+          break;
+        case 'delete':
+          await handleBulkDelete(selectedIds);
+          break;
+      }
+      setSelectedAgents([]);
+      await loadData();
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      alert('Erreur lors de l\'opération en lot');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkActivate = async (agentIds: string[]) => {
+    for (const id of agentIds) {
+      if (window.electronAPI?.updateEmployeeStatusGAS) {
+        await window.electronAPI.updateEmployeeStatusGAS({ id, statut: 'ACTIF' });
+      }
+    }
+  };
+
+  const handleBulkDeactivate = async (agentIds: string[]) => {
+    for (const id of agentIds) {
+      if (window.electronAPI?.updateEmployeeStatusGAS) {
+        await window.electronAPI.updateEmployeeStatusGAS({ id, statut: 'INACTIF' });
+      }
+    }
+  };
+
+  const handleBulkDelete = async (agentIds: string[]) => {
+    for (const id of agentIds) {
+      if (window.electronAPI?.deleteEmployeeGAS) {
+        await window.electronAPI.deleteEmployeeGAS(id);
+      }
+    }
+  };
+
+  const handleAgentSelect = (agentId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedAgents(prev => [...prev, agentId]);
+    } else {
+      setSelectedAgents(prev => prev.filter(id => id !== agentId));
+    }
   };
 
   const stats = {
@@ -248,12 +322,38 @@ const AgentsManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedItems={selectedAgents}
+        totalItems={filteredEmployees.length}
+        onSelectAll={handleSelectAll}
+        onClearSelection={handleClearSelection}
+        actions={[
+          createBulkActions.activate('Activer'),
+          createBulkActions.deactivate('Désactiver'),
+          createBulkActions.delete('Supprimer')
+        ]}
+        onAction={handleBulkAction}
+        loading={bulkActionLoading}
+      />
+
       {/* Agents Table */}
       {filteredEmployees.length > 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedAgents.length === filteredEmployees.length && filteredEmployees.length > 0}
+                    ref={(input) => {
+                      if (input) input.indeterminate = selectedAgents.length > 0 && selectedAgents.length < filteredEmployees.length;
+                    }}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Agent
                 </th>
@@ -280,6 +380,14 @@ const AgentsManagement: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEmployees.map((employee) => (
                 <tr key={employee.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedAgents.includes(employee.id)}
+                      onChange={(e) => handleAgentSelect(employee.id, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">

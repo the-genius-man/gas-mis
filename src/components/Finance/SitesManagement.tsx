@@ -387,6 +387,17 @@ export default function SitesManagement() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedSites.length === filteredSites.length && filteredSites.length > 0}
+                    ref={(input) => {
+                      if (input) input.indeterminate = selectedSites.length > 0 && selectedSites.length < filteredSites.length;
+                    }}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Site</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jour</th>
@@ -400,6 +411,14 @@ export default function SitesManagement() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredSites.map((site) => (
                 <tr key={site.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedSites.includes(site.id)}
+                      onChange={(e) => handleSiteSelect(site.id, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -520,6 +539,12 @@ export default function SitesManagement() {
               <div className="p-4 border-b border-gray-100">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedSites.includes(site.id)}
+                      onChange={(e) => handleSiteSelect(site.id, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
+                    />
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
                       site.est_actif ? 'bg-green-100' : 'bg-gray-100'
                     }`}>

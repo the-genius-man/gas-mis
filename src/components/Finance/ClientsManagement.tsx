@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import ClientFormWizard from './ClientFormWizard';
 import ClientDetailModal from './ClientDetailModal';
+import BulkActions, { createBulkActions } from '../common/BulkActions';
 import { ClientGAS, SiteGAS } from '../../types';
 
 // Check if running in Electron
@@ -38,6 +39,10 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  
+  // Bulk actions state
+  const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -136,6 +141,75 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
 
   const handleViewClient = (client: ClientWithStats) => {
     setViewingClient(client);
+  };
+
+  // Bulk action handlers
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedClients(filteredClients.map(client => client.id));
+    } else {
+      setSelectedClients([]);
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedClients([]);
+  };
+
+  const handleBulkAction = async (actionId: string, selectedIds: string[]) => {
+    setBulkActionLoading(true);
+    try {
+      switch (actionId) {
+        case 'activate':
+          await handleBulkActivate(selectedIds);
+          break;
+        case 'deactivate':
+          await handleBulkDeactivate(selectedIds);
+          break;
+        case 'delete':
+          await handleBulkDelete(selectedIds);
+          break;
+      }
+      setSelectedClients([]);
+      await loadData();
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      alert('Erreur lors de l\'opération en lot');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkActivate = async (clientIds: string[]) => {
+    for (const id of clientIds) {
+      if (window.electronAPI?.updateClientStatusGAS) {
+        await window.electronAPI.updateClientStatusGAS({ id, statut: 'ACTIF' });
+      }
+    }
+  };
+
+  const handleBulkDeactivate = async (clientIds: string[]) => {
+    for (const id of clientIds) {
+      if (window.electronAPI?.updateClientStatusGAS) {
+        await window.electronAPI.updateClientStatusGAS({ id, statut: 'INACTIF' });
+      }
+    }
+  };
+
+  const handleBulkDelete = async (clientIds: string[]) => {
+    for (const id of clientIds) {
+      if (window.electronAPI?.deleteClientGAS) {
+        await window.electronAPI.deleteClientGAS(id);
+      }
+    }
+  };
+
+  const handleClientSelect = (clientId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedClients(prev => [...prev, clientId]);
+    } else {
+      setSelectedClients(prev => prev.filter(id => id !== clientId));
+    }
   };
 
   const handleImportCustomers = async () => {
@@ -309,6 +383,21 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedItems={selectedClients}
+        totalItems={filteredClients.length}
+        onSelectAll={handleSelectAll}
+        onClearSelection={handleClearSelection}
+        actions={[
+          createBulkActions.activate('Activer'),
+          createBulkActions.deactivate('Désactiver'),
+          createBulkActions.delete('Supprimer')
+        ]}
+        onAction={handleBulkAction}
+        loading={bulkActionLoading}
+      />
+
       {/* List View */}
       {viewMode === 'list' && filteredClients.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -316,6 +405,17 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedClients.length === filteredClients.length && filteredClients.length > 0}
+                      ref={(input) => {
+                        if (input) input.indeterminate = selectedClients.length > 0 && selectedClients.length < filteredClients.length;
+                      }}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Client
                   </th>
@@ -342,6 +442,14 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredClients.map((client) => (
                   <tr key={client.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedClients.includes(client.id)}
+                        onChange={(e) => handleClientSelect(client.id, e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -438,6 +546,12 @@ export default function ClientsManagement({ onNavigateToSites }: { onNavigateToS
               <div className="p-4 border-b border-gray-100">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedClients.includes(client.id)}
+                      onChange={(e) => handleClientSelect(client.id, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
+                    />
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
                       client.type_client === 'MORALE' ? 'bg-blue-100' : 'bg-green-100'
                     }`}>
