@@ -6,7 +6,7 @@ interface WeeklyPlanningProps {
   onAssignRoteur?: (gap: any) => void;
 }
 
-const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => {
+const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => {
   const [roteurAssignments, setRoteurAssignments] = useState<AffectationRoteur[]>([]);
   const [roteurs, setRoteurs] = useState<EmployeeGASFull[]>([]);
   const [loading, setLoading] = useState(true);
@@ -224,4 +224,4 @@ const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => {
   );
 };
 
-export default WeeklyPlanning;
+export default PlanningCalendar;
