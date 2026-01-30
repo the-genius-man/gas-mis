@@ -678,6 +678,9 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
         notes: assignment!.notes
       }));
 
+    console.log('🔍 [ROTEUR] Weekly schedule object:', weeklySchedule);
+    console.log('🔍 [ROTEUR] Converted weekly assignments:', weeklyAssignments);
+
     if (weeklyAssignments.length === 0) {
       alert('Veuillez définir au moins une affectation hebdomadaire');
       return;
@@ -694,7 +697,8 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       
       if (window.electronAPI?.createRoteurWeeklyAssignment) {
         console.log('🔄 [ROTEUR] Using createRoteurWeeklyAssignment');
-        const result = await window.electronAPI.createRoteurWeeklyAssignment({
+        
+        const assignmentData = {
           roteur_id: formData.roteurId,
           date_debut: formData.dateDebut,
           poste: formData.poste,
@@ -706,7 +710,11 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
             notes: wa.notes
           })),
           statut: 'PLANIFIE'
-        });
+        };
+        
+        console.log('🔍 [ROTEUR] Sending assignment data:', assignmentData);
+        
+        const result = await window.electronAPI.createRoteurWeeklyAssignment(assignmentData);
         
         // Show success message with assignment details
         if (result.success && result.weekly_assignments) {
@@ -724,7 +732,7 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
         // Fallback to regular assignment creation with weekly_assignments data
         console.log('🔄 [ROTEUR] Using fallback createRoteurAssignment with weekly data');
         
-        const result = await window.electronAPI.createRoteurAssignment({
+        const assignmentData = {
           roteur_id: formData.roteurId,
           site_id: weeklyAssignments.length > 0 ? weeklyAssignments[0].siteId : '',
           date_debut: formData.dateDebut,
@@ -738,7 +746,11 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
             notes: wa.notes
           })),
           statut: 'PLANIFIE'
-        });
+        };
+        
+        console.log('🔍 [ROTEUR] Sending fallback assignment data:', assignmentData);
+        
+        const result = await window.electronAPI.createRoteurAssignment(assignmentData);
         
         if (result.success) {
           alert(`Affectation hebdomadaire créée avec succès!\n\n` +
