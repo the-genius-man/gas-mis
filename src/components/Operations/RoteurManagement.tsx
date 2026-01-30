@@ -535,46 +535,83 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     roteurId: assignment?.roteur_id || roteur?.id || '',
-    siteIds: assignment?.site_id ? [assignment.site_id] : [] as string[],
     dateDebut: assignment?.date_debut?.split('T')[0] || new Date().toISOString().split('T')[0],
     dateFin: assignment?.date_fin?.split('T')[0] || '',
     poste: (assignment?.poste || 'JOUR') as 'JOUR' | 'NUIT',
     notes: assignment?.notes || ''
   });
+  
+  const [dailyAssignments, setDailyAssignments] = useState<Array<{
+    date: string;
+    siteId: string;
+    poste: 'JOUR' | 'NUIT';
+    notes?: string;
+  }>>([]);
+  
   const [saving, setSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
 
   const isEditing = !!assignment;
   const modalTitle = isEditing ? 'Modifier l\'affectation' : 'Nouvelle affectation de rôteur';
 
-  // Real-time validation when form data changes
+  // Generate available dates when date range changes
   useEffect(() => {
-    const validateAssignment = async () => {
-      if (!formData.roteurId || formData.siteIds.length === 0 || !formData.dateDebut || !formData.dateFin) {
+    if (formData.dateDebut && formData.dateFin) {
+      const dates = generateDateRange(formData.dateDebut, formData.dateFin);
+      setAvailableDates(dates);
+      
+      // Clear daily assignments if date range changed
+      setDailyAssignments([]);
+    }
+  }, [formData.dateDebut, formData.dateFin]);
+
+  // Helper function to generate date range
+  const generateDateRange = (startDate: string, endDate: string): string[] => {
+    const dates = [];
+    const current = new Date(startDate);
+    const end = new Date(endDate);
+    
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return dates;
+  };
+
+  // Real-time validation for daily assignments
+  useEffect(() => {
+    const validateDailyAssignments = async () => {
+      if (dailyAssignments.length === 0) {
         setValidationErrors([]);
         return;
       }
 
       setCheckingAvailability(true);
-      try {
-        if (window.electronAPI?.checkRoteurWeeklyAvailability) {
-          const result = await window.electronAPI.checkRoteurWeeklyAvailability({
-            roteurId: formData.roteurId,
-            siteIds: formData.siteIds,
-            dateDebut: formData.dateDebut,
-            dateFin: formData.dateFin,
-            excludeAssignmentId: assignment?.id
-          });
+      const errors: string[] = [];
 
-          if (!result.available) {
-            setValidationErrors(result.conflicts.map(c => c.error));
-          } else {
-            setValidationErrors([]);
+      try {
+        // Check each daily assignment for conflicts
+        for (const dailyAssignment of dailyAssignments) {
+          if (window.electronAPI?.checkDailySiteAvailability) {
+            const result = await window.electronAPI.checkDailySiteAvailability({
+              siteId: dailyAssignment.siteId,
+              date: dailyAssignment.date,
+              poste: dailyAssignment.poste,
+              excludeAssignmentId: assignment?.id
+            });
+
+            if (!result.available) {
+              errors.push(...result.conflicts.map(c => c.error));
+            }
           }
         }
+
+        setValidationErrors(errors);
       } catch (error) {
-        console.error('Error validating assignment:', error);
+        console.error('Error validating daily assignments:', error);
         setValidationErrors(['Erreur lors de la validation']);
       } finally {
         setCheckingAvailability(false);
@@ -582,19 +619,56 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     };
 
     // Debounce validation
-    const timeoutId = setTimeout(validateAssignment, 500);
+    const timeoutId = setTimeout(validateDailyAssignments, 500);
     return () => clearTimeout(timeoutId);
-  }, [formData.roteurId, formData.siteIds, formData.dateDebut, formData.dateFin, assignment?.id]);
+  }, [dailyAssignments, assignment?.id]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.roteurId || formData.siteIds.length === 0 || !formData.dateDebut || !formData.dateFin) {
-      alert('Veuillez remplir tous les champs obligatoires et sélectionner au moins un site');
+  const addDailyAssignment = () => {
+    if (availableDates.length === 0) {
+      alert('Veuillez d\'abord définir une période (date début et fin)');
       return;
     }
 
-    if (formData.siteIds.length > 6) {
-      alert('Un rôteur ne peut être assigné qu\'à un maximum de 6 sites');
+    // Find first available date not already assigned
+    const usedDates = dailyAssignments.map(da => da.date);
+    const availableDate = availableDates.find(date => !usedDates.includes(date));
+
+    if (!availableDate) {
+      alert('Toutes les dates de la période sont déjà assignées');
+      return;
+    }
+
+    const firstAvailableSite = sites.length > 0 ? sites[0].id : '';
+
+    setDailyAssignments([...dailyAssignments, {
+      date: availableDate,
+      siteId: firstAvailableSite,
+      poste: formData.poste,
+      notes: ''
+    }]);
+  };
+
+  const updateDailyAssignment = (index: number, field: string, value: string) => {
+    const updated = [...dailyAssignments];
+    updated[index] = { ...updated[index], [field]: value };
+    setDailyAssignments(updated);
+  };
+
+  const removeDailyAssignment = (index: number) => {
+    const updated = dailyAssignments.filter((_, i) => i !== index);
+    setDailyAssignments(updated);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.roteurId || !formData.dateDebut || !formData.dateFin) {
+      alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    if (dailyAssignments.length === 0) {
+      alert('Veuillez ajouter au moins une affectation journalière');
       return;
     }
 
@@ -613,36 +687,33 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
     try {
       setSaving(true);
       
-      if (isEditing && window.electronAPI?.updateRoteurAssignment) {
-        // For editing, we still work with single site (existing functionality)
-        await window.electronAPI.updateRoteurAssignment({
-          id: assignment!.id,
-          ...formData,
-          site_id: formData.siteIds[0], // Use first site for editing
-          statut: 'EN_COURS'
-        });
-      } else if (window.electronAPI?.createRoteurAssignment) {
+      if (window.electronAPI?.createRoteurAssignment) {
         const result = await window.electronAPI.createRoteurAssignment({
           roteur_id: formData.roteurId,
-          site_ids: formData.siteIds, // Pass array of site IDs
+          site_id: dailyAssignments[0]?.siteId || '', // Primary site for backward compatibility
           date_debut: formData.dateDebut,
           date_fin: formData.dateFin,
           poste: formData.poste,
           notes: formData.notes,
+          daily_assignments: dailyAssignments.map(da => ({
+            date: da.date,
+            site_id: da.siteId,
+            poste: da.poste,
+            notes: da.notes
+          })),
           statut: 'PLANIFIE'
         });
         
         // Show success message with assignment details
-        if (result.success && result.assignments) {
-          const assignmentDetails = result.assignments.map(a => 
-            `• ${a.site_nom} - ${a.jour_semaine}`
+        if (result.success && result.daily_assignments) {
+          const assignmentDetails = result.daily_assignments.map(a => 
+            `• ${a.jour_semaine} ${new Date(a.date).toLocaleDateString('fr-FR')} - ${a.site_nom} (${a.poste})`
           ).join('\n');
           
           alert(`Affectation créée avec succès!\n\n` +
-                `Rôteur assigné à ${result.totalSitesAssigned} site(s)\n` +
-                `Capacité utilisée: ${result.roteurCapacityUsed}/6 sites\n\n` +
+                `${result.total_days_assigned} jour(s) assigné(s) manuellement\n\n` +
                 `Détails des affectations:\n${assignmentDetails}\n\n` +
-                `Note: Le rôteur ne peut servir qu'une fois par semaine au même site.`);
+                `Note: Chaque site ne peut avoir qu'un seul rôteur par jour.`);
         }
       }
       
@@ -654,6 +725,274 @@ const RoteurAssignmentModal: React.FC<RoteurAssignmentModalProps> = ({
       setSaving(false);
     }
   };
+
+  // Filter sites to only show those needing roteur coverage
+  const availableSites = sites.filter(site => 
+    site.needs_roteur && (!site.current_roteur || site.current_roteur.id === assignment?.id)
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+        <h3 className="text-lg font-semibold mb-4">{modalTitle}</h3>
+        
+        {availableSites.length === 0 && !isEditing && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <div className="flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-yellow-900">Aucun site disponible</p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Tous les sites ont déjà une couverture adéquate ou un rôteur affecté.
+                  Seuls les sites avec exactement 1 garde nécessitent un rôteur.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Daily Assignment Information */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex gap-3">
+              <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">Affectation journalière manuelle</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Sélectionnez manuellement les jours et sites pour chaque affectation. 
+                  Un seul rôteur peut être assigné par site par jour.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-900">Erreurs de validation</p>
+                  <ul className="text-sm text-red-700 mt-1 space-y-1">
+                    {validationErrors.map((error, index) => (
+                      <li key={index}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Availability Check Status */}
+          {checkingAvailability && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex gap-3">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                <p className="text-sm text-yellow-700">Vérification de la disponibilité...</p>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left Column - Basic Info */}
+            <div className="space-y-4">
+              {/* Roteur Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rôteur</label>
+                <select
+                  value={formData.roteurId}
+                  onChange={(e) => setFormData({ ...formData, roteurId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                  disabled={!!roteur} // Disable if roteur is pre-selected
+                >
+                  <option value="">Sélectionner un rôteur</option>
+                  {roteurs.map((r) => (
+                    <option key={r.id} value={r.id}>{r.nom_complet} ({r.matricule})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Range */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date Début</label>
+                  <input
+                    type="date"
+                    value={formData.dateDebut}
+                    onChange={(e) => setFormData({ ...formData, dateDebut: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date Fin</label>
+                  <input
+                    type="date"
+                    value={formData.dateFin}
+                    onChange={(e) => setFormData({ ...formData, dateFin: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Default Shift */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Poste par défaut</label>
+                <select
+                  value={formData.poste}
+                  onChange={(e) => setFormData({ ...formData, poste: e.target.value as 'JOUR' | 'NUIT' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="JOUR">Jour</option>
+                  <option value="NUIT">Nuit</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes générales</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Instructions générales pour cette affectation..."
+                />
+              </div>
+            </div>
+
+            {/* Right Column - Daily Assignments */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <label className="block text-sm font-medium text-gray-700">Affectations journalières</label>
+                <button
+                  type="button"
+                  onClick={addDailyAssignment}
+                  disabled={availableDates.length === 0 || availableSites.length === 0}
+                  className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Plus className="w-4 h-4" />
+                  Ajouter jour
+                </button>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto space-y-3 border border-gray-200 rounded-lg p-3">
+                {dailyAssignments.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    Aucune affectation journalière. Cliquez sur "Ajouter jour" pour commencer.
+                  </p>
+                ) : (
+                  dailyAssignments.map((dailyAssignment, index) => (
+                    <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700">
+                          Jour {index + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeDailyAssignment(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                          <select
+                            value={dailyAssignment.date}
+                            onChange={(e) => updateDailyAssignment(index, 'date', e.target.value)}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          >
+                            {availableDates.map(date => (
+                              <option key={date} value={date}>
+                                {new Date(date).toLocaleDateString('fr-FR', { 
+                                  weekday: 'short', 
+                                  day: 'numeric', 
+                                  month: 'short' 
+                                })}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Poste</label>
+                          <select
+                            value={dailyAssignment.poste}
+                            onChange={(e) => updateDailyAssignment(index, 'poste', e.target.value)}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="JOUR">Jour</option>
+                            <option value="NUIT">Nuit</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Site</label>
+                        <select
+                          value={dailyAssignment.siteId}
+                          onChange={(e) => updateDailyAssignment(index, 'siteId', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                        >
+                          {availableSites.map(site => (
+                            <option key={site.id} value={site.id}>
+                              {site.nom_site} ({site.guard_count} garde)
+                              {site.client_nom && ` - ${site.client_nom}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+                        <input
+                          type="text"
+                          value={dailyAssignment.notes || ''}
+                          onChange={(e) => updateDailyAssignment(index, 'notes', e.target.value)}
+                          placeholder="Notes spécifiques pour ce jour..."
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {dailyAssignments.length > 0 && (
+                <p className="text-xs text-blue-600">
+                  {dailyAssignments.length} jour(s) assigné(s) sur {availableDates.length} disponible(s)
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={saving || checkingAvailability || validationErrors.length > 0 || dailyAssignments.length === 0}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {saving && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+              {checkingAvailability ? 'Vérification...' : (saving ? 'Enregistrement...' : 'Créer l\'affectation')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
   // Filter sites to only show those needing roteur coverage
   const availableSites = sites.filter(site => 
