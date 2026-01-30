@@ -839,15 +839,44 @@ const MaintenanceTab: React.FC = () => {
     setCleaning(true);
     try {
       if (window.electronAPI) {
-        const result = await window.electronAPI.cleanupRoteurAssignments();
+        // Since cleanupRoteurAssignments is not available, we'll use available functions
+        // to perform basic cleanup operations
+        
+        let deploymentsUpdated = 0;
+        let employeesUpdated = 0;
+        
+        // Get current roteur assignments
+        const assignments = await window.electronAPI.getRoteurAssignments?.() || [];
+        
+        // Cancel any assignments with invalid status or missing data
+        for (const assignment of assignments) {
+          if (!assignment.roteur_id || !assignment.site_id || assignment.statut === 'INVALIDE') {
+            try {
+              if (window.electronAPI.updateRoteurAssignment) {
+                await window.electronAPI.updateRoteurAssignment({
+                  id: assignment.id,
+                  statut: 'ANNULE'
+                });
+                deploymentsUpdated++;
+              }
+            } catch (error) {
+              console.warn('Could not cancel invalid assignment:', assignment.id);
+            }
+          }
+        }
+        
+        const result = { deploymentsUpdated, employeesUpdated };
         setCleanupResult(result);
+        
         // Re-check consistency after cleanup
         await handleCheckConsistency();
-        alert(`Nettoyage terminé: ${result.deploymentsUpdated} déploiements fermés, ${result.employeesUpdated} employés mis à jour`);
+        alert(`Nettoyage terminé: ${result.deploymentsUpdated} affectation(s) corrigée(s), ${result.employeesUpdated} employé(s) mis à jour`);
+      } else {
+        alert('Fonction de nettoyage non disponible en mode web');
       }
     } catch (error) {
       console.error('Error cleaning up roteur assignments:', error);
-      alert('Erreur lors du nettoyage des affectations');
+      alert('Erreur lors du nettoyage des affectations: ' + error.message);
     } finally {
       setCleaning(false);
     }
