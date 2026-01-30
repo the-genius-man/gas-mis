@@ -1,0 +1,93 @@
+
+DATABASE RESET INSTRUCTIONS
+===========================
+
+To reset the roteur assignment data and create fresh test data:
+
+1. Open your SQLite database browser (like DB Browser for SQLite)
+2. Open the database file: database.sqlite
+3. Go to "Execute SQL" tab
+4. Copy and paste the following SQL commands:
+
+-- Clear existing roteur assignments
+DELETE FROM affectations_roteur;
+
+-- Create sample roteurs
+INSERT OR IGNORE INTO employees_gas (nom_complet, matricule, poste, categorie, statut, date_embauche, telephone, created_at) VALUES 
+('Jean ROTEUR', 'ROT001', 'ROTEUR', 'GARDE', 'ACTIF', '2024-01-01', '+237 6XX XX XX XX', datetime('now')),
+('Marie ROTEUR', 'ROT002', 'ROTEUR', 'GARDE', 'ACTIF', '2024-01-01', '+237 6YY YY YY YY', datetime('now'));
+
+-- Create sample sites
+INSERT OR IGNORE INTO sites_gas (nom_site, client_nom, adresse, statut, created_at) VALUES 
+('Site Alpha', 'Client A', 'Adresse Alpha', 'ACTIF', datetime('now')),
+('Site Beta', 'Client B', 'Adresse Beta', 'ACTIF', datetime('now')),
+('Site Gamma', 'Client C', 'Adresse Gamma', 'ACTIF', datetime('now'));
+
+-- Create sample guards
+INSERT OR IGNORE INTO employees_gas (nom_complet, matricule, poste, categorie, statut, date_embauche, telephone, created_at) VALUES 
+('Guard Alpha', 'GRD001', 'GARDE', 'GARDE', 'ACTIF', '2024-01-01', '+237 6AA AA AA AA', datetime('now')),
+('Guard Beta', 'GRD002', 'GARDE', 'GARDE', 'ACTIF', '2024-01-01', '+237 6BB BB BB BB', datetime('now')),
+('Guard Gamma', 'GRD003', 'GARDE', 'GARDE', 'ACTIF', '2024-01-01', '+237 6CC CC CC CC', datetime('now'));
+
+-- Create deployments (1 guard per site)
+INSERT OR REPLACE INTO deployments (employee_id, site_id, poste, statut, date_debut, created_at)
+SELECT e.id, s.id, 'JOUR', 'ACTIF', date('now'), datetime('now')
+FROM employees_gas e, sites_gas s
+WHERE (e.matricule = 'GRD001' AND s.nom_site = 'Site Alpha')
+   OR (e.matricule = 'GRD002' AND s.nom_site = 'Site Beta')
+   OR (e.matricule = 'GRD003' AND s.nom_site = 'Site Gamma');
+
+-- Create weekly roteur assignments
+INSERT INTO affectations_roteur (roteur_id, site_id, date_debut, date_fin, poste, statut, notes, weekly_assignments, created_at)
+SELECT 
+  r.id,
+  s.id,
+  '2024-01-01',
+  '2099-12-31',
+  'JOUR',
+  'EN_COURS',
+  'Rotation hebdomadaire pour ' || r.nom_complet,
+  '[{"day_of_week":1,"site_id":"' || s1.id || '","site_nom":"Site Alpha","poste":"JOUR","notes":"Lundi"},{"day_of_week":3,"site_id":"' || s2.id || '","site_nom":"Site Beta","poste":"JOUR","notes":"Mercredi"},{"day_of_week":5,"site_id":"' || s3.id || '","site_nom":"Site Gamma","poste":"NUIT","notes":"Vendredi"}]',
+  datetime('now')
+FROM employees_gas r, sites_gas s, sites_gas s1, sites_gas s2, sites_gas s3
+WHERE r.matricule = 'ROT001' 
+  AND s.nom_site = 'Site Alpha'
+  AND s1.nom_site = 'Site Alpha'
+  AND s2.nom_site = 'Site Beta'
+  AND s3.nom_site = 'Site Gamma';
+
+INSERT INTO affectations_roteur (roteur_id, site_id, date_debut, date_fin, poste, statut, notes, weekly_assignments, created_at)
+SELECT 
+  r.id,
+  s.id,
+  '2024-01-01',
+  '2099-12-31',
+  'JOUR',
+  'EN_COURS',
+  'Rotation hebdomadaire pour ' || r.nom_complet,
+  '[{"day_of_week":2,"site_id":"' || s1.id || '","site_nom":"Site Beta","poste":"JOUR","notes":"Mardi"},{"day_of_week":4,"site_id":"' || s2.id || '","site_nom":"Site Gamma","poste":"NUIT","notes":"Jeudi"}]',
+  datetime('now')
+FROM employees_gas r, sites_gas s, sites_gas s1, sites_gas s2
+WHERE r.matricule = 'ROT002' 
+  AND s.nom_site = 'Site Beta'
+  AND s1.nom_site = 'Site Beta'
+  AND s2.nom_site = 'Site Gamma';
+
+4. Execute the SQL commands
+5. Restart the application
+
+EXPECTED RESULT:
+- 2 roteurs (Jean ROTEUR, Marie ROTEUR)
+- 3 sites (Site Alpha, Site Beta, Site Gamma) each with 1 guard
+- 2 weekly roteur assignments with proper weekly_assignments JSON data
+- Planning calendar should display the assignments correctly
+
+ALTERNATIVE: Manual Database Reset
+==================================
+If you prefer, you can also:
+1. Delete the database.sqlite file
+2. Restart the application (it will create a new empty database)
+3. Use the application's import features to add employees and sites
+4. Create roteur assignments using the new UI
+
+The new weekly assignment form should now work correctly with the static day grid layout!
