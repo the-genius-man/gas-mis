@@ -3,6 +3,7 @@ import { Plus, Search, Grid, List, Eye, Edit, Trash2, MapPin, AlertTriangle, Ref
 import { EmployeeGASFull, CategorieEmploye, StatutEmployeGAS } from '../../types';
 import EmployeeForm from './EmployeeForm';
 import EmployeeDetailModal from './EmployeeDetailModal';
+import BulkActions, { createBulkActions } from '../common/BulkActions';
 
 interface ContractTerminationModal {
   employee: EmployeeGASFull;
@@ -352,6 +353,10 @@ const EmployeesManagement: React.FC = () => {
   const [editingEmployee, setEditingEmployee] = useState<EmployeeGASFull | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeGASFull | null>(null);
   
+  // Bulk actions state
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  
   // New states for contract management
   const [terminatingEmployee, setTerminatingEmployee] = useState<EmployeeGASFull | null>(null);
   const [reopeningEmployee, setReopeningEmployee] = useState<EmployeeGASFull | null>(null);
@@ -497,6 +502,87 @@ const EmployeesManagement: React.FC = () => {
     setTerminatingEmployee(employee);
   };
 
+  // Bulk action handlers
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedEmployees(filteredEmployees.map(emp => emp.id));
+    } else {
+      setSelectedEmployees([]);
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedEmployees([]);
+  };
+
+  const handleBulkAction = async (actionId: string, selectedIds: string[]) => {
+    setBulkActionLoading(true);
+    try {
+      switch (actionId) {
+        case 'deactivate':
+          await handleBulkDeactivate(selectedIds);
+          break;
+        case 'activate':
+          await handleBulkActivate(selectedIds);
+          break;
+        case 'delete':
+          await handleBulkDelete(selectedIds);
+          break;
+      }
+      setSelectedEmployees([]);
+      await loadData();
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      alert('Erreur lors de l\'opération en lot');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkDeactivate = async (employeeIds: string[]) => {
+    for (const id of employeeIds) {
+      if (window.electronAPI?.updateEmployeeGAS) {
+        await window.electronAPI.updateEmployeeGAS({
+          id,
+          statut: 'INACTIF'
+        });
+      }
+    }
+  };
+
+  const handleBulkActivate = async (employeeIds: string[]) => {
+    for (const id of employeeIds) {
+      if (window.electronAPI?.updateEmployeeGAS) {
+        await window.electronAPI.updateEmployeeGAS({
+          id,
+          statut: 'ACTIF'
+        });
+      }
+    }
+  };
+
+  const handleBulkDelete = async (employeeIds: string[]) => {
+    // For bulk delete, we'll terminate contracts instead of actual deletion
+    for (const id of employeeIds) {
+      if (window.electronAPI?.updateEmployeeGAS) {
+        await window.electronAPI.updateEmployeeGAS({
+          id,
+          statut: 'TERMINE',
+          motif_fin: 'Suppression en lot',
+          date_fin: new Date().toISOString().split('T')[0]
+        });
+      }
+    }
+  };
+
+  const handleEmployeeSelect = (employeeId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedEmployees(prev => [...prev, employeeId]);
+    } else {
+      setSelectedEmployees(prev => prev.filter(id => id !== employeeId));
+    }
+  };
+
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = !searchTerm || 
       emp.nom_complet.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -631,12 +717,35 @@ const EmployeesManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedItems={selectedEmployees}
+        totalItems={filteredEmployees.length}
+        onSelectAll={handleSelectAll}
+        onClearSelection={handleClearSelection}
+        actions={[
+          createBulkActions.activate('Activer'),
+          createBulkActions.deactivate('Désactiver'),
+          createBulkActions.delete('Terminer contrats')
+        ]}
+        onAction={handleBulkAction}
+        loading={bulkActionLoading}
+      />
+
       {/* Employee List */}
       {viewMode === 'list' ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Matricule</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom Complet</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Catégorie</th>
@@ -650,6 +759,14 @@ const EmployeesManagement: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEmployees.map((emp) => (
                 <tr key={emp.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedEmployees.includes(emp.id)}
+                      onChange={(e) => handleEmployeeSelect(emp.id, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {emp.matricule}
                   </td>
@@ -745,6 +862,12 @@ const EmployeesManagement: React.FC = () => {
             <div key={emp.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedEmployees.includes(emp.id)}
+                    onChange={(e) => handleEmployeeSelect(emp.id, e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
+                  />
                   <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-lg overflow-hidden">
                     {emp.photo_url ? (
                       <img

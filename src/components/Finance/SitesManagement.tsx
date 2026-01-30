@@ -7,6 +7,7 @@ import {
 import { SiteGAS, ClientGAS } from '../../types';
 import SiteForm from './SiteForm';
 import SiteDetailModal from './SiteDetailModal';
+import BulkActions, { createBulkActions } from '../common/BulkActions';
 
 // Check if running in Electron
 const isElectron = () => {
@@ -29,6 +30,10 @@ export default function SitesManagement() {
   const [viewingSite, setViewingSite] = useState<SiteGAS | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'actif' | 'inactif'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  
+  // Bulk actions state
+  const [selectedSites, setSelectedSites] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -126,6 +131,75 @@ export default function SitesManagement() {
   const handleFormSuccess = () => {
     handleFormClose();
     loadData();
+  };
+
+  // Bulk action handlers
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedSites(filteredSites.map(site => site.id));
+    } else {
+      setSelectedSites([]);
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedSites([]);
+  };
+
+  const handleBulkAction = async (actionId: string, selectedIds: string[]) => {
+    setBulkActionLoading(true);
+    try {
+      switch (actionId) {
+        case 'activate':
+          await handleBulkActivate(selectedIds);
+          break;
+        case 'deactivate':
+          await handleBulkDeactivate(selectedIds);
+          break;
+        case 'delete':
+          await handleBulkDelete(selectedIds);
+          break;
+      }
+      setSelectedSites([]);
+      await loadData();
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      alert('Erreur lors de l\'opération en lot');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkActivate = async (siteIds: string[]) => {
+    for (const id of siteIds) {
+      if (window.electronAPI?.updateSiteStatusGAS) {
+        await window.electronAPI.updateSiteStatusGAS({ id, est_actif: true });
+      }
+    }
+  };
+
+  const handleBulkDeactivate = async (siteIds: string[]) => {
+    for (const id of siteIds) {
+      if (window.electronAPI?.updateSiteStatusGAS) {
+        await window.electronAPI.updateSiteStatusGAS({ id, est_actif: false });
+      }
+    }
+  };
+
+  const handleBulkDelete = async (siteIds: string[]) => {
+    for (const id of siteIds) {
+      if (window.electronAPI?.deleteSiteGAS) {
+        await window.electronAPI.deleteSiteGAS(id);
+      }
+    }
+  };
+
+  const handleSiteSelect = (siteId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedSites(prev => [...prev, siteId]);
+    } else {
+      setSelectedSites(prev => prev.filter(id => id !== siteId));
+    }
   };
 
   const filteredSites = sites.filter(site => {
@@ -291,6 +365,21 @@ export default function SitesManagement() {
           </div>
         </div>
       </div>
+
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedItems={selectedSites}
+        totalItems={filteredSites.length}
+        onSelectAll={handleSelectAll}
+        onClearSelection={handleClearSelection}
+        actions={[
+          createBulkActions.activate('Activer'),
+          createBulkActions.deactivate('Désactiver'),
+          createBulkActions.delete('Supprimer')
+        ]}
+        onAction={handleBulkAction}
+        loading={bulkActionLoading}
+      />
 
       {/* List View */}
       {viewMode === 'list' && (
