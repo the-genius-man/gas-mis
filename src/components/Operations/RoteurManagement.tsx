@@ -1274,43 +1274,59 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
     calendarDays.push(day);
   }
   
-  // Get assignments for a specific date
+  // Get assignments for a specific date based on weekly recurring patterns
   const getAssignmentsForDate = (day: number) => {
     const date = new Date(currentYear, currentMonth, day);
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
     
     return assignments.filter(assignment => {
       const startDate = new Date(assignment.date_debut);
-      const endDate = new Date(assignment.date_fin);
       
-      // Check if this date falls within the assignment period
-      if (date >= startDate && date <= endDate) {
-        // For roteur assignments, we need to determine which site they're covering on this specific day
-        // This should be handled by the backend to distribute days across assigned sites
-        // For now, we'll show only one assignment per roteur per day
-        return true;
+      // Check if this date is after the assignment start date
+      if (date < startDate) {
+        return false;
       }
-      return false;
+      
+      // Check if assignment is still active (no end date means ongoing)
+      if (assignment.date_fin) {
+        const endDate = new Date(assignment.date_fin);
+        if (date > endDate) {
+          return false;
+        }
+      }
+      
+      // Check if this assignment has weekly_assignments data
+      if (assignment.weekly_assignments && assignment.weekly_assignments.length > 0) {
+        // Check if any of the weekly assignments match this day of week
+        return assignment.weekly_assignments.some(wa => wa.day_of_week === dayOfWeek);
+      }
+      
+      // Fallback for old-style assignments - assume they work every day
+      return true;
     });
   };
   
   // Get the specific site assignment for a roteur on a given day
-  const getRoteurSiteForDay = (roteurId: string, day: number) => {
+  const getRoteurSiteForDay = (assignment: AffectationRoteur, day: number) => {
     const date = new Date(currentYear, currentMonth, day);
-    const roteurAssignments = assignments.filter(assignment => 
-      assignment.roteur_id === roteurId &&
-      new Date(assignment.date_debut) <= date &&
-      new Date(assignment.date_fin) >= date
-    );
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
     
-    if (roteurAssignments.length === 0) return null;
+    // If assignment has weekly_assignments, find the matching day
+    if (assignment.weekly_assignments && assignment.weekly_assignments.length > 0) {
+      const weeklyAssignment = assignment.weekly_assignments.find(wa => wa.day_of_week === dayOfWeek);
+      if (weeklyAssignment) {
+        return {
+          ...assignment,
+          site_id: weeklyAssignment.site_id,
+          site_nom: weeklyAssignment.site_nom,
+          poste: weeklyAssignment.poste,
+          notes: weeklyAssignment.notes
+        };
+      }
+    }
     
-    // If roteur has multiple site assignments, determine which site for this day
-    // This could be based on a rotation pattern (e.g., round-robin)
-    // For now, we'll use a simple day-based rotation
-    const daysSinceStart = Math.floor((date.getTime() - new Date(roteurAssignments[0].date_debut).getTime()) / (1000 * 60 * 60 * 24));
-    const siteIndex = daysSinceStart % roteurAssignments.length;
-    
-    return roteurAssignments[siteIndex];
+    // Fallback to main assignment data
+    return assignment;
   };
   
   // Navigate months
@@ -1356,16 +1372,16 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
       <div className="flex items-center gap-6 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-blue-200 rounded"></div>
-          <span>Affectation active</span>
+          <span>Rotation active</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-200 rounded"></div>
-          <span>Affectation planifiée</span>
+          <span>Rotation planifiée</span>
         </div>
         <div className="text-gray-600 text-xs">
-          • Un rôteur ne peut couvrir qu'un site par jour
-          • Maximum une fois par semaine au même site
-          • La rotation entre sites se fait automatiquement
+          • Rotation hebdomadaire récurrente selon les jours assignés
+          • Un rôteur peut couvrir plusieurs sites différents dans la semaine
+          • Chaque site ne peut avoir qu'un rôteur par jour
         </div>
       </div>
       
@@ -1387,19 +1403,15 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
               return <div key={index} className="h-24 border-r border-b border-gray-200 last:border-r-0"></div>;
             }
             
-            // Get unique roteurs for this day (one assignment per roteur)
+            // Get assignments for this specific day based on weekly patterns
             const dayAssignments = getAssignmentsForDate(day);
-            const uniqueRoteurAssignments = [];
-            const seenRoteurs = new Set();
+            const roteurAssignmentsForDay = [];
             
             for (const assignment of dayAssignments) {
-              if (!seenRoteurs.has(assignment.roteur_id)) {
-                // Get the specific site this roteur is covering today
-                const todayAssignment = getRoteurSiteForDay(assignment.roteur_id, day);
-                if (todayAssignment) {
-                  uniqueRoteurAssignments.push(todayAssignment);
-                  seenRoteurs.add(assignment.roteur_id);
-                }
+              // Get the specific site assignment for this roteur on this day
+              const daySpecificAssignment = getRoteurSiteForDay(assignment, day);
+              if (daySpecificAssignment && daySpecificAssignment.site_nom) {
+                roteurAssignmentsForDay.push(daySpecificAssignment);
               }
             }
             
@@ -1416,7 +1428,7 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
                   {day}
                 </div>
                 <div className="space-y-1">
-                  {uniqueRoteurAssignments.slice(0, 3).map((assignment, idx) => (
+                  {roteurAssignmentsForDay.slice(0, 3).map((assignment, idx) => (
                     <div
                       key={`${assignment.id}-${day}-${idx}`}
                       className={`text-xs p-1 rounded truncate ${
@@ -1424,14 +1436,14 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
                           ? 'bg-blue-200 text-blue-800' 
                           : 'bg-green-200 text-green-800'
                       }`}
-                      title={`${assignment.roteur_nom} couvre ${assignment.site_nom} aujourd'hui`}
+                      title={`${assignment.roteur_nom} - ${assignment.site_nom} (${assignment.poste})`}
                     >
-                      {assignment.roteur_nom?.split(' ')[0]} @ {assignment.site_nom?.substring(0, 10)}
+                      {assignment.roteur_nom?.split(' ')[0]} @ {assignment.site_nom?.substring(0, 8)}
                     </div>
                   ))}
-                  {uniqueRoteurAssignments.length > 3 && (
+                  {roteurAssignmentsForDay.length > 3 && (
                     <div className="text-xs text-gray-500 text-center">
-                      +{uniqueRoteurAssignments.length - 3} autres
+                      +{roteurAssignmentsForDay.length - 3} autres
                     </div>
                   )}
                 </div>
@@ -1441,22 +1453,15 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
         </div>
       </div>
       
-      {/* Assignment Summary with Rotation Schedule */}
+      {/* Assignment Summary with Weekly Rotation Schedule */}
       <div className="space-y-6">
-        <h4 className="text-lg font-semibold text-gray-900">Planning de Rotation</h4>
+        <h4 className="text-lg font-semibold text-gray-900">Planning de Rotation Hebdomadaire</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {assignments.map((assignment) => {
-            // Calculate rotation schedule for this assignment
             const startDate = new Date(assignment.date_debut);
-            const endDate = new Date(assignment.date_fin);
-            const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+            const endDate = assignment.date_fin ? new Date(assignment.date_fin) : null;
             
-            // Get all sites this roteur is assigned to during this period
-            const roteurAssignments = assignments.filter(a => 
-              a.roteur_id === assignment.roteur_id &&
-              a.date_debut === assignment.date_debut &&
-              a.date_fin === assignment.date_fin
-            );
+            const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
             
             return (
               <div key={assignment.id} className="bg-white border border-gray-200 rounded-lg p-4">
@@ -1473,39 +1478,41 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3 h-3" />
                     <span>
-                      {startDate.toLocaleDateString('fr-FR')} - {endDate.toLocaleDateString('fr-FR')}
+                      Depuis le {startDate.toLocaleDateString('fr-FR')}
+                      {endDate && ` jusqu'au ${endDate.toLocaleDateString('fr-FR')}`}
+                      {!endDate && ' (en cours)'}
                     </span>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3 h-3" />
-                    <span>{assignment.poste}</span>
-                  </div>
-                  
-                  {/* Current Site Assignment */}
-                  <div className="bg-blue-50 p-2 rounded">
-                    <div className="flex items-center gap-2 mb-1">
-                      <MapPin className="w-3 h-3 text-blue-600" />
-                      <span className="font-medium text-blue-900">Site Actuel</span>
-                    </div>
-                    <span className="text-blue-800">{assignment.site_nom}</span>
-                  </div>
-                  
-                  {/* Rotation Pattern */}
-                  {roteurAssignments.length > 1 && (
-                    <div className="bg-gray-50 p-2 rounded">
-                      <div className="text-xs font-medium text-gray-700 mb-1">
-                        Rotation ({roteurAssignments.length} sites):
+                  {/* Weekly Rotation Pattern */}
+                  {assignment.weekly_assignments && assignment.weekly_assignments.length > 0 ? (
+                    <div className="bg-blue-50 p-3 rounded">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-3 h-3 text-blue-600" />
+                        <span className="font-medium text-blue-900">Rotation Hebdomadaire</span>
                       </div>
                       <div className="space-y-1">
-                        {roteurAssignments.map((site, idx) => (
-                          <div key={site.id} className="text-xs text-gray-600">
-                            {idx + 1}. {site.site_nom}
+                        {assignment.weekly_assignments.map((wa, idx) => (
+                          <div key={idx} className="text-xs text-blue-800 flex items-center justify-between">
+                            <span className="font-medium">{dayNames[wa.day_of_week]}</span>
+                            <span>{wa.site_nom} ({wa.poste})</span>
                           </div>
                         ))}
                       </div>
+                      <div className="text-xs text-blue-600 mt-2 font-medium">
+                        {assignment.weekly_assignments.length} jour(s) par semaine
+                      </div>
+                    </div>
+                  ) : (
+                    // Fallback for old-style assignments
+                    <div className="bg-gray-50 p-2 rounded">
+                      <div className="flex items-center gap-2 mb-1">
+                        <MapPin className="w-3 h-3 text-gray-600" />
+                        <span className="font-medium text-gray-700">Site Principal</span>
+                      </div>
+                      <span className="text-gray-800">{assignment.site_nom}</span>
                       <div className="text-xs text-gray-500 mt-1">
-                        Rotation automatique chaque jour
+                        Poste: {assignment.poste}
                       </div>
                     </div>
                   )}
