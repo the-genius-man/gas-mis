@@ -1429,7 +1429,7 @@ const RoteurCalendarView: React.FC<RoteurCalendarViewProps> = ({ assignments }) 
                 <div className="space-y-1">
                   {uniqueRoteurAssignments.slice(0, 3).map((assignment, idx) => (
                     <div
-                      key={idx}
+                      key={`${assignment.id}-${day}-${idx}`}
                       className={`text-xs p-1 rounded truncate ${
                         assignment.statut === 'EN_COURS' 
                           ? 'bg-blue-200 text-blue-800' 
