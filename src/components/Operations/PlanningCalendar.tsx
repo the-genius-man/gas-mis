@@ -89,8 +89,8 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
             {/* Table Body */}
             <tbody className="bg-white divide-y divide-gray-200">
               {roteurAssignments.length > 0 ? (
-                roteurAssignments.map((roteur) => (
-                  <tr key={roteur.roteur_id} className="hover:bg-gray-50">
+                roteurAssignments.map((roteur, index) => (
+                  <tr key={`${roteur.roteur_id}-${roteur.id}-${index}`} className="hover:bg-gray-50">
                     {/* Roteur Name */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -117,7 +117,7 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
                       );
 
                       return (
-                        <td key={day.value} className="px-6 py-4 text-center">
+                        <td key={`${roteur.roteur_id}-${day.value}-${index}`} className="px-6 py-4 text-center">
                           {dayAssignment ? (
                             <div className="space-y-1">
                               <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
