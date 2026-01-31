@@ -1,9 +1,23 @@
 import React, { useState, useMemo } from 'react';
-import { Building2, MapPin } from 'lucide-react';
+import { 
+  Building2, 
+  MapPin, 
+  FileText, 
+  Wallet, 
+  TrendingUp, 
+  TrendingDown, 
+  RefreshCw, 
+  DollarSign, 
+  BarChart3,
+  CreditCard
+} from 'lucide-react';
 import ClientsManagement from './ClientsManagement';
 import SitesManagement from './SitesManagement';
+import InvoicesManagement from './InvoicesManagement';
+import FinanceManagement from './FinanceManagement';
+import FinanceReports from './FinanceReports';
 
-type Tab = 'clients' | 'sites';
+type Tab = 'clients' | 'sites' | 'invoices' | 'treasury' | 'reports';
 
 // Check if running in Electron
 const isElectron = () => {
@@ -23,6 +37,10 @@ export default function FinanceModule() {
     setActiveTab('sites');
   };
 
+  const navigateToInvoices = () => {
+    setActiveTab('invoices');
+  };
+
   const tabs = [
     {
       id: 'clients' as Tab,
@@ -35,6 +53,24 @@ export default function FinanceModule() {
       label: 'Sites',
       icon: MapPin,
       description: 'Emplacements de sécurité',
+    },
+    {
+      id: 'invoices' as Tab,
+      label: 'Facturation',
+      icon: FileText,
+      description: 'Factures et paiements',
+    },
+    {
+      id: 'treasury' as Tab,
+      label: 'Trésorerie',
+      icon: Wallet,
+      description: 'Gestion financière et comptable',
+    },
+    {
+      id: 'reports' as Tab,
+      label: 'Rapports',
+      icon: BarChart3,
+      description: 'Analyses et rapports financiers',
     },
   ];
 
@@ -52,18 +88,25 @@ export default function FinanceModule() {
 
     switch (activeTab) {
       case 'clients':
-        return <ClientsManagement onNavigateToSites={navigateToSites} />;
+        return <ClientsManagement onNavigateToSites={navigateToSites} onNavigateToInvoices={navigateToInvoices} />;
       case 'sites':
         return <SitesManagement />;
+      case 'invoices':
+        return <InvoicesManagement />;
+      case 'treasury':
+        return <FinanceManagement />;
+      case 'reports':
+        return <FinanceReports />;
       default:
         return null;
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white border-b border-gray-200">
-        <nav className="flex space-x-8" aria-label="Tabs">
+    <div className="h-full flex flex-col">
+      {/* Tab Navigation */}
+      <div className="bg-white border-b border-gray-200 px-4">
+        <nav className="flex space-x-4" aria-label="Tabs">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -74,16 +117,16 @@ export default function FinanceModule() {
                 onClick={() => setActiveTab(tab.id)}
                 disabled={!electronMode}
                 className={`
-                  flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                  flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors
                   ${!electronMode ? 'opacity-50 cursor-not-allowed' : ''}
                   ${
                     isActive
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }
                 `}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="w-4 h-4" />
                 <div className="text-left">
                   <div>{tab.label}</div>
                   <div className="text-xs text-gray-500 font-normal">{tab.description}</div>
@@ -94,7 +137,10 @@ export default function FinanceModule() {
         </nav>
       </div>
 
-      <div>{renderContent()}</div>
+      {/* Tab Content */}
+      <div className="flex-1 overflow-x-hidden overflow-y-auto">
+        {renderContent()}
+      </div>
     </div>
   );
 }

@@ -24,7 +24,13 @@ interface ClientWithStats extends ClientGAS {
   sitesCount: number;
 }
 
-export default function ClientsManagement({ onNavigateToSites }: { onNavigateToSites?: () => void }) {
+export default function ClientsManagement({ 
+  onNavigateToSites, 
+  onNavigateToInvoices 
+}: { 
+  onNavigateToSites?: () => void;
+  onNavigateToInvoices?: () => void;
+}) {
   const electronMode = useMemo(() => isElectron(), []);
   
   const [clients, setClients] = useState<ClientGAS[]>([]);
