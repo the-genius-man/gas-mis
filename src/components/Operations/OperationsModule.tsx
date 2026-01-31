@@ -7,16 +7,15 @@ import ActionsManagement from '../Disciplinary/ActionsManagement';
 import OperationsReports from './OperationsReports';
 import SitesManagement from '../Finance/SitesManagement';
 
-type TabType = 'agents' | 'roteurs' | 'sites' | 'planning' | 'discipline' | 'reports';
+type TabType = 'agents' | 'sites' | 'rotation' | 'discipline' | 'reports';
 
 const OperationsModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('agents');
 
   const tabs = [
     { id: 'agents' as TabType, label: 'Agents', icon: UserCheck },
-    { id: 'roteurs' as TabType, label: 'Rôteurs', icon: Users },
     { id: 'sites' as TabType, label: 'Sites', icon: MapPin },
-    { id: 'planning' as TabType, label: 'Planning', icon: Calendar },
+    { id: 'rotation' as TabType, label: 'Rotation', icon: Users },
     { id: 'discipline' as TabType, label: 'Discipline', icon: AlertTriangle },
     { id: 'reports' as TabType, label: 'Rapports', icon: FileText },
   ];
@@ -51,9 +50,8 @@ const OperationsModule: React.FC = () => {
       {/* Tab Content */}
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
         {activeTab === 'agents' && <AgentsManagement />}
-        {activeTab === 'roteurs' && <RoteurManagement />}
         {activeTab === 'sites' && <SitesManagement />}
-        {activeTab === 'planning' && <PlanningCalendar />}
+        {activeTab === 'rotation' && <PlanningCalendar />}
         {activeTab === 'discipline' && <ActionsManagement />}
         {activeTab === 'reports' && <OperationsReports />}
       </div>
