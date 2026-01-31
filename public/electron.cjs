@@ -6786,6 +6786,62 @@ ipcMain.handle('db-get-current-deployment', async (event, employeId) => {
   }
 });
 
+// Get all deployment history
+ipcMain.handle('db-get-deployment-history', async (event, filters = {}) => {
+  try {
+    let query = `
+      SELECT h.*, 
+             e.nom_complet as employe_nom,
+             s.nom_site, 
+             c.nom_entreprise as client_nom,
+             CASE 
+               WHEN h.date_fin IS NULL THEN julianday('now') - julianday(h.date_debut)
+               ELSE julianday(h.date_fin) - julianday(h.date_debut)
+             END as duree_jours
+      FROM historique_deployements h
+      LEFT JOIN employees_gas e ON h.employe_id = e.id
+      LEFT JOIN sites_gas s ON h.site_id = s.id
+      LEFT JOIN clients_gas c ON s.client_id = c.id
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    // Add filters if provided
+    if (filters.employeId) {
+      query += ` AND h.employe_id = ?`;
+      params.push(filters.employeId);
+    }
+    
+    if (filters.siteId) {
+      query += ` AND h.site_id = ?`;
+      params.push(filters.siteId);
+    }
+    
+    if (filters.activeOnly) {
+      query += ` AND h.est_actif = 1`;
+    }
+    
+    if (filters.startDate) {
+      query += ` AND h.date_debut >= ?`;
+      params.push(filters.startDate);
+    }
+    
+    if (filters.endDate) {
+      query += ` AND (h.date_fin IS NULL OR h.date_fin <= ?)`;
+      params.push(filters.endDate);
+    }
+    
+    query += ` ORDER BY h.date_debut DESC`;
+    
+    const deployments = db.prepare(query).all(...params);
+    return deployments || [];
+  } catch (error) {
+    console.error('Error fetching deployment history:', error);
+    throw error;
+  }
+});
+
 // ============================================================================
 // HR MODULE - Leave Management IPC Handlers
 // ============================================================================

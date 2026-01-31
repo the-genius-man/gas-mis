@@ -117,7 +117,7 @@ export default function OperationsReports() {
       const [employees, sites, deployments, vehicles, incidents, roteurAssignments] = await Promise.all([
         window.electronAPI.getEmployeesGAS(),
         window.electronAPI.getSitesGAS(),
-        window.electronAPI.getDeploymentHistory(),
+        window.electronAPI.getDeploymentHistory ? window.electronAPI.getDeploymentHistory() : Promise.resolve([]),
         window.electronAPI.getVehicles ? window.electronAPI.getVehicles() : Promise.resolve([]),
         window.electronAPI.getIncidents ? window.electronAPI.getIncidents() : Promise.resolve([]),
         window.electronAPI.getRoteurAssignments ? window.electronAPI.getRoteurAssignments() : Promise.resolve([])

@@ -105,6 +105,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Deployment History
   getEmployeeDeployments: (employeId) => ipcRenderer.invoke('db-get-employee-deployments', employeId),
   getSiteDeploymentHistory: (siteId) => ipcRenderer.invoke('db-get-site-deployment-history', siteId),
+  getDeploymentHistory: (filters) => ipcRenderer.invoke('db-get-deployment-history', filters),
   createDeployment: (deployment) => ipcRenderer.invoke('db-create-deployment', deployment),
   endDeployment: (data) => ipcRenderer.invoke('db-end-deployment', data),
   getCurrentDeployment: (employeId) => ipcRenderer.invoke('db-get-current-deployment', employeId),

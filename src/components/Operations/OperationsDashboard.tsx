@@ -77,8 +77,8 @@ const OperationsDashboard: React.FC = () => {
       const [sites, employees, deployments, roteurAssignments] = await Promise.all([
         window.electronAPI.getSitesGAS(),
         window.electronAPI.getEmployeesGAS(),
-        window.electronAPI.getDeploymentHistory(),
-        window.electronAPI.getRoteurAssignments()
+        window.electronAPI.getDeploymentHistory ? window.electronAPI.getDeploymentHistory({ activeOnly: true }) : Promise.resolve([]),
+        window.electronAPI.getRoteurAssignments ? window.electronAPI.getRoteurAssignments() : Promise.resolve([])
       ]);
 
       // Calculate site coverage
