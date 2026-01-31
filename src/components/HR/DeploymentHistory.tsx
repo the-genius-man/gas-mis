@@ -92,8 +92,17 @@ const DeploymentHistory: React.FC<DeploymentHistoryProps> = ({ employeId, employ
             <div className="flex items-center gap-2">
               <Building className="w-4 h-4 text-blue-600" />
               <div>
-                <p className="text-xs text-blue-600">Site</p>
-                <p className="font-semibold text-blue-900">{(currentDeployment as any).nom_site || 'Site inconnu'}</p>
+                <p className="text-xs text-blue-600">Site{(currentDeployment as any).roteur_sites ? 's' : ''}</p>
+                <p className="font-semibold text-blue-900">
+                  {(currentDeployment as any).roteur_sites ? (
+                    <span>
+                      <span className="text-purple-600">Rotation: </span>
+                      {(currentDeployment as any).roteur_sites}
+                    </span>
+                  ) : (
+                    (currentDeployment as any).nom_site || 'Site inconnu'
+                  )}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -154,7 +163,16 @@ const DeploymentHistory: React.FC<DeploymentHistoryProps> = ({ employeId, employ
                     <tr key={deployment.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <div>
-                          <div className="font-medium text-gray-900">{(deployment as any).nom_site || 'Site inconnu'}</div>
+                          <div className="font-medium text-gray-900">
+                            {(deployment as any).roteur_sites ? (
+                              <div>
+                                <span className="text-purple-600 font-semibold">Rotation: </span>
+                                {(deployment as any).roteur_sites}
+                              </div>
+                            ) : (
+                              (deployment as any).nom_site || 'Site inconnu'
+                            )}
+                          </div>
                           <div className="text-sm text-gray-500">{(deployment as any).client_nom || '-'}</div>
                         </div>
                       </td>

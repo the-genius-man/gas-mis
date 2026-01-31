@@ -517,6 +517,7 @@ export interface HistoriqueDeployement {
   poste: PosteDeployement;
   motif_affectation: MotifAffectation;
   notes?: string;
+  roteur_sites?: string; // Comma-separated list of sites for roteur assignments
   est_actif: boolean;
   cree_par?: string;
   cree_le?: string;

@@ -438,6 +438,13 @@ function createHROperationsTables() {
   } catch (e) {
     // Column already exists, ignore
   }
+
+  // Add roteur_sites column to historique_deployements if it doesn't exist (migration)
+  try {
+    db.exec(`ALTER TABLE historique_deployements ADD COLUMN roteur_sites TEXT`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
   
   // Make jour_semaine nullable for weekly assignments (for existing databases)
   try {
@@ -1788,28 +1795,27 @@ ipcMain.handle('db-create-roteur-assignment', async (event, assignment) => {
         JSON.stringify(weeklyAssignments) // Store as JSON string
       );
       
-      // Create deployment history records for each site in the weekly assignment
+      // Create a single deployment history record with all sites listed
+      const siteNames = weeklyAssignmentsWithSiteNames.map(wa => wa.site_nom).join(', ');
+      const deploymentId = `roteur-${assignmentId}`;
+      const deploymentNotes = `Affectation rôteur hebdomadaire${assignment.notes ? ` - ${assignment.notes}` : ''}`;
+      
       const deploymentStmt = db.prepare(`
         INSERT INTO historique_deployements (
-          id, employe_id, site_id, date_debut, poste, motif_affectation, notes, est_actif, cree_par
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'SYSTEM_ROTEUR')
+          id, employe_id, site_id, date_debut, poste, motif_affectation, notes, roteur_sites, est_actif, cree_par
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'SYSTEM_ROTEUR')
       `);
       
-      // Create deployment history for each site
-      weeklyAssignments.forEach((wa, index) => {
-        const deploymentId = `roteur-dep-${assignmentId}-${index}`;
-        const deploymentNotes = `Affectation rôteur - ${daysOfWeek.find(d => d.value === wa.day_of_week)?.label || 'Jour inconnu'}${wa.notes ? ` - ${wa.notes}` : ''}`;
-        
-        deploymentStmt.run(
-          deploymentId,
-          assignment.roteur_id,
-          wa.site_id,
-          assignment.date_debut,
-          wa.poste || 'NUIT',
-          'ROTATION',
-          deploymentNotes
-        );
-      });
+      deploymentStmt.run(
+        deploymentId,
+        assignment.roteur_id,
+        primarySiteId, // Primary site for reference
+        assignment.date_debut,
+        assignment.poste || 'NUIT',
+        'ROTATION',
+        deploymentNotes,
+        siteNames // All sites in comma-separated format
+      );
       
       console.log('✅ [BACKEND] Created weekly roteur assignment:', {
         id: assignmentId,
@@ -1976,17 +1982,17 @@ ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
       const result = stmt.run(assignment.statut, assignment.id);
       console.log('🔍 Partial update result:', result);
       
-      // If cancelling, also close related deployment history records
+      // If cancelling, also close related deployment history record
       if (assignment.statut === 'ANNULE') {
         const closeDeploymentStmt = db.prepare(`
           UPDATE historique_deployements 
           SET est_actif = 0, date_fin = date('now'), notes = COALESCE(notes || ' - ', '') || 'Rotation annulée'
-          WHERE id LIKE ? AND est_actif = 1
+          WHERE id = ? AND est_actif = 1
         `);
         
-        const deploymentPattern = `roteur-dep-${assignment.id}-%`;
-        const deploymentResult = closeDeploymentStmt.run(deploymentPattern);
-        console.log('🔍 Closed deployment history records:', deploymentResult.changes);
+        const deploymentId = `roteur-${assignment.id}`;
+        const deploymentResult = closeDeploymentStmt.run(deploymentId);
+        console.log('🔍 Closed deployment history record:', deploymentResult.changes);
       }
     } else {
       console.log('🔍 Doing full update');
