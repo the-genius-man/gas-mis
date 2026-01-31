@@ -865,6 +865,265 @@ export default function OperationsReports() {
         </div>
 
         <div className="p-6">
+          {selectedReport === 'overview' && reportData && (
+            <div className="space-y-6">
+              {/* Executive Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">Résumé Exécutif</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className={`text-3xl font-bold mb-1 ${reportData.siteCoverage.coveragePercentage >= 90 ? 'text-green-600' : reportData.siteCoverage.coveragePercentage >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {reportData.siteCoverage.coveragePercentage}%
+                    </div>
+                    <div className="text-sm text-gray-600">Couverture Sites</div>
+                    <div className={`text-xs mt-1 px-2 py-1 rounded-full inline-block ${reportData.siteCoverage.coveragePercentage >= 90 ? 'bg-green-100 text-green-800' : reportData.siteCoverage.coveragePercentage >= 70 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                      {reportData.siteCoverage.coveragePercentage >= 90 ? 'Excellent' : reportData.siteCoverage.coveragePercentage >= 70 ? 'Bon' : 'À améliorer'}
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className={`text-3xl font-bold mb-1 ${reportData.guardPerformance.efficiency >= 80 ? 'text-green-600' : reportData.guardPerformance.efficiency >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {reportData.guardPerformance.efficiency}%
+                    </div>
+                    <div className="text-sm text-gray-600">Efficacité Gardes</div>
+                    <div className={`text-xs mt-1 px-2 py-1 rounded-full inline-block ${reportData.guardPerformance.efficiency >= 80 ? 'bg-green-100 text-green-800' : reportData.guardPerformance.efficiency >= 60 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                      {reportData.guardPerformance.efficiency >= 80 ? 'Excellent' : reportData.guardPerformance.efficiency >= 60 ? 'Bon' : 'À améliorer'}
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className={`text-3xl font-bold mb-1 ${reportData.roteurUtilization.utilizationRate >= 70 ? 'text-green-600' : reportData.roteurUtilization.utilizationRate >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {reportData.roteurUtilization.utilizationRate}%
+                    </div>
+                    <div className="text-sm text-gray-600">Utilisation Rôteurs</div>
+                    <div className={`text-xs mt-1 px-2 py-1 rounded-full inline-block ${reportData.roteurUtilization.utilizationRate >= 70 ? 'bg-green-100 text-green-800' : reportData.roteurUtilization.utilizationRate >= 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                      {reportData.roteurUtilization.utilizationRate >= 70 ? 'Excellent' : reportData.roteurUtilization.utilizationRate >= 50 ? 'Bon' : 'À améliorer'}
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className={`text-3xl font-bold mb-1 ${reportData.fleet.utilizationRate >= 75 ? 'text-green-600' : reportData.fleet.utilizationRate >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {reportData.fleet.utilizationRate}%
+                    </div>
+                    <div className="text-sm text-gray-600">Utilisation Flotte</div>
+                    <div className={`text-xs mt-1 px-2 py-1 rounded-full inline-block ${reportData.fleet.utilizationRate >= 75 ? 'bg-green-100 text-green-800' : reportData.fleet.utilizationRate >= 50 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                      {reportData.fleet.utilizationRate >= 75 ? 'Excellent' : reportData.fleet.utilizationRate >= 50 ? 'Bon' : 'À améliorer'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Metrics Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Site Coverage */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Couverture des Sites</h4>
+                    <MapPin className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Sites actifs</span>
+                      <span className="font-medium">{reportData.siteCoverage.activeSites}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Sites couverts</span>
+                      <span className="font-medium">{reportData.siteCoverage.activeSites - reportData.siteCoverage.criticalGaps}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Gaps critiques</span>
+                      <span className={`font-medium ${reportData.siteCoverage.criticalGaps > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {reportData.siteCoverage.criticalGaps}
+                      </span>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-700">Taux de couverture</span>
+                        <span className={`font-bold ${reportData.siteCoverage.coveragePercentage >= 90 ? 'text-green-600' : 'text-yellow-600'}`}>
+                          {reportData.siteCoverage.coveragePercentage}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Guard Performance */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Performance Gardes</h4>
+                    <Shield className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total gardes</span>
+                      <span className="font-medium">{reportData.guardPerformance.totalGuards}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">En service</span>
+                      <span className="font-medium text-green-600">{reportData.guardPerformance.onDuty}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Disponibles</span>
+                      <span className="font-medium text-blue-600">{reportData.guardPerformance.available}</span>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-700">Efficacité</span>
+                        <span className={`font-bold ${reportData.guardPerformance.efficiency >= 80 ? 'text-green-600' : 'text-yellow-600'}`}>
+                          {reportData.guardPerformance.efficiency}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Roteur Utilization */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Utilisation Rôteurs</h4>
+                    <Users className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total rôteurs</span>
+                      <span className="font-medium">{reportData.roteurUtilization.totalRoteurs}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Actifs</span>
+                      <span className="font-medium text-purple-600">{reportData.roteurUtilization.activeRoteurs}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Moy. affectations</span>
+                      <span className="font-medium">{reportData.roteurUtilization.averageAssignments}</span>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-700">Taux d'utilisation</span>
+                        <span className={`font-bold ${reportData.roteurUtilization.utilizationRate >= 70 ? 'text-green-600' : 'text-yellow-600'}`}>
+                          {reportData.roteurUtilization.utilizationRate}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fleet and Incidents Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Parc Automobile</h4>
+                    <Truck className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total véhicules</span>
+                      <span className="font-medium">{reportData.fleet.totalVehicles}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Opérationnels</span>
+                      <span className="font-medium text-green-600">{reportData.fleet.operational}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">En maintenance</span>
+                      <span className="font-medium text-orange-600">{reportData.fleet.maintenance}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Hors service</span>
+                      <span className="font-medium text-red-600">{reportData.fleet.outOfService}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Incidents</h4>
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Total incidents</span>
+                      <span className="font-medium">{reportData.incidents.total}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Résolus</span>
+                      <span className="font-medium text-green-600">{reportData.incidents.resolved}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">En attente</span>
+                      <span className="font-medium text-yellow-600">{reportData.incidents.pending}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Critiques</span>
+                      <span className="font-medium text-red-600">{reportData.incidents.critical}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-yellow-600" />
+                  Recommandations
+                </h4>
+                <div className="space-y-3">
+                  {reportData.siteCoverage.criticalGaps > 0 && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="font-medium text-gray-900">Sites sans couverture</p>
+                        <p className="text-sm text-gray-600">
+                          {reportData.siteCoverage.criticalGaps} site(s) nécessitent une couverture immédiate. 
+                          Déployez des gardes disponibles ou réaffectez des rôteurs.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {reportData.guardPerformance.efficiency < 80 && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="font-medium text-gray-900">Efficacité des gardes</p>
+                        <p className="text-sm text-gray-600">
+                          L'efficacité actuelle de {reportData.guardPerformance.efficiency}% peut être améliorée. 
+                          Considérez une formation supplémentaire ou une redistribution des affectations.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {reportData.fleet.maintenance > 0 && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="font-medium text-gray-900">Maintenance véhicules</p>
+                        <p className="text-sm text-gray-600">
+                          {reportData.fleet.maintenance} véhicule(s) en maintenance. 
+                          Planifiez les interventions pour minimiser l'impact opérationnel.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {reportData.quickActions.guardsNeedingDeployment > 0 && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="font-medium text-gray-900">Gardes disponibles</p>
+                        <p className="text-sm text-gray-600">
+                          {reportData.quickActions.guardsNeedingDeployment} garde(s) disponible(s) pour déploiement. 
+                          Optimisez la couverture en les affectant aux sites prioritaires.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {selectedReport === 'coverage' && reportData && (
             <div className="space-y-6">
               {/* Coverage Summary Cards */}
@@ -1103,11 +1362,240 @@ export default function OperationsReports() {
             </div>
           )}
 
-          {selectedReport === 'incidents' && (
-            <div className="text-center py-12 text-gray-500">
-              <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>Rapport des incidents en cours de développement...</p>
-              <p className="text-sm mt-2">Nécessite l'ajout d'une table d'incidents</p>
+          {selectedReport === 'incidents' && reportData && (
+            <div className="space-y-6">
+              {/* Incidents Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-blue-700">Total Incidents</span>
+                    <AlertTriangle className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-blue-900">{reportData.incidents.total}</p>
+                </div>
+
+                <div className="bg-green-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-green-700">Résolus</span>
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-green-900">{reportData.incidents.resolved}</p>
+                </div>
+
+                <div className="bg-yellow-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-yellow-700">En Attente</span>
+                    <Clock className="w-5 h-5 text-yellow-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-yellow-900">{reportData.incidents.pending}</p>
+                </div>
+
+                <div className="bg-red-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-red-700">Critiques</span>
+                    <XCircle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-red-900">{reportData.incidents.critical}</p>
+                </div>
+              </div>
+
+              {/* Incidents by Severity */}
+              {reportData.incidents.bySeverity.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Répartition par Sévérité</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {reportData.incidents.bySeverity.map((item, index) => {
+                      const severityColors = {
+                        'LOW': 'bg-green-100 text-green-800 border-green-200',
+                        'MEDIUM': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                        'HIGH': 'bg-orange-100 text-orange-800 border-orange-200',
+                        'CRITICAL': 'bg-red-100 text-red-800 border-red-200'
+                      };
+                      const severityLabels = {
+                        'LOW': 'Faible',
+                        'MEDIUM': 'Moyenne',
+                        'HIGH': 'Élevée',
+                        'CRITICAL': 'Critique'
+                      };
+                      
+                      return (
+                        <div key={index} className={`p-4 rounded-lg border-2 ${severityColors[item.severity as keyof typeof severityColors] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold mb-1">{item.count}</div>
+                            <div className="text-sm font-medium">{severityLabels[item.severity as keyof typeof severityLabels] || item.severity}</div>
+                            <div className="text-xs mt-1">{item.percentage}% du total</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Incidents */}
+              {reportData.incidents.recentIncidents.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Incidents Récents</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Incident
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Sévérité
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Statut
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Site
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Assigné à
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {reportData.incidents.recentIncidents.map((incident) => {
+                          const severityColors = {
+                            'LOW': 'bg-green-100 text-green-800',
+                            'MEDIUM': 'bg-yellow-100 text-yellow-800',
+                            'HIGH': 'bg-orange-100 text-orange-800',
+                            'CRITICAL': 'bg-red-100 text-red-800'
+                          };
+                          const statusColors = {
+                            'REPORTED': 'bg-blue-100 text-blue-800',
+                            'INVESTIGATING': 'bg-yellow-100 text-yellow-800',
+                            'RESOLVED': 'bg-green-100 text-green-800',
+                            'CLOSED': 'bg-gray-100 text-gray-800'
+                          };
+                          const statusLabels = {
+                            'REPORTED': 'Signalé',
+                            'INVESTIGATING': 'En cours',
+                            'RESOLVED': 'Résolu',
+                            'CLOSED': 'Fermé'
+                          };
+                          
+                          return (
+                            <tr key={incident.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">{incident.title}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${severityColors[incident.severity as keyof typeof severityColors] || 'bg-gray-100 text-gray-800'}`}>
+                                  {incident.severity}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[incident.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}`}>
+                                  {statusLabels[incident.status as keyof typeof statusLabels] || incident.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {incident.site}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {new Date(incident.date).toLocaleDateString('fr-FR')}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {incident.assignedTo || 'Non assigné'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Incident Trends */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Tendances Mensuelles</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-md font-medium text-gray-700 mb-3">Évolution par Mois</h4>
+                    <div className="space-y-2">
+                      {reportData.incidents.byMonth.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">{item.month}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full" 
+                                style={{ width: `${Math.min((item.count / Math.max(...reportData.incidents.byMonth.map(m => m.count))) * 100, 100)}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-medium text-gray-900 w-8 text-right">{item.count}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-md font-medium text-gray-700 mb-3">Métriques Clés</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Temps moyen de résolution</span>
+                        <span className="font-medium">{reportData.incidents.averageResolutionTime}h</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Taux de résolution</span>
+                        <span className="font-medium text-green-600">
+                          {reportData.incidents.total > 0 ? Math.round((reportData.incidents.resolved / reportData.incidents.total) * 100) : 0}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Incidents critiques</span>
+                        <span className={`font-medium ${reportData.incidents.critical > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {reportData.incidents.critical}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Items */}
+              {(reportData.incidents.pending > 0 || reportData.incidents.critical > 0) && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                    Actions Requises
+                  </h4>
+                  <div className="space-y-3">
+                    {reportData.incidents.critical > 0 && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                        <div>
+                          <p className="font-medium text-gray-900">Incidents critiques</p>
+                          <p className="text-sm text-gray-600">
+                            {reportData.incidents.critical} incident(s) critique(s) nécessitent une attention immédiate.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {reportData.incidents.pending > 0 && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                        <div>
+                          <p className="font-medium text-gray-900">Incidents en attente</p>
+                          <p className="text-sm text-gray-600">
+                            {reportData.incidents.pending} incident(s) en attente de traitement ou de résolution.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
