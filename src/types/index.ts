@@ -440,7 +440,7 @@ export type EtatCivil = 'CELIBATAIRE' | 'MARIE' | 'DIVORCE' | 'VEUF';
 export type Genre = 'M' | 'F';
 
 // Deployment History Types
-export type MotifAffectation = 'EMBAUCHE' | 'TRANSFERT' | 'DEMANDE_CLIENT' | 'DISCIPLINAIRE' | 'REORGANISATION' | 'AUTRE';
+export type MotifAffectation = 'EMBAUCHE' | 'TRANSFERT' | 'REMPLACEMENT' | 'ROTATION' | 'DEMANDE_EMPLOYE' | 'DEMANDE_CLIENT' | 'DISCIPLINAIRE' | 'REORGANISATION' | 'FIN_CONTRAT_SITE' | 'AUTRE';
 export type PosteDeployement = 'JOUR' | 'NUIT' | 'MIXTE';
 
 // Leave Types

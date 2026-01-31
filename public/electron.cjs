@@ -373,7 +373,7 @@ function createHROperationsTables() {
       date_debut TEXT NOT NULL,
       date_fin TEXT,
       poste TEXT CHECK(poste IN ('JOUR', 'NUIT', 'MIXTE')) DEFAULT 'JOUR',
-      motif_affectation TEXT CHECK(motif_affectation IN ('EMBAUCHE', 'TRANSFERT', 'DEMANDE_CLIENT', 'DISCIPLINAIRE', 'REORGANISATION', 'AUTRE')) DEFAULT 'EMBAUCHE',
+      motif_affectation TEXT CHECK(motif_affectation IN ('EMBAUCHE', 'TRANSFERT', 'REMPLACEMENT', 'ROTATION', 'DEMANDE_EMPLOYE', 'DEMANDE_CLIENT', 'DISCIPLINAIRE', 'REORGANISATION', 'FIN_CONTRAT_SITE', 'AUTRE')) DEFAULT 'EMBAUCHE',
       notes TEXT,
       est_actif INTEGER DEFAULT 1,
       cree_par TEXT,
@@ -444,6 +444,58 @@ function createHROperationsTables() {
     db.exec(`ALTER TABLE historique_deployements ADD COLUMN roteur_sites TEXT`);
   } catch (e) {
     // Column already exists, ignore
+  }
+
+  // Update motif_affectation CHECK constraint to include ROTATION and other missing values
+  try {
+    // Check if we need to update the constraint by testing if ROTATION is allowed
+    const testStmt = db.prepare(`INSERT INTO historique_deployements (id, employe_id, site_id, date_debut, motif_affectation) VALUES (?, ?, ?, ?, ?)`);
+    try {
+      testStmt.run('test-rotation-constraint', 'test-emp', 'test-site', '2024-01-01', 'ROTATION');
+      // If we get here, ROTATION is already allowed, clean up the test record
+      db.exec(`DELETE FROM historique_deployements WHERE id = 'test-rotation-constraint'`);
+      console.log('✅ motif_affectation constraint already supports ROTATION');
+    } catch (constraintError) {
+      if (constraintError.message.includes('CHECK constraint failed')) {
+        console.log('🔧 Updating motif_affectation constraint to support ROTATION...');
+        
+        // Create new table with updated constraint
+        db.exec(`
+          CREATE TABLE historique_deployements_new (
+            id TEXT PRIMARY KEY,
+            employe_id TEXT NOT NULL REFERENCES employees_gas(id),
+            site_id TEXT NOT NULL REFERENCES sites_gas(id),
+            date_debut TEXT NOT NULL,
+            date_fin TEXT,
+            poste TEXT CHECK(poste IN ('JOUR', 'NUIT', 'MIXTE')) DEFAULT 'JOUR',
+            motif_affectation TEXT CHECK(motif_affectation IN ('EMBAUCHE', 'TRANSFERT', 'REMPLACEMENT', 'ROTATION', 'DEMANDE_EMPLOYE', 'DEMANDE_CLIENT', 'DISCIPLINAIRE', 'REORGANISATION', 'FIN_CONTRAT_SITE', 'AUTRE')) DEFAULT 'EMBAUCHE',
+            notes TEXT,
+            est_actif INTEGER DEFAULT 1,
+            cree_par TEXT,
+            cree_le TEXT DEFAULT CURRENT_TIMESTAMP,
+            modifie_le TEXT DEFAULT CURRENT_TIMESTAMP,
+            roteur_sites TEXT
+          )
+        `);
+        
+        // Copy data from old table
+        db.exec(`
+          INSERT INTO historique_deployements_new 
+          SELECT id, employe_id, site_id, date_debut, date_fin, poste, motif_affectation, notes, est_actif, cree_par, cree_le, modifie_le, roteur_sites
+          FROM historique_deployements
+        `);
+        
+        // Drop old table and rename new one
+        db.exec(`DROP TABLE historique_deployements`);
+        db.exec(`ALTER TABLE historique_deployements_new RENAME TO historique_deployements`);
+        
+        console.log('✅ motif_affectation constraint updated successfully');
+      } else {
+        throw constraintError;
+      }
+    }
+  } catch (e) {
+    console.log('⚠️ Error updating motif_affectation constraint:', e.message);
   }
   
   // Make jour_semaine nullable for weekly assignments (for existing databases)

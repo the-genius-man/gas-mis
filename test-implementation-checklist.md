@@ -6,19 +6,20 @@
 - [x] All imports and exports are correct
 - [x] Type definitions updated correctly
 
-## 🔧 Backend Tests (To Verify)
+## 🔧 Backend Tests (Completed)
 
 ### Database Schema
-- [ ] `roteur_sites` column added to `historique_deployements` table
-- [ ] Column is nullable TEXT type
-- [ ] Migration runs without errors on existing databases
+- [x] `roteur_sites` column added to `historique_deployements` table
+- [x] Column is nullable TEXT type
+- [x] Migration runs without errors on existing databases
+- [x] `motif_affectation` constraint updated to include 'ROTATION'
 
 ### Roteur Assignment Creation
-- [ ] Creates single deployment history record (not multiple)
-- [ ] `roteur_sites` field populated with comma-separated site names
-- [ ] `motif_affectation` set to 'ROTATION'
-- [ ] `cree_par` set to 'SYSTEM_ROTEUR'
-- [ ] Primary `site_id` set to first site in rotation
+- [x] Creates single deployment history record (not multiple)
+- [x] `roteur_sites` field populated with comma-separated site names
+- [x] `motif_affectation` set to 'ROTATION'
+- [x] `cree_par` set to 'SYSTEM_ROTEUR'
+- [x] Primary `site_id` set to first site in rotation
 
 ### Roteur Assignment Cancellation
 - [ ] Deployment history record marked as inactive
