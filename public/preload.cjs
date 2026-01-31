@@ -281,6 +281,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getBilanOhada: (data) => ipcRenderer.invoke('db-get-bilan-ohada', data),
   
   // ============================================================================
+  // OHADA DEBT & LOAN TRACKING - Compliant with OHADA Standards
+  // ============================================================================
+  
+  createDettePretOhada: (debtLoan) => ipcRenderer.invoke('db-create-dette-pret-ohada', debtLoan),
+  getDettesPretsOhada: (filters) => ipcRenderer.invoke('db-get-dettes-prets-ohada', filters),
+  createPaiementDettePretOhada: (payment) => ipcRenderer.invoke('db-create-paiement-dette-pret-ohada', payment),
+  getPaiementsDettePretOhada: (dettePretId) => ipcRenderer.invoke('db-get-paiements-dette-pret-ohada', dettePretId),
+  getOhadaDettePretSummary: (filters) => ipcRenderer.invoke('db-get-ohada-dette-pret-summary', filters),
+  getOhadaBilanDettesPrets: (dateFin) => ipcRenderer.invoke('db-get-ohada-bilan-dettes-prets', dateFin),
+  
+  // ============================================================================
   // REPORTING MODULE
   // ============================================================================
   

@@ -974,6 +974,101 @@ function createHROperationsTables() {
   `);
 
   // ============================================================================
+  // OHADA DEBT & LOAN TRACKING SYSTEM - Compliant with OHADA Standards
+  // ============================================================================
+
+  // OHADA-Compliant Debts & Loans Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS dettes_prets_ohada (
+      id TEXT PRIMARY KEY,
+      type TEXT CHECK(type IN ('DETTE', 'PRET')) NOT NULL,
+      reference_number TEXT UNIQUE NOT NULL,
+      
+      -- OHADA Compliance Fields
+      compte_comptable_principal TEXT NOT NULL, -- Main OHADA account code
+      compte_comptable_interet TEXT, -- Interest account code
+      sous_compte TEXT, -- Sub-account for detailed tracking
+      
+      -- Creditor/Debtor Information
+      tiers_nom TEXT NOT NULL,
+      tiers_type TEXT CHECK(tiers_type IN ('PERSONNE', 'ENTREPRISE', 'BANQUE', 'EMPLOYE', 'ETAT', 'COLLECTIVITE')) NOT NULL,
+      tiers_numero_compte TEXT, -- Account number in chart of accounts
+      contact_info TEXT,
+      
+      -- Financial Information
+      montant_principal REAL NOT NULL,
+      solde_actuel REAL NOT NULL,
+      taux_interet REAL,
+      type_interet TEXT CHECK(type_interet IN ('SIMPLE', 'COMPOSE', 'FIXE')),
+      
+      -- Dates
+      date_debut DATE NOT NULL,
+      date_echeance DATE,
+      
+      -- Status and Classification
+      statut TEXT CHECK(statut IN ('ACTIF', 'REMBOURSE', 'EN_RETARD', 'PROVISIONNE', 'ANNULE')) DEFAULT 'ACTIF',
+      frequence_paiement TEXT CHECK(frequence_paiement IN ('MENSUEL', 'TRIMESTRIEL', 'SEMESTRIEL', 'ANNUEL', 'UNIQUE')),
+      
+      -- OHADA Specific Fields
+      nature_garantie TEXT, -- Type of guarantee
+      valeur_garantie REAL, -- Guarantee value
+      provision_constituee REAL DEFAULT 0, -- Provision for bad debts
+      
+      -- Description and Documentation
+      objet TEXT NOT NULL, -- Purpose of debt/loan
+      conditions_particulieres TEXT,
+      pieces_justificatives TEXT, -- Supporting documents
+      
+      -- Audit Trail
+      devise TEXT DEFAULT 'USD' CHECK(devise IN ('USD', 'CDF')),
+      cree_par TEXT NOT NULL,
+      cree_le TEXT DEFAULT CURRENT_TIMESTAMP,
+      modifie_le TEXT DEFAULT CURRENT_TIMESTAMP,
+      
+      -- Foreign Keys
+      FOREIGN KEY (compte_comptable_principal) REFERENCES plan_comptable(code_compte),
+      FOREIGN KEY (compte_comptable_interet) REFERENCES plan_comptable(code_compte)
+    )
+  `);
+
+  // OHADA-Compliant Payments Table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS paiements_dettes_prets_ohada (
+      id TEXT PRIMARY KEY,
+      dette_pret_id TEXT NOT NULL,
+      
+      -- Payment Information
+      date_paiement DATE NOT NULL,
+      montant_paye REAL NOT NULL,
+      montant_principal REAL NOT NULL,
+      montant_interet REAL NOT NULL,
+      
+      -- Payment Method and Reference
+      mode_paiement TEXT CHECK(mode_paiement IN ('ESPECES', 'VIREMENT', 'CHEQUE', 'MOBILE_MONEY', 'COMPENSATION')) NOT NULL,
+      reference_paiement TEXT NOT NULL,
+      numero_piece TEXT, -- Document number
+      
+      -- OHADA Accounting Integration
+      ecriture_comptable_id TEXT, -- Link to accounting entry
+      compte_tresorerie_id TEXT, -- Treasury account used
+      
+      -- Additional Information
+      penalites REAL DEFAULT 0, -- Late payment penalties
+      frais_bancaires REAL DEFAULT 0, -- Bank charges
+      notes TEXT,
+      
+      -- Audit Trail
+      devise TEXT DEFAULT 'USD' CHECK(devise IN ('USD', 'CDF')),
+      cree_par TEXT NOT NULL,
+      cree_le TEXT DEFAULT CURRENT_TIMESTAMP,
+      
+      -- Foreign Keys
+      FOREIGN KEY (dette_pret_id) REFERENCES dettes_prets_ohada(id),
+      FOREIGN KEY (ecriture_comptable_id) REFERENCES ecritures_comptables(id)
+    )
+  `);
+
+  // ============================================================================
   // ENHANCED DEDUCTIONS SYSTEM - Multi-Period & Multi-Type Deductions
   // ============================================================================
 
@@ -1287,6 +1382,14 @@ function createHROperationsTables() {
     db.exec(`CREATE INDEX IF NOT EXISTS idx_ecritures_type ON ecritures_comptables(type_operation)`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_lignes_ecriture ON lignes_ecritures(ecriture_id)`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_lignes_compte ON lignes_ecritures(compte_comptable)`);
+    
+    // OHADA Debt & Loan indexes
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_dettes_prets_type ON dettes_prets_ohada(type)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_dettes_prets_statut ON dettes_prets_ohada(statut)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_dettes_prets_compte ON dettes_prets_ohada(compte_comptable_principal)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_dettes_prets_tiers ON dettes_prets_ohada(tiers_nom)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_paiements_dette_pret ON paiements_dettes_prets_ohada(dette_pret_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_paiements_date ON paiements_dettes_prets_ohada(date_paiement)`);
     
     // Enhanced Deduction System indexes
     db.exec(`CREATE INDEX IF NOT EXISTS idx_employee_deductions_employe ON employee_deductions(employe_id)`);
@@ -5896,6 +5999,547 @@ ipcMain.handle('db-seed-data', async () => {
 // ============================================================================
 // IPC Handlers - Finance Module (OHADA)
 // ============================================================================
+
+// ============================================================================
+// OHADA DEBT & LOAN TRACKING SYSTEM - IPC Handlers
+// ============================================================================
+
+// OHADA Account Code Mapping
+const OHADA_DEBT_ACCOUNTS = {
+  'BANQUE': {
+    'COURT_TERME': '161', // Emprunts bancaires à court terme
+    'LONG_TERME': '161',  // Emprunts bancaires à long terme
+    'INTERET': '661'      // Charges d'intérêts
+  },
+  'ENTREPRISE': {
+    'FOURNISSEUR': '401', // Fournisseurs
+    'AUTRE': '162',       // Emprunts et dettes financières diverses
+    'INTERET': '661'
+  },
+  'EMPLOYE': {
+    'AVANCE_RECUE': '164', // Avances reçues du personnel
+    'INTERET': '661'
+  },
+  'ETAT': {
+    'AVANCE': '163',      // Avances reçues de l'État
+    'INTERET': '661'
+  }
+};
+
+const OHADA_LOAN_ACCOUNTS = {
+  'EMPLOYE': {
+    'AVANCE_SALAIRE': '261', // Prêts au personnel
+    'INTERET': '771'         // Produits d'intérêts
+  },
+  'ENTREPRISE': {
+    'PRET_COMMERCIAL': '268', // Autres prêts et créances financières
+    'INTERET': '771'
+  },
+  'ETAT': {
+    'CREANCE': '264',        // Prêts et créances sur l'État
+    'INTERET': '771'
+  }
+};
+
+// Helper function to get OHADA account code
+function getOhadaAccountCode(type, tiersType, isInterest = false) {
+  if (isInterest) {
+    if (type === 'DETTE') {
+      return OHADA_DEBT_ACCOUNTS[tiersType]?.INTERET || '661';
+    } else {
+      return OHADA_LOAN_ACCOUNTS[tiersType]?.INTERET || '771';
+    }
+  }
+  
+  if (type === 'DETTE') {
+    return OHADA_DEBT_ACCOUNTS[tiersType]?.AUTRE || '162';
+  } else {
+    return OHADA_LOAN_ACCOUNTS[tiersType]?.PRET_COMMERCIAL || '268';
+  }
+}
+
+// Helper function to create accounting entry for debt/loan
+async function createDebtLoanAccountingEntry(debtLoan, operationType) {
+  try {
+    const entryId = `ECR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const pieceNumber = `${debtLoan.type}-${debtLoan.reference_number}`;
+    
+    let entries = [];
+    
+    if (operationType === 'CREATION') {
+      if (debtLoan.type === 'DETTE') {
+        // Debt creation: DEBIT asset account, CREDIT debt account
+        entries = [
+          {
+            compte_comptable: '512', // Banque (what we received)
+            sens: 'DEBIT',
+            montant: debtLoan.montant_principal,
+            libelle_compte: 'Banque',
+            tiers_nom: debtLoan.tiers_nom
+          },
+          {
+            compte_comptable: debtLoan.compte_comptable_principal,
+            sens: 'CREDIT',
+            montant: debtLoan.montant_principal,
+            libelle_compte: `Dette envers ${debtLoan.tiers_nom}`,
+            tiers_nom: debtLoan.tiers_nom
+          }
+        ];
+      } else {
+        // Loan creation: DEBIT loan account, CREDIT cash/bank
+        entries = [
+          {
+            compte_comptable: debtLoan.compte_comptable_principal,
+            sens: 'DEBIT',
+            montant: debtLoan.montant_principal,
+            libelle_compte: `Prêt accordé à ${debtLoan.tiers_nom}`,
+            tiers_nom: debtLoan.tiers_nom
+          },
+          {
+            compte_comptable: '512', // Banque
+            sens: 'CREDIT',
+            montant: debtLoan.montant_principal,
+            libelle_compte: 'Banque',
+            tiers_nom: debtLoan.tiers_nom
+          }
+        ];
+      }
+    }
+    
+    if (entries.length > 0) {
+      // Create main accounting entry
+      db.prepare(`
+        INSERT INTO ecritures_comptables (
+          id, date_ecriture, numero_piece, libelle, type_operation, source_id,
+          montant_total, devise, statut, cree_par
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        entryId,
+        debtLoan.date_debut,
+        pieceNumber,
+        `${operationType} ${debtLoan.type.toLowerCase()} - ${debtLoan.tiers_nom}`,
+        operationType === 'CREATION' ? (debtLoan.type === 'DETTE' ? 'CREATION_DETTE' : 'CREATION_PRET') : 'PAIEMENT_DETTE_PRET',
+        debtLoan.id,
+        debtLoan.montant_principal,
+        debtLoan.devise,
+        'VALIDE',
+        debtLoan.cree_par
+      );
+      
+      // Create accounting entry lines
+      for (const entry of entries) {
+        const lineId = `LIG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        db.prepare(`
+          INSERT INTO lignes_ecritures (
+            id, ecriture_id, compte_comptable, libelle_compte, sens, montant, devise, tiers_nom
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          lineId,
+          entryId,
+          entry.compte_comptable,
+          entry.libelle_compte,
+          entry.sens,
+          entry.montant,
+          debtLoan.devise,
+          entry.tiers_nom
+        );
+      }
+      
+      return entryId;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error creating debt/loan accounting entry:', error);
+    throw error;
+  }
+}
+
+// Create OHADA-compliant debt or loan
+ipcMain.handle('db-create-dette-pret-ohada', async (event, debtLoan) => {
+  try {
+    const id = `${debtLoan.type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Auto-assign OHADA account codes if not provided
+    if (!debtLoan.compte_comptable_principal) {
+      debtLoan.compte_comptable_principal = getOhadaAccountCode(debtLoan.type, debtLoan.tiers_type);
+    }
+    if (!debtLoan.compte_comptable_interet && debtLoan.taux_interet > 0) {
+      debtLoan.compte_comptable_interet = getOhadaAccountCode(debtLoan.type, debtLoan.tiers_type, true);
+    }
+    
+    // Generate reference number if not provided
+    if (!debtLoan.reference_number) {
+      const prefix = debtLoan.type === 'DETTE' ? 'DT' : 'PR';
+      const year = new Date().getFullYear();
+      const count = db.prepare(`
+        SELECT COUNT(*) as count FROM dettes_prets_ohada 
+        WHERE type = ? AND strftime('%Y', date_debut) = ?
+      `).get(debtLoan.type, year.toString()).count;
+      debtLoan.reference_number = `${prefix}-${year}-${String(count + 1).padStart(3, '0')}`;
+    }
+    
+    // Insert debt/loan record
+    db.prepare(`
+      INSERT INTO dettes_prets_ohada (
+        id, type, reference_number, compte_comptable_principal, compte_comptable_interet,
+        sous_compte, tiers_nom, tiers_type, tiers_numero_compte, contact_info,
+        montant_principal, solde_actuel, taux_interet, type_interet,
+        date_debut, date_echeance, statut, frequence_paiement,
+        nature_garantie, valeur_garantie, provision_constituee,
+        objet, conditions_particulieres, pieces_justificatives,
+        devise, cree_par, cree_le, modifie_le
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      debtLoan.type,
+      debtLoan.reference_number,
+      debtLoan.compte_comptable_principal,
+      debtLoan.compte_comptable_interet || null,
+      debtLoan.sous_compte || null,
+      debtLoan.tiers_nom,
+      debtLoan.tiers_type,
+      debtLoan.tiers_numero_compte || null,
+      debtLoan.contact_info || null,
+      debtLoan.montant_principal,
+      debtLoan.montant_principal, // Initial balance = principal amount
+      debtLoan.taux_interet || null,
+      debtLoan.type_interet || null,
+      debtLoan.date_debut,
+      debtLoan.date_echeance || null,
+      'ACTIF',
+      debtLoan.frequence_paiement || null,
+      debtLoan.nature_garantie || null,
+      debtLoan.valeur_garantie || null,
+      0, // provision_constituee
+      debtLoan.objet,
+      debtLoan.conditions_particulieres || null,
+      debtLoan.pieces_justificatives || null,
+      debtLoan.devise || 'USD',
+      debtLoan.cree_par,
+      new Date().toISOString(),
+      new Date().toISOString()
+    );
+    
+    // Create accounting entry
+    const fullDebtLoan = { ...debtLoan, id };
+    await createDebtLoanAccountingEntry(fullDebtLoan, 'CREATION');
+    
+    return { success: true, id, reference_number: debtLoan.reference_number };
+  } catch (error) {
+    console.error('Error creating OHADA debt/loan:', error);
+    throw error;
+  }
+});
+
+// Get OHADA debts and loans
+ipcMain.handle('db-get-dettes-prets-ohada', async (event, filters = {}) => {
+  try {
+    let query = `
+      SELECT d.*, p.libelle as compte_libelle
+      FROM dettes_prets_ohada d
+      LEFT JOIN plan_comptable p ON d.compte_comptable_principal = p.code_compte
+      WHERE 1=1
+    `;
+    const params = [];
+    
+    if (filters.type) {
+      query += ' AND d.type = ?';
+      params.push(filters.type);
+    }
+    
+    if (filters.statut) {
+      query += ' AND d.statut = ?';
+      params.push(filters.statut);
+    }
+    
+    if (filters.tiers_type) {
+      query += ' AND d.tiers_type = ?';
+      params.push(filters.tiers_type);
+    }
+    
+    if (filters.date_debut) {
+      query += ' AND d.date_debut >= ?';
+      params.push(filters.date_debut);
+    }
+    
+    if (filters.date_fin) {
+      query += ' AND d.date_debut <= ?';
+      params.push(filters.date_fin);
+    }
+    
+    if (filters.search) {
+      query += ' AND (d.tiers_nom LIKE ? OR d.reference_number LIKE ? OR d.objet LIKE ?)';
+      const searchTerm = `%${filters.search}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
+    }
+    
+    query += ' ORDER BY d.cree_le DESC';
+    
+    return db.prepare(query).all(...params);
+  } catch (error) {
+    console.error('Error fetching OHADA debts/loans:', error);
+    throw error;
+  }
+});
+
+// Record payment for OHADA debt/loan
+ipcMain.handle('db-create-paiement-dette-pret-ohada', async (event, payment) => {
+  try {
+    const paymentId = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Get debt/loan details
+    const debtLoan = db.prepare('SELECT * FROM dettes_prets_ohada WHERE id = ?').get(payment.dette_pret_id);
+    if (!debtLoan) {
+      throw new Error('Dette/Prêt non trouvé');
+    }
+    
+    // Insert payment record
+    db.prepare(`
+      INSERT INTO paiements_dettes_prets_ohada (
+        id, dette_pret_id, date_paiement, montant_paye, montant_principal, montant_interet,
+        mode_paiement, reference_paiement, numero_piece, compte_tresorerie_id,
+        penalites, frais_bancaires, notes, devise, cree_par, cree_le
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      paymentId,
+      payment.dette_pret_id,
+      payment.date_paiement,
+      payment.montant_paye,
+      payment.montant_principal || payment.montant_paye,
+      payment.montant_interet || 0,
+      payment.mode_paiement,
+      payment.reference_paiement,
+      payment.numero_piece || null,
+      payment.compte_tresorerie_id || null,
+      payment.penalites || 0,
+      payment.frais_bancaires || 0,
+      payment.notes || null,
+      payment.devise || debtLoan.devise,
+      payment.cree_par,
+      new Date().toISOString()
+    );
+    
+    // Update debt/loan balance
+    const newBalance = debtLoan.solde_actuel - (payment.montant_principal || payment.montant_paye);
+    const newStatus = newBalance <= 0 ? 'REMBOURSE' : debtLoan.statut;
+    
+    db.prepare(`
+      UPDATE dettes_prets_ohada 
+      SET solde_actuel = ?, statut = ?, modifie_le = ?
+      WHERE id = ?
+    `).run(newBalance, newStatus, new Date().toISOString(), payment.dette_pret_id);
+    
+    // Create accounting entry for payment
+    const entryId = `ECR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const entries = [];
+    
+    if (debtLoan.type === 'DETTE') {
+      // Debt payment: DEBIT debt account, CREDIT cash/bank
+      entries.push({
+        compte_comptable: debtLoan.compte_comptable_principal,
+        sens: 'DEBIT',
+        montant: payment.montant_principal || payment.montant_paye,
+        libelle_compte: `Remboursement dette ${debtLoan.tiers_nom}`,
+        tiers_nom: debtLoan.tiers_nom
+      });
+      entries.push({
+        compte_comptable: '512', // Banque
+        sens: 'CREDIT',
+        montant: payment.montant_principal || payment.montant_paye,
+        libelle_compte: `Paiement à ${debtLoan.tiers_nom}`,
+        tiers_nom: debtLoan.tiers_nom
+      });
+    } else {
+      // Loan payment received: DEBIT cash/bank, CREDIT loan account
+      entries.push({
+        compte_comptable: '512', // Banque
+        sens: 'DEBIT',
+        montant: payment.montant_principal || payment.montant_paye,
+        libelle_compte: `Remboursement prêt ${debtLoan.tiers_nom}`,
+        tiers_nom: debtLoan.tiers_nom
+      });
+      entries.push({
+        compte_comptable: debtLoan.compte_comptable_principal,
+        sens: 'CREDIT',
+        montant: payment.montant_principal || payment.montant_paye,
+        libelle_compte: `Paiement de ${debtLoan.tiers_nom}`,
+        tiers_nom: debtLoan.tiers_nom
+      });
+    }
+    
+    // Add interest entry if applicable
+    if (payment.montant_interet > 0) {
+      if (debtLoan.type === 'DETTE') {
+        entries.push({
+          compte_comptable: debtLoan.compte_comptable_interet || '661',
+          sens: 'DEBIT',
+          montant: payment.montant_interet,
+          libelle_compte: `Intérêts sur dette ${debtLoan.tiers_nom}`,
+          tiers_nom: debtLoan.tiers_nom
+        });
+      } else {
+        entries.push({
+          compte_comptable: debtLoan.compte_comptable_interet || '771',
+          sens: 'CREDIT',
+          montant: payment.montant_interet,
+          libelle_compte: `Intérêts sur prêt ${debtLoan.tiers_nom}`,
+          tiers_nom: debtLoan.tiers_nom
+        });
+      }
+    }
+    
+    // Create main accounting entry
+    db.prepare(`
+      INSERT INTO ecritures_comptables (
+        id, date_ecriture, numero_piece, libelle, type_operation, source_id,
+        montant_total, devise, statut, cree_par
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      entryId,
+      payment.date_paiement,
+      payment.reference_paiement,
+      `Paiement ${debtLoan.type.toLowerCase()} - ${debtLoan.tiers_nom}`,
+      'PAIEMENT_DETTE_PRET',
+      paymentId,
+      payment.montant_paye,
+      payment.devise || debtLoan.devise,
+      'VALIDE',
+      payment.cree_par
+    );
+    
+    // Create accounting entry lines
+    for (const entry of entries) {
+      const lineId = `LIG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      db.prepare(`
+        INSERT INTO lignes_ecritures (
+          id, ecriture_id, compte_comptable, libelle_compte, sens, montant, devise, tiers_nom
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        lineId,
+        entryId,
+        entry.compte_comptable,
+        entry.libelle_compte,
+        entry.sens,
+        entry.montant,
+        payment.devise || debtLoan.devise,
+        entry.tiers_nom
+      );
+    }
+    
+    // Update payment record with accounting entry ID
+    db.prepare('UPDATE paiements_dettes_prets_ohada SET ecriture_comptable_id = ? WHERE id = ?')
+      .run(entryId, paymentId);
+    
+    return { success: true, id: paymentId, new_balance: newBalance, new_status: newStatus };
+  } catch (error) {
+    console.error('Error creating OHADA debt/loan payment:', error);
+    throw error;
+  }
+});
+
+// Get payments for a debt/loan
+ipcMain.handle('db-get-paiements-dette-pret-ohada', async (event, dettePretId) => {
+  try {
+    return db.prepare(`
+      SELECT p.*, e.numero_piece as ecriture_numero
+      FROM paiements_dettes_prets_ohada p
+      LEFT JOIN ecritures_comptables e ON p.ecriture_comptable_id = e.id
+      WHERE p.dette_pret_id = ?
+      ORDER BY p.date_paiement DESC
+    `).all(dettePretId);
+  } catch (error) {
+    console.error('Error fetching OHADA debt/loan payments:', error);
+    throw error;
+  }
+});
+
+// Get OHADA debt/loan summary
+ipcMain.handle('db-get-ohada-dette-pret-summary', async (event, filters = {}) => {
+  try {
+    const debts = db.prepare(`
+      SELECT 
+        COUNT(*) as total_count,
+        SUM(CASE WHEN statut = 'ACTIF' THEN 1 ELSE 0 END) as active_count,
+        SUM(CASE WHEN statut = 'ACTIF' THEN solde_actuel ELSE 0 END) as total_balance,
+        SUM(CASE WHEN statut = 'EN_RETARD' THEN 1 ELSE 0 END) as overdue_count,
+        SUM(CASE WHEN statut = 'EN_RETARD' THEN solde_actuel ELSE 0 END) as overdue_balance
+      FROM dettes_prets_ohada 
+      WHERE type = 'DETTE'
+    `).get();
+    
+    const loans = db.prepare(`
+      SELECT 
+        COUNT(*) as total_count,
+        SUM(CASE WHEN statut = 'ACTIF' THEN 1 ELSE 0 END) as active_count,
+        SUM(CASE WHEN statut = 'ACTIF' THEN solde_actuel ELSE 0 END) as total_balance,
+        SUM(CASE WHEN statut = 'EN_RETARD' THEN 1 ELSE 0 END) as overdue_count,
+        SUM(CASE WHEN statut = 'EN_RETARD' THEN solde_actuel ELSE 0 END) as overdue_balance
+      FROM dettes_prets_ohada 
+      WHERE type = 'PRET'
+    `).get();
+    
+    return {
+      debts: {
+        total: debts.total_count || 0,
+        active: debts.active_count || 0,
+        total_balance: debts.total_balance || 0,
+        overdue: debts.overdue_count || 0,
+        overdue_balance: debts.overdue_balance || 0
+      },
+      loans: {
+        total: loans.total_count || 0,
+        active: loans.active_count || 0,
+        total_balance: loans.total_balance || 0,
+        overdue: loans.overdue_count || 0,
+        overdue_balance: loans.overdue_balance || 0
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching OHADA debt/loan summary:', error);
+    throw error;
+  }
+});
+
+// Get OHADA balance sheet data for debts and loans
+ipcMain.handle('db-get-ohada-bilan-dettes-prets', async (event, dateFin) => {
+  try {
+    const debts = db.prepare(`
+      SELECT 
+        d.compte_comptable_principal,
+        p.libelle as compte_libelle,
+        SUM(d.solde_actuel) as solde_total,
+        COUNT(*) as nombre_dettes
+      FROM dettes_prets_ohada d
+      JOIN plan_comptable p ON d.compte_comptable_principal = p.code_compte
+      WHERE d.type = 'DETTE' 
+        AND d.statut = 'ACTIF'
+        AND d.date_debut <= ?
+      GROUP BY d.compte_comptable_principal, p.libelle
+      ORDER BY d.compte_comptable_principal
+    `).all(dateFin);
+    
+    const loans = db.prepare(`
+      SELECT 
+        l.compte_comptable_principal,
+        p.libelle as compte_libelle,
+        SUM(l.solde_actuel) as solde_total,
+        COUNT(*) as nombre_prets
+      FROM dettes_prets_ohada l
+      JOIN plan_comptable p ON l.compte_comptable_principal = p.code_compte
+      WHERE l.type = 'PRET' 
+        AND l.statut = 'ACTIF'
+        AND l.date_debut <= ?
+      GROUP BY l.compte_comptable_principal, p.libelle
+      ORDER BY l.compte_comptable_principal
+    `).all(dateFin);
+    
+    return { debts, loans };
+  } catch (error) {
+    console.error('Error fetching OHADA balance sheet debt/loan data:', error);
+    throw error;
+  }
+});
 
 // Plan Comptable
 ipcMain.handle('db-get-plan-comptable', async () => {

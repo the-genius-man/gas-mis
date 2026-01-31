@@ -17,7 +17,7 @@ import SitesManagement from './SitesManagement';
 import InvoicesManagement from './InvoicesManagement';
 import FinanceManagement from './FinanceManagement';
 import FinanceReports from './FinanceReports';
-import DebtLoanManagement from './DebtLoanManagement';
+import DebtLoanManagement from './OhadaDebtLoanManagement';
 
 type Tab = 'clients' | 'sites' | 'invoices' | 'debts' | 'treasury' | 'reports';
 
@@ -64,9 +64,9 @@ export default function FinanceModule() {
     },
     {
       id: 'debts' as Tab,
-      label: 'Dettes & Prêts',
+      label: 'Dettes & Prêts OHADA',
       icon: HandCoins,
-      description: 'Gestion des dettes et prêts',
+      description: 'Gestion conforme OHADA avec comptabilité automatique',
     },
     {
       id: 'treasury' as Tab,
