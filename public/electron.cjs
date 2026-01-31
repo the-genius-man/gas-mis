@@ -1463,6 +1463,13 @@ ipcMain.handle('db-convert-roteur-to-guard', async (event, { roteurId, reason })
       WHERE roteur_id = ? AND statut IN ('PLANIFIE', 'EN_COURS')
     `);
     
+    // Also close related deployment history records
+    const closeRoteurDeployments = db.prepare(`
+      UPDATE historique_deployements 
+      SET est_actif = 0, date_fin = date('now'), notes = COALESCE(notes || ' - ', '') || ?
+      WHERE employe_id = ? AND est_actif = 1 AND cree_par = 'SYSTEM_ROTEUR'
+    `);
+    
     // Check current assignments before conversion
     const activeAssignments = db.prepare(`
       SELECT ar.*, s.nom_site, c.nom_entreprise as client_nom
@@ -1490,7 +1497,13 @@ ipcMain.handle('db-convert-roteur-to-guard', async (event, { roteurId, reason })
       // 2. Cancel all active roteur assignments
       const cancellationReason = reason || 'Conversion automatique: Roteur → Garde';
       const assignmentsResult = cancelActiveAssignments.run(cancellationReason, roteurId);
+      
+      // 2b. Close related deployment history records
+      const deploymentCloseReason = 'Conversion roteur vers garde';
+      const deploymentsResult = closeRoteurDeployments.run(deploymentCloseReason, roteurId);
+      
       console.log(`📋 Assignments cancelled: ${assignmentsResult.changes} row(s) affected`);
+      console.log(`📋 Deployment history closed: ${deploymentsResult.changes} row(s) affected`);
       
       return {
         employeeUpdated: employeeResult.changes,
@@ -1775,6 +1788,29 @@ ipcMain.handle('db-create-roteur-assignment', async (event, assignment) => {
         JSON.stringify(weeklyAssignments) // Store as JSON string
       );
       
+      // Create deployment history records for each site in the weekly assignment
+      const deploymentStmt = db.prepare(`
+        INSERT INTO historique_deployements (
+          id, employe_id, site_id, date_debut, poste, motif_affectation, notes, est_actif, cree_par
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'SYSTEM_ROTEUR')
+      `);
+      
+      // Create deployment history for each site
+      weeklyAssignments.forEach((wa, index) => {
+        const deploymentId = `roteur-dep-${assignmentId}-${index}`;
+        const deploymentNotes = `Affectation rôteur - ${daysOfWeek.find(d => d.value === wa.day_of_week)?.label || 'Jour inconnu'}${wa.notes ? ` - ${wa.notes}` : ''}`;
+        
+        deploymentStmt.run(
+          deploymentId,
+          assignment.roteur_id,
+          wa.site_id,
+          assignment.date_debut,
+          wa.poste || 'NUIT',
+          'ROTATION',
+          deploymentNotes
+        );
+      });
+      
       console.log('✅ [BACKEND] Created weekly roteur assignment:', {
         id: assignmentId,
         roteur_id: assignment.roteur_id,
@@ -1939,6 +1975,19 @@ ipcMain.handle('db-update-roteur-assignment', async (event, assignment) => {
 
       const result = stmt.run(assignment.statut, assignment.id);
       console.log('🔍 Partial update result:', result);
+      
+      // If cancelling, also close related deployment history records
+      if (assignment.statut === 'ANNULE') {
+        const closeDeploymentStmt = db.prepare(`
+          UPDATE historique_deployements 
+          SET est_actif = 0, date_fin = date('now'), notes = COALESCE(notes || ' - ', '') || 'Rotation annulée'
+          WHERE id LIKE ? AND est_actif = 1
+        `);
+        
+        const deploymentPattern = `roteur-dep-${assignment.id}-%`;
+        const deploymentResult = closeDeploymentStmt.run(deploymentPattern);
+        console.log('🔍 Closed deployment history records:', deploymentResult.changes);
+      }
     } else {
       console.log('🔍 Doing full update');
       // Full update with all fields

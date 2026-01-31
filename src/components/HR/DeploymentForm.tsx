@@ -51,7 +51,11 @@ const DeploymentForm: React.FC<DeploymentFormProps> = ({ employee, siteId, onClo
           window.electronAPI.getEmployeesGAS({ statut: 'ACTIF' }),
           window.electronAPI.getSitesGAS()
         ]);
-        setEmployees(emps || []);
+        
+        // Filter out roteurs from regular deployment - they should use roteur management instead
+        const availableEmployees = (emps || []).filter((emp: EmployeeGASFull) => emp.poste !== 'ROTEUR');
+        setEmployees(availableEmployees);
+        
         const activeSites = (sitesData || []).filter((s: any) => s.est_actif);
         setSites(activeSites);
         
@@ -112,6 +116,13 @@ const DeploymentForm: React.FC<DeploymentFormProps> = ({ employee, siteId, onClo
     }
     if (!formData.dateDebut) {
       setError('Veuillez sélectionner une date de début');
+      return;
+    }
+
+    // Check if selected employee is a roteur
+    const selectedEmployee = employees.find(e => e.id === formData.employeId);
+    if (selectedEmployee?.poste === 'ROTEUR') {
+      setError('Les rôteurs ne peuvent pas être déployés sur des sites fixes. Utilisez la gestion des rotations.');
       return;
     }
 
@@ -200,6 +211,24 @@ const DeploymentForm: React.FC<DeploymentFormProps> = ({ employee, siteId, onClo
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <span className="text-sm">{error}</span>
+            </div>
+          )}
+
+          {/* Roteur Restriction Warning */}
+          {employee && employee.poste === 'ROTEUR' && (
+            <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-orange-800">Restriction de déploiement</p>
+                  <p className="text-sm text-orange-700 mt-1">
+                    <strong>{employee.nom_complet}</strong> est un rôteur et ne peut pas être déployé sur un site fixe via ce formulaire.
+                  </p>
+                  <p className="text-xs text-orange-600 mt-2">
+                    Utilisez la section "Rotation" dans le module Opérations pour gérer les affectations de rôteurs.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -383,7 +412,7 @@ const DeploymentForm: React.FC<DeploymentFormProps> = ({ employee, siteId, onClo
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.employeId || !formData.siteId}
+              disabled={loading || !formData.employeId || !formData.siteId || (employee && employee.poste === 'ROTEUR')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
               {loading ? (
