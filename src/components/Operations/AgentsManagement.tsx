@@ -107,20 +107,20 @@ const AgentsManagement: React.FC = () => {
     return styles[statut] || 'bg-gray-100 text-gray-800';
   };
 
-  const getCategorieBadge = (categorie: string) => {
+  const getPosteBadge = (poste: string) => {
     const styles: Record<string, string> = {
       'GARDE': 'bg-blue-100 text-blue-800',
       'ROTEUR': 'bg-purple-100 text-purple-800',
     };
-    return styles[categorie] || 'bg-gray-100 text-gray-800';
+    return styles[poste] || 'bg-gray-100 text-gray-800';
   };
 
-  const getCategorieLabel = (categorie: string) => {
+  const getPosteLabel = (poste: string) => {
     const labels: Record<string, string> = {
-      'GARDE': 'Gardien',
+      'GARDE': 'Garde',
       'ROTEUR': 'Rôteur',
     };
-    return labels[categorie] || categorie;
+    return labels[poste] || poste;
   };
 
   const formatCurrency = (amount: number) => {
@@ -358,7 +358,7 @@ const AgentsManagement: React.FC = () => {
                   Agent
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Catégorie
+                  Poste
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Site Affecté
@@ -405,8 +405,8 @@ const AgentsManagement: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategorieBadge(employee.categorie)}`}>
-                      {getCategorieLabel(employee.categorie)}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPosteBadge(employee.poste)}`}>
+                      {getPosteLabel(employee.poste)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
