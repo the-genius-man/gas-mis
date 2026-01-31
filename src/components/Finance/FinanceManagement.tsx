@@ -302,6 +302,76 @@ export default function FinanceManagement() {
               </div>
             </div>
           </div>
+
+          {/* Quick Actions */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions Rapides</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* New Expense Shortcut */}
+              <button
+                onClick={() => { 
+                  setEditingDepense(null); 
+                  setShowDepenseForm(true); 
+                  setActiveTab('depenses'); 
+                }}
+                className="flex items-center gap-3 p-4 border-2 border-dashed border-red-300 rounded-lg hover:border-red-400 hover:bg-red-50 transition-colors group"
+              >
+                <div className="p-2 bg-red-100 text-red-600 rounded-lg group-hover:bg-red-200">
+                  <TrendingDown className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-gray-900">Nouvelle Dépense</p>
+                  <p className="text-sm text-gray-500">Enregistrer une dépense</p>
+                </div>
+              </button>
+
+              {/* New Deposit Shortcut */}
+              <button
+                onClick={() => { 
+                  setEditingEntree(null); 
+                  setShowEntreeForm(true); 
+                  setActiveTab('entrees'); 
+                }}
+                className="flex items-center gap-3 p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors group"
+              >
+                <div className="p-2 bg-green-100 text-green-600 rounded-lg group-hover:bg-green-200">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-gray-900">Nouveau Dépôt</p>
+                  <p className="text-sm text-gray-500">Enregistrer une entrée</p>
+                </div>
+              </button>
+
+              {/* View Expenses Shortcut */}
+              <button
+                onClick={() => setActiveTab('depenses')}
+                className="flex items-center gap-3 p-4 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+              >
+                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-blue-200">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-gray-900">Voir Dépenses</p>
+                  <p className="text-sm text-gray-500">Gérer les dépenses</p>
+                </div>
+              </button>
+
+              {/* View Deposits Shortcut */}
+              <button
+                onClick={() => setActiveTab('entrees')}
+                className="flex items-center gap-3 p-4 border-2 border-dashed border-purple-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors group"
+              >
+                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg group-hover:bg-purple-200">
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-gray-900">Voir Entrées</p>
+                  <p className="text-sm text-gray-500">Gérer les entrées</p>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
