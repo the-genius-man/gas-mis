@@ -9,15 +9,17 @@ import {
   RefreshCw, 
   DollarSign, 
   BarChart3,
-  CreditCard
+  CreditCard,
+  HandCoins
 } from 'lucide-react';
 import ClientsManagement from './ClientsManagement';
 import SitesManagement from './SitesManagement';
 import InvoicesManagement from './InvoicesManagement';
 import FinanceManagement from './FinanceManagement';
 import FinanceReports from './FinanceReports';
+import DebtLoanManagement from './DebtLoanManagement';
 
-type Tab = 'clients' | 'sites' | 'invoices' | 'treasury' | 'reports';
+type Tab = 'clients' | 'sites' | 'invoices' | 'debts' | 'treasury' | 'reports';
 
 // Check if running in Electron
 const isElectron = () => {
@@ -61,6 +63,12 @@ export default function FinanceModule() {
       description: 'Factures et paiements',
     },
     {
+      id: 'debts' as Tab,
+      label: 'Dettes & Prêts',
+      icon: HandCoins,
+      description: 'Gestion des dettes et prêts',
+    },
+    {
       id: 'treasury' as Tab,
       label: 'Trésorerie',
       icon: Wallet,
@@ -93,6 +101,8 @@ export default function FinanceModule() {
         return <SitesManagement />;
       case 'invoices':
         return <InvoicesManagement />;
+      case 'debts':
+        return <DebtLoanManagement />;
       case 'treasury':
         return <FinanceManagement />;
       case 'reports':
