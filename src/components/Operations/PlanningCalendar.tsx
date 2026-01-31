@@ -265,20 +265,13 @@ const PlanningCalendar: React.FC<WeeklyPlanningProps> = ({ onAssignRoteur }) => 
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => handleRoteurClick(roteur)}
-                        className="flex items-center text-left hover:bg-blue-50 rounded-lg p-2 -m-2 transition-colors w-full"
+                        className="text-left hover:bg-blue-50 rounded-lg p-2 -m-2 transition-colors w-full"
                       >
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Users className="h-5 w-5 text-blue-600" />
-                          </div>
+                        <div className="text-sm font-medium text-blue-600 hover:text-blue-800">
+                          {roteur.roteur_nom}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-blue-600 hover:text-blue-800">
-                            {roteur.roteur_nom}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {roteur.statut === 'EN_COURS' ? 'Actif' : 'Planifié'}
-                          </div>
+                        <div className="text-sm text-gray-500">
+                          {roteur.statut === 'EN_COURS' ? 'Actif' : 'Planifié'}
                         </div>
                       </button>
                     </td>
