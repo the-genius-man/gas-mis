@@ -937,6 +937,84 @@ function createHROperationsTables() {
     )
   `);
 
+  // Plan Comptable OHADA
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS plan_comptable (
+      code_compte TEXT PRIMARY KEY,
+      libelle TEXT NOT NULL,
+      type_compte TEXT NOT NULL CHECK(type_compte IN ('ACTIF', 'PASSIF', 'CHARGE', 'PRODUIT')),
+      classe INTEGER,
+      est_actif INTEGER DEFAULT 1,
+      cree_le TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Seed OHADA chart of accounts if empty
+  const planComptableCount = db.prepare('SELECT COUNT(*) as cnt FROM plan_comptable').get();
+  if (planComptableCount.cnt === 0) {
+    const insertCompte = db.prepare(`
+      INSERT OR IGNORE INTO plan_comptable (code_compte, libelle, type_compte, classe)
+      VALUES (?, ?, ?, ?)
+    `);
+    const seedComptes = db.transaction(() => {
+      // Classe 1 - Comptes de ressources durables
+      insertCompte.run('10', 'Capital et réserves', 'PASSIF', 1);
+      insertCompte.run('16', 'Emprunts et dettes assimilées', 'PASSIF', 1);
+      insertCompte.run('161', 'Emprunts obligataires', 'PASSIF', 1);
+      insertCompte.run('162', 'Emprunts auprès des établissements de crédit', 'PASSIF', 1);
+      insertCompte.run('163', 'Dettes de location-acquisition', 'PASSIF', 1);
+      insertCompte.run('164', 'Emprunts auprès des associés', 'PASSIF', 1);
+      insertCompte.run('165', 'Dépôts et cautionnements reçus', 'PASSIF', 1);
+      insertCompte.run('168', 'Autres emprunts et dettes assimilées', 'PASSIF', 1);
+      // Classe 2 - Comptes d'actif immobilisé
+      insertCompte.run('26', 'Prêts et autres immobilisations financières', 'ACTIF', 2);
+      insertCompte.run('261', 'Prêts aux associés', 'ACTIF', 2);
+      insertCompte.run('264', 'Prêts au personnel', 'ACTIF', 2);
+      insertCompte.run('265', 'Prêts aux filiales et participations', 'ACTIF', 2);
+      insertCompte.run('268', 'Autres prêts', 'ACTIF', 2);
+      // Classe 4 - Comptes de tiers
+      insertCompte.run('40', 'Fournisseurs et comptes rattachés', 'PASSIF', 4);
+      insertCompte.run('401', 'Fournisseurs', 'PASSIF', 4);
+      insertCompte.run('41', 'Clients et comptes rattachés', 'ACTIF', 4);
+      insertCompte.run('411', 'Clients', 'ACTIF', 4);
+      insertCompte.run('42', 'Personnel', 'PASSIF', 4);
+      insertCompte.run('421', 'Personnel - Avances et acomptes', 'ACTIF', 4);
+      insertCompte.run('422', 'Personnel - Rémunérations dues', 'PASSIF', 4);
+      insertCompte.run('43', 'Organismes sociaux', 'PASSIF', 4);
+      insertCompte.run('44', 'État et collectivités publiques', 'PASSIF', 4);
+      insertCompte.run('47', 'Débiteurs et créditeurs divers', 'ACTIF', 4);
+      // Classe 5 - Comptes de trésorerie
+      insertCompte.run('51', 'Banques', 'ACTIF', 5);
+      insertCompte.run('512', 'Banques - comptes courants', 'ACTIF', 5);
+      insertCompte.run('57', 'Caisse', 'ACTIF', 5);
+      insertCompte.run('571', 'Caisse en monnaie nationale', 'ACTIF', 5);
+      insertCompte.run('572', 'Caisse en devises', 'ACTIF', 5);
+      // Classe 6 - Comptes de charges
+      insertCompte.run('60', 'Achats et variations de stocks', 'CHARGE', 6);
+      insertCompte.run('606', 'Eau, Électricité, Carburant', 'CHARGE', 6);
+      insertCompte.run('61', 'Transports', 'CHARGE', 6);
+      insertCompte.run('615', 'Entretien et Maintenance', 'CHARGE', 6);
+      insertCompte.run('63', 'Autres charges', 'CHARGE', 6);
+      insertCompte.run('66', 'Charges de personnel', 'CHARGE', 6);
+      insertCompte.run('661', 'Salaires et Primes', 'CHARGE', 6);
+      insertCompte.run('662', 'Charges sociales', 'CHARGE', 6);
+      insertCompte.run('67', 'Frais financiers', 'CHARGE', 6);
+      insertCompte.run('671', 'Intérêts des emprunts', 'CHARGE', 6);
+      insertCompte.run('672', 'Intérêts sur dettes de location-acquisition', 'CHARGE', 6);
+      insertCompte.run('68', 'Dotations aux amortissements et provisions', 'CHARGE', 6);
+      insertCompte.run('681', 'Dotations aux amortissements', 'CHARGE', 6);
+      insertCompte.run('694', 'Dotations aux provisions pour risques', 'CHARGE', 6);
+      // Classe 7 - Comptes de produits
+      insertCompte.run('70', 'Ventes', 'PRODUIT', 7);
+      insertCompte.run('706', 'Services Vendus', 'PRODUIT', 7);
+      insertCompte.run('77', 'Revenus financiers', 'PRODUIT', 7);
+      insertCompte.run('771', 'Intérêts reçus sur prêts', 'PRODUIT', 7);
+      insertCompte.run('772', 'Revenus des participations', 'PRODUIT', 7);
+    });
+    seedComptes();
+    console.log('Plan comptable OHADA seeded successfully');
+  }
+
   // Écritures Comptables (Journal OHADA)
   db.exec(`
     CREATE TABLE IF NOT EXISTS ecritures_comptables (

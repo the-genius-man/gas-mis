@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Calendar, AlertTriangle, UserCheck, FileText, MapPin, Activity, Clock } from 'lucide-react';
 import RoteurManagement from './RoteurManagement';
-import PlanningCalendar from './PlanningCalendar';
 import AgentsManagement from './AgentsManagement';
 import ActionsManagement from '../Disciplinary/ActionsManagement';
 import OperationsReports from './OperationsReports';
@@ -56,7 +55,7 @@ const OperationsModule: React.FC = () => {
         {activeTab === 'dashboard' && <OperationsDashboard />}
         {activeTab === 'agents' && <AgentsManagement />}
         {activeTab === 'sites' && <SitesManagement />}
-        {activeTab === 'rotation' && <PlanningCalendar />}
+        {activeTab === 'rotation' && <RoteurManagement />}
         {activeTab === 'shifts' && <ShiftManagement />}
         {activeTab === 'discipline' && <ActionsManagement />}
         {activeTab === 'reports' && <OperationsReports />}

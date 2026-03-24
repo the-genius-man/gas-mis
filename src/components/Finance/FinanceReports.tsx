@@ -93,7 +93,7 @@ export default function FinanceReports() {
       // Load all necessary data
       const [invoices, payments, depenses, entrees, clients, sites] = await Promise.all([
         window.electronAPI.getFacturesGAS(),
-        window.electronAPI.getPaiements ? window.electronAPI.getPaiements() : Promise.resolve([]),
+        window.electronAPI.getPaiementsGAS ? window.electronAPI.getPaiementsGAS(null) : Promise.resolve([]),
         window.electronAPI.getDepenses(),
         window.electronAPI.getEntrees ? window.electronAPI.getEntrees() : Promise.resolve([]),
         window.electronAPI.getClientsGAS(),

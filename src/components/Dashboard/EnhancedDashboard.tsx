@@ -139,8 +139,8 @@ export default function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps
   const dashboardStats = appContext?.state.dashboardStats;
   const userRole = utilisateur?.role;
 
-  // For demo purposes, using a default user. In production, get from auth context
-  const currentUserId = 'admin-user-1';
+  // Use authenticated user ID for settings persistence
+  const currentUserId = utilisateur?.id || 'default-user';
 
   const loadQuickActions = useCallback(async () => {
     try {
