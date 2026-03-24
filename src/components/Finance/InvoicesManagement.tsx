@@ -745,6 +745,7 @@ export default function InvoicesManagement() {
         <InvoiceDetailModal
           facture={viewingFacture}
           client={getClient(viewingFacture.client_id)}
+          allInvoices={factures}
           onClose={() => setViewingFacture(null)}
           onPayment={() => { setPayingFacture(viewingFacture); setViewingFacture(null); }}
           onRefresh={loadData}
@@ -789,6 +790,7 @@ export default function InvoicesManagement() {
             invoices={factures.filter(f => selectedInvoiceIds.has(f.id))}
             clients={clients}
             sites={sites}
+            allInvoices={factures}
           />
         </div>
       )}

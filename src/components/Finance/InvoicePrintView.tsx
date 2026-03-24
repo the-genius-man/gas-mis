@@ -5,7 +5,7 @@ import InvoicePrintTemplateNew from './InvoicePrintTemplateNew';
 import { exportToPDF } from '../../utils/pdfExport';
 
 interface InvoicePrintViewProps {
-  facture: FactureGAS;
+  facture: FactureGAS & { totalPaye?: number; soldeRestant?: number };
   client?: ClientGAS;
   onClose: () => void;
 }
@@ -21,6 +21,7 @@ const isElectron = () => {
 export default function InvoicePrintView({ facture, client, onClose }: InvoicePrintViewProps) {
   const electronMode = useMemo(() => isElectron(), []);
   const [sites, setSites] = useState<SiteGAS[]>([]);
+  const [allInvoices, setAllInvoices] = useState<(FactureGAS & { totalPaye?: number; soldeRestant?: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,8 +33,29 @@ export default function InvoicePrintView({ facture, client, onClose }: InvoicePr
     
     setLoading(true);
     try {
-      const data = await window.electronAPI.getSitesGAS();
-      setSites(data || []);
+      const [sitesData, invoicesData] = await Promise.all([
+        window.electronAPI.getSitesGAS(),
+        window.electronAPI.getFacturesGAS()
+      ]);
+      setSites(sitesData || []);
+
+      // Enrich invoices with payment summaries for the prior unpaid table
+      if (invoicesData && facture.creances_anterieures > 0) {
+        const clientInvoices = (invoicesData as FactureGAS[]).filter(
+          inv => inv.client_id === facture.client_id && inv.id !== facture.id
+        );
+        const enriched = await Promise.all(
+          clientInvoices.map(async inv => {
+            try {
+              const summary = await window.electronAPI!.getFacturePaiementsSummary(inv.id);
+              return { ...inv, totalPaye: summary.montant_paye, soldeRestant: summary.solde_restant };
+            } catch {
+              return { ...inv, totalPaye: 0, soldeRestant: inv.montant_total_du_client };
+            }
+          })
+        );
+        setAllInvoices(enriched);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des sites:', error);
     } finally {
@@ -128,6 +150,7 @@ export default function InvoicePrintView({ facture, client, onClose }: InvoicePr
             invoices={[facture]}
             clients={client ? [client] : []}
             sites={sites}
+            allInvoices={allInvoices}
           />
         </div>
       </div>

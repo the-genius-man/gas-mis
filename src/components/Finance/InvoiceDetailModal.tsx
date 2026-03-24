@@ -16,6 +16,7 @@ interface FactureWithPayments extends FactureGAS {
 interface InvoiceDetailModalProps {
   facture: FactureWithPayments;
   client?: ClientGAS;
+  allInvoices?: FactureWithPayments[];
   onClose: () => void;
   onPayment: () => void;
   onRefresh: () => void;
@@ -56,7 +57,7 @@ const getStatusConfig = (status: string) => {
   }
 };
 
-export default function InvoiceDetailModal({ facture, client, onClose, onPayment, onRefresh }: InvoiceDetailModalProps) {
+export default function InvoiceDetailModal({ facture, client, allInvoices, onClose, onPayment, onRefresh }: InvoiceDetailModalProps) {
   const electronMode = useMemo(() => isElectron(), []);
   const [paiements, setPaiements] = useState<PaiementGAS[]>([]);
   const [sites, setSites] = useState<SiteGAS[]>([]);
@@ -499,6 +500,7 @@ export default function InvoiceDetailModal({ facture, client, onClose, onPayment
             invoices={[facture]}
             clients={client ? [client] : []}
             sites={sites}
+            allInvoices={allInvoices}
           />
         </div>
       )}

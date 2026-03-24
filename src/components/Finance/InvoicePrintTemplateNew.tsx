@@ -4,12 +4,15 @@ export interface InvoicePrintTemplateProps {
   invoices: FactureGAS[];
   clients: ClientGAS[];
   sites: SiteGAS[];
+  // All invoices for the client, used to populate the unpaid prior invoices table
+  allInvoices?: (FactureGAS & { totalPaye?: number; soldeRestant?: number })[];
 }
 
 export interface InvoicePrintData {
   invoice: FactureGAS;
   client: ClientGAS | undefined;
   invoiceSites: SiteGAS[];
+  priorUnpaidInvoices: (FactureGAS & { soldeRestant: number })[];
 }
 
 // Helper function to format currency
@@ -41,7 +44,8 @@ function getMonthName(month: number | undefined): string {
 export function prepareInvoicePrintData(
   invoices: FactureGAS[],
   clients: ClientGAS[],
-  sites: SiteGAS[]
+  sites: SiteGAS[],
+  allInvoices?: (FactureGAS & { totalPaye?: number; soldeRestant?: number })[]
 ): InvoicePrintData[] {
   return invoices.map(invoice => {
     const client = clients.find(c => c.id === invoice.client_id);
@@ -51,8 +55,34 @@ export function prepareInvoicePrintData(
           return site;
         }).filter((s): s is SiteGAS => s !== undefined)
       : sites.filter(s => s.client_id === invoice.client_id && s.est_actif);
-    
-    return { invoice, client, invoiceSites };
+
+    // Find prior unpaid invoices for the same client (excluding current invoice)
+    // An invoice is "prior unpaid" if it has a remaining balance and is from an earlier period
+    const priorUnpaidInvoices: (FactureGAS & { soldeRestant: number })[] = [];
+    if (allInvoices && invoice.creances_anterieures > 0) {
+      const currentPeriod = (invoice.periode_annee || 0) * 100 + (invoice.periode_mois || 0);
+      const unpaid = allInvoices
+        .filter(inv =>
+          inv.id !== invoice.id &&
+          inv.client_id === invoice.client_id &&
+          inv.statut_paiement !== 'ANNULE' &&
+          inv.statut_paiement !== 'PAYE_TOTAL' &&
+          (inv.soldeRestant ?? inv.montant_total_du_client) > 0 &&
+          ((inv.periode_annee || 0) * 100 + (inv.periode_mois || 0)) < currentPeriod
+        )
+        .map(inv => ({
+          ...inv,
+          soldeRestant: inv.soldeRestant ?? inv.montant_total_du_client
+        }))
+        .sort((a, b) => {
+          const pa = (a.periode_annee || 0) * 100 + (a.periode_mois || 0);
+          const pb = (b.periode_annee || 0) * 100 + (b.periode_mois || 0);
+          return pa - pb;
+        });
+      priorUnpaidInvoices.push(...unpaid);
+    }
+
+    return { invoice, client, invoiceSites, priorUnpaidInvoices };
   });
 }
 
@@ -166,12 +196,39 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
                 </tr>
               </thead>
               <tbody>
-                {/* This would be populated with actual unpaid invoices data */}
-                <tr className="border-b border-gray-300">
-                  <td className="py-2 px-2 text-sm" colSpan={4}>
-                    <em className="text-gray-500">Créances antérieures: {formatCurrency(invoice.creances_anterieures, invoice.devise)}</em>
-                  </td>
-                </tr>
+                {data.priorUnpaidInvoices.length > 0 ? (
+                  <>
+                    {data.priorUnpaidInvoices.map(prior => (
+                      <tr key={prior.id} className="border-b border-gray-300">
+                        <td className="py-2 px-2 text-sm">
+                          {getMonthName(prior.periode_mois)} {prior.periode_annee}
+                        </td>
+                        <td className="py-2 px-2 text-sm">{formatDate(prior.date_emission)}</td>
+                        <td className="py-2 px-2 text-sm">{prior.numero_facture}</td>
+                        <td className="py-2 px-2 text-sm text-right font-medium">
+                          {formatCurrency(prior.soldeRestant, invoice.devise)} {invoice.devise}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-black">
+                      <td colSpan={3} className="py-2 px-2 text-sm font-semibold text-right">
+                        Total créances antérieures
+                      </td>
+                      <td className="py-2 px-2 text-sm font-bold text-right text-orange-700">
+                        {formatCurrency(invoice.creances_anterieures, invoice.devise)} {invoice.devise}
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <tr className="border-b border-gray-300">
+                    <td className="py-2 px-2 text-sm" colSpan={3}>
+                      Créances antérieures
+                    </td>
+                    <td className="py-2 px-2 text-sm text-right font-medium text-orange-700">
+                      {formatCurrency(invoice.creances_anterieures, invoice.devise)} {invoice.devise}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -224,8 +281,8 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
 }
 
 // Main Component
-export default function InvoicePrintTemplateNew({ invoices, clients, sites }: InvoicePrintTemplateProps) {
-  const printData = prepareInvoicePrintData(invoices, clients, sites);
+export default function InvoicePrintTemplateNew({ invoices, clients, sites, allInvoices }: InvoicePrintTemplateProps) {
+  const printData = prepareInvoicePrintData(invoices, clients, sites, allInvoices);
   
   if (printData.length === 0) {
     return (
