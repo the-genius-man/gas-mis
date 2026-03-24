@@ -286,6 +286,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   createDettePretOhada: (debtLoan) => ipcRenderer.invoke('db-create-dette-pret-ohada', debtLoan),
   getDettesPretsOhada: (filters) => ipcRenderer.invoke('db-get-dettes-prets-ohada', filters),
+  updateDettePretOhada: (debtLoan) => ipcRenderer.invoke('db-update-dette-pret-ohada', debtLoan),
   createPaiementDettePretOhada: (payment) => ipcRenderer.invoke('db-create-paiement-dette-pret-ohada', payment),
   getPaiementsDettePretOhada: (dettePretId) => ipcRenderer.invoke('db-get-paiements-dette-pret-ohada', dettePretId),
   getOhadaDettePretSummary: (filters) => ipcRenderer.invoke('db-get-ohada-dette-pret-summary', filters),

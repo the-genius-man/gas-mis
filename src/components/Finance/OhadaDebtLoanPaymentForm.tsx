@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, DollarSign, Calculator, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface OhadaDebtLoanPaymentFormProps {
   debtLoan: any;
@@ -8,6 +9,7 @@ interface OhadaDebtLoanPaymentFormProps {
 }
 
 export default function OhadaDebtLoanPaymentForm({ debtLoan, onSave, onCancel }: OhadaDebtLoanPaymentFormProps) {
+  const { utilisateur } = useAuth();
   const [formData, setFormData] = useState({
     dette_pret_id: debtLoan.id,
     date_paiement: new Date().toISOString().split('T')[0],
@@ -22,7 +24,7 @@ export default function OhadaDebtLoanPaymentForm({ debtLoan, onSave, onCancel }:
     frais_bancaires: 0,
     notes: '',
     devise: debtLoan.devise || 'USD',
-    cree_par: 'current_user' // This should come from auth context
+    cree_par: utilisateur?.nom_complet || utilisateur?.nom_utilisateur || 'system'
   });
 
   const [loading, setLoading] = useState(false);

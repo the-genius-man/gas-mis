@@ -80,6 +80,15 @@ interface ElectronAPI {
   getGrandLivre: (filters?: any) => Promise<any[]>;
   getBilanOhada: (data: any) => Promise<any[]>;
   
+  // OHADA Debt & Loan Tracking
+  createDettePretOhada: (debtLoan: any) => Promise<any>;
+  getDettesPretsOhada: (filters?: any) => Promise<any[]>;
+  updateDettePretOhada: (debtLoan: any) => Promise<any>;
+  createPaiementDettePretOhada: (payment: any) => Promise<any>;
+  getPaiementsDettePretOhada: (dettePretId: string) => Promise<any[]>;
+  getOhadaDettePretSummary: (filters?: any) => Promise<any>;
+  getOhadaBilanDettesPrets: (dateFin: string) => Promise<any>;
+  
   // Tax Settings
   getTaxSettings: () => Promise<any[]>;
   updateTaxSetting: (data: any) => Promise<any>;

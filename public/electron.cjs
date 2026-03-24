@@ -944,7 +944,7 @@ function createHROperationsTables() {
       date_ecriture TEXT NOT NULL,
       numero_piece TEXT,
       libelle TEXT NOT NULL,
-      type_operation TEXT CHECK(type_operation IN ('PAIE', 'PAIEMENT_SALAIRE', 'PAIEMENT_CHARGES', 'DEPENSE', 'RECETTE', 'AUTRE')),
+      type_operation TEXT CHECK(type_operation IN ('PAIE', 'PAIEMENT_SALAIRE', 'PAIEMENT_CHARGES', 'DEPENSE', 'RECETTE', 'AUTRE', 'CREATION_DETTE', 'CREATION_PRET', 'PAIEMENT_DETTE_PRET')),
       source_id TEXT,
       montant_total REAL NOT NULL,
       devise TEXT DEFAULT 'USD' CHECK(devise IN ('USD', 'CDF')),
@@ -6450,6 +6450,51 @@ ipcMain.handle('db-get-paiements-dette-pret-ohada', async (event, dettePretId) =
     `).all(dettePretId);
   } catch (error) {
     console.error('Error fetching OHADA debt/loan payments:', error);
+    throw error;
+  }
+});
+
+// Update OHADA debt/loan
+ipcMain.handle('db-update-dette-pret-ohada', async (event, debtLoan) => {
+  try {
+    const now = new Date().toISOString();
+    db.prepare(`
+      UPDATE dettes_prets_ohada SET
+        tiers_nom = ?,
+        tiers_type = ?,
+        tiers_numero_compte = ?,
+        contact_info = ?,
+        taux_interet = ?,
+        type_interet = ?,
+        date_echeance = ?,
+        frequence_paiement = ?,
+        nature_garantie = ?,
+        valeur_garantie = ?,
+        objet = ?,
+        conditions_particulieres = ?,
+        pieces_justificatives = ?,
+        modifie_le = ?
+      WHERE id = ?
+    `).run(
+      debtLoan.tiers_nom,
+      debtLoan.tiers_type,
+      debtLoan.tiers_numero_compte || null,
+      debtLoan.contact_info || null,
+      debtLoan.taux_interet || 0,
+      debtLoan.type_interet || 'SIMPLE',
+      debtLoan.date_echeance || null,
+      debtLoan.frequence_paiement || 'MENSUEL',
+      debtLoan.nature_garantie || null,
+      debtLoan.valeur_garantie || 0,
+      debtLoan.objet,
+      debtLoan.conditions_particulieres || null,
+      debtLoan.pieces_justificatives || null,
+      now,
+      debtLoan.id
+    );
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating OHADA debt/loan:', error);
     throw error;
   }
 });

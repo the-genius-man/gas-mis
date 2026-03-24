@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   HandCoins, 
   TrendingDown, 
@@ -119,16 +119,11 @@ export default function OhadaDebtLoanManagement() {
   const [filterDateStart, setFilterDateStart] = useState('');
   const [filterDateEnd, setFilterDateEnd] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!window.electronAPI) return;
     
     setLoading(true);
     try {
-      // Load debts and loans
       const filters = {
         type: filterType !== 'ALL' ? filterType : undefined,
         statut: filterStatus || undefined,
@@ -146,9 +141,8 @@ export default function OhadaDebtLoanManagement() {
       setDebtsLoans(debtsLoansData || []);
       setStats(statsData);
       
-      // Load payments for current tab
       if (activeTab === 'payments') {
-        const allPayments = [];
+        const allPayments: OhadaDebtLoanPayment[] = [];
         for (const debtLoan of debtsLoansData || []) {
           const debtLoanPayments = await window.electronAPI.getPaiementsDettePretOhada(debtLoan.id);
           allPayments.push(...debtLoanPayments);
@@ -160,11 +154,11 @@ export default function OhadaDebtLoanManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterType, filterStatus, filterTiersType, filterDateStart, filterDateEnd, searchTerm, activeTab]);
 
   useEffect(() => {
     loadData();
-  }, [filterType, filterStatus, filterTiersType, filterDateStart, filterDateEnd, searchTerm, activeTab]);
+  }, [loadData]);
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { bg: string; text: string; icon: any }> = {
@@ -236,8 +230,7 @@ export default function OhadaDebtLoanManagement() {
   const handleSaveDebtLoan = async (debtLoan: any) => {
     try {
       if (editingItem) {
-        // Update logic would go here
-        console.log('Updating debt/loan:', debtLoan);
+        await window.electronAPI.updateDettePretOhada({ ...debtLoan, id: editingItem.id });
       } else {
         await window.electronAPI.createDettePretOhada(debtLoan);
       }

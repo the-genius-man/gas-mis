@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Calculator, BookOpen, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PlanComptable {
   code_compte: string;
@@ -15,6 +16,7 @@ interface OhadaDebtLoanFormProps {
 }
 
 export default function OhadaDebtLoanForm({ debtLoan, onSave, onCancel }: OhadaDebtLoanFormProps) {
+  const { utilisateur } = useAuth();
   const [formData, setFormData] = useState({
     type: 'DETTE' as 'DETTE' | 'PRET',
     reference_number: '',
@@ -37,7 +39,7 @@ export default function OhadaDebtLoanForm({ debtLoan, onSave, onCancel }: OhadaD
     conditions_particulieres: '',
     pieces_justificatives: '',
     devise: 'USD' as 'USD' | 'CDF',
-    cree_par: 'current_user' // This should come from auth context
+    cree_par: utilisateur?.nom_complet || utilisateur?.nom_utilisateur || 'system'
   });
 
   const [planComptable, setPlanComptable] = useState<PlanComptable[]>([]);
