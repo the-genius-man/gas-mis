@@ -234,6 +234,37 @@ export default function InvoicesManagement() {
     exportToExcel(dataToExport, 'Factures_GAS', 'Factures');
   };
 
+  // Bulk send selected invoices (BROUILLON → ENVOYE)
+  const handleBulkSend = async () => {
+    const selectedInvoices = factures.filter(f => selectedInvoiceIds.has(f.id));
+    const sendable = selectedInvoices.filter(f => f.statut_paiement === 'BROUILLON');
+
+    if (sendable.length === 0) {
+      alert('Aucune facture en brouillon sélectionnée. Seules les factures en brouillon peuvent être émises.');
+      return;
+    }
+
+    const nonSendable = selectedInvoices.length - sendable.length;
+    const msg = nonSendable > 0
+      ? `Émettre ${sendable.length} facture(s) en brouillon ?\n(${nonSendable} facture(s) ignorée(s) car déjà émises ou annulées)`
+      : `Émettre ${sendable.length} facture(s) sélectionnée(s) ?`;
+
+    if (!confirm(msg)) return;
+
+    try {
+      if (electronMode && window.electronAPI) {
+        await Promise.all(
+          sendable.map(f => window.electronAPI!.updateFactureGAS({ ...f, statut_paiement: 'ENVOYE' }))
+        );
+        setSelectedInvoiceIds(new Set());
+        await loadData();
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'émission en masse:', error);
+      alert('Erreur lors de l\'émission des factures');
+    }
+  };
+
   // Bulk delete selected invoices
   const handleBulkDelete = async () => {
     const selectedInvoices = factures.filter(f => selectedInvoiceIds.has(f.id));
@@ -524,6 +555,13 @@ export default function InvoicesManagement() {
             >
               <Trash className="h-4 w-4" />
               <span>Supprimer</span>
+            </button>
+            <button
+              onClick={handleBulkSend}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              <span>Émettre</span>
             </button>
             <button
               onClick={handleExportSelectedPDF}
