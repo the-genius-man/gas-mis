@@ -9,8 +9,7 @@ import PaymentForm from './PaymentForm';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import BulkInvoiceWizard from './BulkInvoiceWizard';
 import InvoicePrintView from './InvoicePrintView';
-import InvoicePrintTemplateNew from './InvoicePrintTemplateNew';
-import { exportMultipleToPDF } from '../../utils/pdfExport';
+import { exportInvoicesToPDF } from '../../utils/pdfExport';
 import { exportToExcel } from '../../utils/excelExport';
 
 // Check if running in Electron
@@ -61,7 +60,6 @@ export default function InvoicesManagement() {
   const [payingFacture, setPayingFacture] = useState<FactureWithPayments | null>(null);
   const [showBulkWizard, setShowBulkWizard] = useState(false);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
-  const [showPrintPreview, setShowPrintPreview] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -198,52 +196,20 @@ export default function InvoicesManagement() {
     }
   };
 
-  // Export selected invoices to PDF
-  const handleExportSelectedPDF = async () => {
+  // Export selected invoices to PDF — native jsPDF, no html2canvas, no UI freeze
+  const handleExportSelectedPDF = () => {
     const selectedInvoices = factures.filter(f => selectedInvoiceIds.has(f.id));
-    
     if (selectedInvoices.length === 0) {
       alert('Veuillez sélectionner au moins une facture');
       return;
     }
+    const currentYear = new Date().getFullYear();
+    const filename = selectedInvoices.length === 1
+      ? `GAS - ${currentYear} - Invoice ${selectedInvoices[0].numero_facture}.pdf`
+      : `GAS - ${currentYear} - Invoice ${selectedInvoices.length} factures.pdf`;
 
-    try {
-      // Show print preview
-      setShowPrintPreview(true);
-      
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Get all invoice elements
-      const invoiceElements = document.querySelectorAll('.invoice-page');
-      const elements = Array.from(invoiceElements) as HTMLElement[];
-      
-      if (elements.length === 0) {
-        alert('Erreur: Impossible de trouver les factures à exporter');
-        setShowPrintPreview(false);
-        return;
-      }
-      
-      // Generate filename: GAS - 2026 - Invoice #
-      const currentYear = new Date().getFullYear();
-      const invoiceCount = selectedInvoices.length;
-      const filename = `GAS - ${currentYear} - Invoice ${invoiceCount === 1 ? selectedInvoices[0].numero_facture : `${invoiceCount} factures`}.pdf`;
-      
-      // Export to PDF
-      await exportMultipleToPDF(elements, filename, {
-        orientation: 'portrait',
-        format: 'a4',
-        quality: 0.95
-      });
-      
-      // Hide print preview and clear selection
-      setShowPrintPreview(false);
-      setSelectedInvoiceIds(new Set());
-    } catch (error) {
-      console.error('Error exporting to PDF:', error);
-      alert('Erreur lors de l\'export PDF. Veuillez réessayer.');
-      setShowPrintPreview(false);
-    }
+    exportInvoicesToPDF(selectedInvoices, clients, sites, factures, filename);
+    setSelectedInvoiceIds(new Set());
   };
 
   // Export to Excel
@@ -783,17 +749,6 @@ export default function InvoicesManagement() {
         />
       )}
 
-      {/* Hidden Print Preview for Multi-Invoice Export */}
-      {showPrintPreview && (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <InvoicePrintTemplateNew
-            invoices={factures.filter(f => selectedInvoiceIds.has(f.id))}
-            clients={clients}
-            sites={sites}
-            allInvoices={factures}
-          />
-        </div>
-      )}
     </div>
   );
 }
