@@ -310,7 +310,7 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   y += 8;
 
   // ── Prior unpaid invoices table ──────────────────────────────────────────
-  if (invoice.creances_anterieures > 0) {
+  if (priorUnpaidInvoices.length > 0) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.text('AUTRES FACTURES', 105, y, { align: 'center' });
@@ -326,26 +326,22 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
     y += 5;
     doc.setFont('helvetica', 'normal');
 
-    if (priorUnpaidInvoices.length > 0) {
-      for (const prior of priorUnpaidInvoices) {
-        const priorPeriod = prior.periode_mois
-          ? `${MONTHS_FR[(prior.periode_mois || 1) - 1]} ${prior.periode_annee}`
-          : '-';
-        doc.text(priorPeriod, L, y);
-        doc.text(fmtDate(prior.date_emission), 70, y);
-        doc.text(prior.numero_facture, 115, y);
-        doc.text(`${fmtAmt(prior.soldeRestant)} ${invoice.devise}`, R, y, { align: 'right' });
-        y += 5;
-      }
-      doc.line(L, y, R, y);
-      y += 4;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Total créances antérieures', 115, y, { align: 'right' });
-      doc.text(`${fmtAmt(invoice.creances_anterieures)} ${invoice.devise}`, R, y, { align: 'right' });
-    } else {
-      doc.text('Créances antérieures', L, y);
-      doc.text(`${fmtAmt(invoice.creances_anterieures)} ${invoice.devise}`, R, y, { align: 'right' });
+    for (const prior of priorUnpaidInvoices) {
+      const priorPeriod = prior.periode_mois
+        ? `${MONTHS_FR[(prior.periode_mois || 1) - 1]} ${prior.periode_annee}`
+        : '-';
+      doc.text(priorPeriod, L, y);
+      doc.text(fmtDate(prior.date_emission), 70, y);
+      doc.text(prior.numero_facture, 115, y);
+      doc.text(`${fmtAmt(prior.soldeRestant)} ${invoice.devise}`, R, y, { align: 'right' });
+      y += 5;
     }
+    doc.line(L, y, R, y);
+    y += 4;
+    const totalPrior = priorUnpaidInvoices.reduce((s, p) => s + p.soldeRestant, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total créances antérieures', 115, y, { align: 'right' });
+    doc.text(`${fmtAmt(totalPrior)} ${invoice.devise}`, R, y, { align: 'right' });
     y += 10;
   }
 

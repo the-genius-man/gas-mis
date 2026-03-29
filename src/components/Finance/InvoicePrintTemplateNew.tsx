@@ -56,10 +56,10 @@ export function prepareInvoicePrintData(
         }).filter((s): s is SiteGAS => s !== undefined)
       : sites.filter(s => s.client_id === invoice.client_id && s.est_actif);
 
-    // Find prior unpaid invoices for the same client (excluding current invoice)
-    // An invoice is "prior unpaid" if it has a remaining balance and is from an earlier period
+    // Find prior unpaid invoices for the same client (excluding current invoice).
+    // Always computed when allInvoices is provided — does not require creances_anterieures to be set.
     const priorUnpaidInvoices: (FactureGAS & { soldeRestant: number })[] = [];
-    if (allInvoices && invoice.creances_anterieures > 0) {
+    if (allInvoices) {
       const currentPeriod = (invoice.periode_annee || 0) * 100 + (invoice.periode_mois || 0);
       const unpaid = allInvoices
         .filter(inv =>
@@ -183,7 +183,7 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
         </div>
 
         {/* Previous Invoices Section */}
-        {invoice.creances_anterieures > 0 && (
+        {data.priorUnpaidInvoices.length > 0 && (
           <div className="mb-6">
             <h3 className="text-center font-bold text-sm mb-3 uppercase">Autres Factures</h3>
             <table className="w-full border-collapse">
@@ -196,39 +196,29 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
                 </tr>
               </thead>
               <tbody>
-                {data.priorUnpaidInvoices.length > 0 ? (
-                  <>
-                    {data.priorUnpaidInvoices.map(prior => (
-                      <tr key={prior.id} className="border-b border-gray-300">
-                        <td className="py-2 px-2 text-sm">
-                          {getMonthName(prior.periode_mois)} {prior.periode_annee}
-                        </td>
-                        <td className="py-2 px-2 text-sm">{formatDate(prior.date_emission)}</td>
-                        <td className="py-2 px-2 text-sm">{prior.numero_facture}</td>
-                        <td className="py-2 px-2 text-sm text-right font-medium">
-                          {formatCurrency(prior.soldeRestant, invoice.devise)} {invoice.devise}
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="border-t-2 border-black">
-                      <td colSpan={3} className="py-2 px-2 text-sm font-semibold text-right">
-                        Total créances antérieures
-                      </td>
-                      <td className="py-2 px-2 text-sm font-bold text-right text-orange-700">
-                        {formatCurrency(invoice.creances_anterieures, invoice.devise)} {invoice.devise}
-                      </td>
-                    </tr>
-                  </>
-                ) : (
-                  <tr className="border-b border-gray-300">
-                    <td className="py-2 px-2 text-sm" colSpan={3}>
-                      Créances antérieures
+                {data.priorUnpaidInvoices.map(prior => (
+                  <tr key={prior.id} className="border-b border-gray-300">
+                    <td className="py-2 px-2 text-sm">
+                      {getMonthName(prior.periode_mois)} {prior.periode_annee}
                     </td>
-                    <td className="py-2 px-2 text-sm text-right font-medium text-orange-700">
-                      {formatCurrency(invoice.creances_anterieures, invoice.devise)} {invoice.devise}
+                    <td className="py-2 px-2 text-sm">{formatDate(prior.date_emission)}</td>
+                    <td className="py-2 px-2 text-sm">{prior.numero_facture}</td>
+                    <td className="py-2 px-2 text-sm text-right font-medium">
+                      {formatCurrency(prior.soldeRestant, invoice.devise)} {invoice.devise}
                     </td>
                   </tr>
-                )}
+                ))}
+                <tr className="border-t-2 border-black">
+                  <td colSpan={3} className="py-2 px-2 text-sm font-semibold text-right">
+                    Total créances antérieures
+                  </td>
+                  <td className="py-2 px-2 text-sm font-bold text-right text-orange-700">
+                    {formatCurrency(
+                      data.priorUnpaidInvoices.reduce((s, p) => s + p.soldeRestant, 0),
+                      invoice.devise
+                    )} {invoice.devise}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
