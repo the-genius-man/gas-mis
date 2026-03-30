@@ -252,30 +252,34 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   doc.setFont('helvetica', 'normal');
   doc.text('Département de Sécurité et Gardiennage', R, y, { align: 'right' });
   y += 4;
-  doc.text('RCCM: CD/GOM/RCCM/20-B-00414;  IMPOT: A2155845A;  ID NAT.: 19-H5300-N897290', R, y, { align: 'right' });
-  y += 10;
+  doc.text('RCCM: CD/GOM/RCCM/20-B-00414', R, y, { align: 'right' });
+  y += 4;
+  doc.text('IMPOT: A2155845A', R, y, { align: 'right' });
+  y += 4;
+  doc.text('ID NAT.: 19-H5300-N897290', R, y, { align: 'right' });
+  y += 8;
 
   // ── Client / Invoice info grid ───────────────────────────────────────────
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text('Client', L, y);
-  doc.text('Numéro Facture', 90, y, { align: 'center' });
+  doc.text('Numéro Facture', 90, y);
   doc.text('Total à payer', R, y, { align: 'right' });
   y += 5;
   doc.setFont('helvetica', 'normal');
   doc.text(client?.nom_entreprise || 'Client inconnu', L, y);
   doc.setFont('helvetica', 'bold');
-  doc.text(invoice.numero_facture, 90, y, { align: 'center' });
+  doc.text(invoice.numero_facture, 90, y);
   doc.setFontSize(14);
   doc.text(`${fmtAmt(invoice.montant_total_du_client)} ${invoice.devise}`, R, y, { align: 'right' });
   y += 5;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   if (client?.contact_nom) doc.text(client.contact_nom, L, y);
-  doc.text('Date', 90, y, { align: 'center' });
+  doc.text('Date', 90, y);
   y += 4;
   if (client?.telephone) doc.text(client.telephone, L, y);
-  doc.text(fmtDate(invoice.date_emission), 90, y, { align: 'center' });
+  doc.text(fmtDate(invoice.date_emission), 90, y);
   y += 10;
 
   // ── Main service table ───────────────────────────────────────────────────
@@ -350,7 +354,8 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   doc.setFontSize(10);
   doc.text('Total à payer', 140, y);
   doc.text(`${fmtAmt(invoice.montant_total_du_client)} ${invoice.devise}`, R, y, { align: 'right' });
-  y += 5;
+  // 50% more space before "Pour Go Ahead" (was ~5mm, now ~8mm)
+  y += 8;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.text('Pour Go Ahead,', R, y, { align: 'right' });
@@ -362,7 +367,7 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   doc.text('Facturation', R, y, { align: 'right' });
   y += 15;
 
-  // ── Due date ─────────────────────────────────────────────────────────────
+  // ── Due date — above the footer line ────────────────────────────────────
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text(`Cette facture est à payer avant le ${fmtDate(invoice.date_echeance)}`, L, y);

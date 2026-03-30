@@ -109,17 +109,22 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
         
         {/* Header with Logo and Company Info */}
         <div className="flex justify-between items-start mb-8">
-          {/* Logo */}
-          <div className="w-48">
-            <img src="/logo-goahead.png" alt="Go Ahead" className="h-16 object-contain" />
+          {/* Logo - left aligned, fixed width */}
+          <div style={{ width: '52mm', flexShrink: 0 }}>
+            <img
+              src="/logo-goahead.png"
+              alt="Go Ahead"
+              style={{ height: '60px', width: 'auto', display: 'block' }}
+            />
           </div>
-          
-          {/* Company Details */}
+
+          {/* Company Details - right aligned, 3 lines for registration info */}
           <div className="text-right text-sm">
             <h1 className="text-xl font-bold mb-1">GO AHEAD SARLU</h1>
             <p className="font-semibold">Département de Sécurité et Gardiennage</p>
-            <p className="text-xs mt-1">RCCM: CD/GOM/RCCM/20-B-00414;</p>
-            <p className="text-xs">IMPOT: A2155845A; ID NAT.: 19-H5300-N897290</p>
+            <p className="text-xs mt-1">RCCM: CD/GOM/RCCM/20-B-00414</p>
+            <p className="text-xs">IMPOT: A2155845A</p>
+            <p className="text-xs">ID NAT.: 19-H5300-N897290</p>
           </div>
         </div>
 
@@ -132,15 +137,15 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
             <p>{client?.contact_nom || ''}</p>
             <p>{client?.telephone || ''}</p>
           </div>
-          
-          {/* Invoice Number */}
-          <div className="text-center">
+
+          {/* Invoice Number & Date - left aligned */}
+          <div className="text-left">
             <p className="font-semibold mb-1">Numéro Facture</p>
             <p className="font-bold text-lg">{invoice.numero_facture}</p>
             <p className="font-semibold mt-2">Date</p>
             <p>{formatDate(invoice.date_emission)}</p>
           </div>
-          
+
           {/* Total */}
           <div className="text-right">
             <p className="font-semibold mb-1">Total à payer</p>
@@ -231,7 +236,8 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
               <span className="font-semibold text-sm">Total à payer</span>
               <span className="font-bold text-lg">{formatCurrency(invoice.montant_total_du_client, invoice.devise)}</span>
             </div>
-            <p className="text-xs italic">Pour Go Ahead,</p>
+            {/* 50% more space before Pour Go Ahead */}
+            <p className="text-xs italic" style={{ marginTop: '12px' }}>Pour Go Ahead,</p>
           </div>
         </div>
 
@@ -245,12 +251,13 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
           </div>
         </div>
 
-        {/* Footer - Due Date */}
-        <div className="mt-auto pt-8">
-          <p className="text-sm font-semibold mb-4">
+        {/* Footer */}
+        <div className="mt-auto pt-4">
+          {/* Due date — above the footer line */}
+          <p className="text-sm font-semibold mb-3">
             Cette facture est à payer avant le {formatDate(invoice.date_echeance)}
           </p>
-          
+
           {/* Company Footer Info */}
           <div className="border-t-2 border-black pt-3 text-xs text-center">
             <p className="font-semibold mb-1">
