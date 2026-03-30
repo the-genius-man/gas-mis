@@ -294,7 +294,9 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   doc.setFont('helvetica', 'bold');
   doc.text(invoice.numero_facture, 90, y);
   doc.setFontSize(14);
-  doc.text(`${fmtAmt(invoice.montant_total_du_client)} ${invoice.devise}`, R, y, { align: 'right' });
+  const totalPriorHeader = priorUnpaidInvoices.reduce((s, p) => s + p.soldeRestant, 0);
+  const grandTotal = invoice.montant_ht_prestation + (invoice.montant_frais_supp || 0) + totalPriorHeader;
+  doc.text(`${fmtAmt(grandTotal)} ${invoice.devise}`, R, y, { align: 'right' });
   y += 5;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
@@ -375,8 +377,23 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   // ── Totals ───────────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
+  if (priorUnpaidInvoices.length > 0) {
+    // Show breakdown: prestation + creances = total
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Prestation du mois', 140, y, { align: 'right' });
+    doc.text(`${fmtAmt(invoice.montant_ht_prestation + (invoice.montant_frais_supp || 0))} ${invoice.devise}`, R, y, { align: 'right' });
+    y += 5;
+    doc.text('Créances antérieures', 140, y, { align: 'right' });
+    doc.text(`${fmtAmt(priorUnpaidInvoices.reduce((s, p) => s + p.soldeRestant, 0))} ${invoice.devise}`, R, y, { align: 'right' });
+    y += 4;
+    doc.line(140, y, R, y);
+    y += 4;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+  }
   doc.text('Total à payer', 140, y);
-  doc.text(`${fmtAmt(invoice.montant_total_du_client)} ${invoice.devise}`, R, y, { align: 'right' });
+  doc.text(`${fmtAmt(grandTotal)} ${invoice.devise}`, R, y, { align: 'right' });
   // 50% more space before "Pour Go Ahead" (was ~5mm, now ~8mm)
   y += 8;
   doc.setFont('helvetica', 'normal');

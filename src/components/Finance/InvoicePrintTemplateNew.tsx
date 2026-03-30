@@ -156,7 +156,14 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
           {/* Total */}
           <div className="text-right">
             <p className="font-semibold mb-1">Total à payer</p>
-            <p className="font-bold text-2xl">{formatCurrency(invoice.montant_total_du_client, invoice.devise)}</p>
+            <p className="font-bold text-2xl">
+              {formatCurrency(
+                invoice.montant_ht_prestation +
+                (invoice.montant_frais_supp || 0) +
+                data.priorUnpaidInvoices.reduce((s, p) => s + p.soldeRestant, 0),
+                invoice.devise
+              )}
+            </p>
           </div>
         </div>
 
@@ -239,9 +246,34 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
         {/* Total Section */}
         <div className="flex justify-end mb-8">
           <div className="text-right">
+            {data.priorUnpaidInvoices.length > 0 && (
+              <>
+                <div className="flex justify-between gap-8 mb-1">
+                  <span className="text-sm text-gray-600">Prestation du mois</span>
+                  <span className="text-sm">{formatCurrency(invoice.montant_ht_prestation, invoice.devise)} {invoice.devise}</span>
+                </div>
+                <div className="flex justify-between gap-8 mb-2">
+                  <span className="text-sm text-gray-600">Créances antérieures</span>
+                  <span className="text-sm text-orange-700">
+                    {formatCurrency(
+                      data.priorUnpaidInvoices.reduce((s, p) => s + p.soldeRestant, 0),
+                      invoice.devise
+                    )} {invoice.devise}
+                  </span>
+                </div>
+                <div className="border-t border-gray-300 pt-2 mb-2" />
+              </>
+            )}
             <div className="flex justify-between gap-8 mb-2">
               <span className="font-semibold text-sm">Total à payer</span>
-              <span className="font-bold text-lg">{formatCurrency(invoice.montant_total_du_client, invoice.devise)}</span>
+              <span className="font-bold text-lg">
+                {formatCurrency(
+                  invoice.montant_ht_prestation +
+                  (invoice.montant_frais_supp || 0) +
+                  data.priorUnpaidInvoices.reduce((s, p) => s + p.soldeRestant, 0),
+                  invoice.devise
+                )} {invoice.devise}
+              </span>
             </div>
             {/* 50% more space before Pour Go Ahead */}
             <p className="text-xs italic" style={{ marginTop: '12px' }}>Pour Go Ahead,</p>
