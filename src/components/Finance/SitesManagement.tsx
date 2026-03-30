@@ -43,14 +43,14 @@ export default function SitesManagement() {
     setLoading(true);
     try {
       if (electronMode && window.electronAPI) {
-        const [sitesData, clientsData, activeClientsData] = await Promise.all([
+        const [sitesData, clientsData] = await Promise.all([
           window.electronAPI.getSitesGAS(),
           window.electronAPI.getClientsGAS(),
-          window.electronAPI.getActiveClientsGAS ? window.electronAPI.getActiveClientsGAS() : window.electronAPI.getClientsGAS()
         ]);
         setSites(sitesData || []);
         setClients(clientsData || []);
-        setActiveClients(activeClientsData || []);
+        // Derive active clients from the already-fetched list — no extra API call needed
+        setActiveClients((clientsData || []).filter((c: any) => c.est_actif !== 0));
       }
     } catch (error) {
       console.error('Erreur lors du chargement:', error);

@@ -761,6 +761,8 @@ export default function InvoicesManagement() {
         <InvoicePrintView
           facture={printingFacture}
           client={getClient(printingFacture.client_id)}
+          allInvoicesFromParent={factures}
+          sitesFromParent={sites}
           onClose={() => setPrintingFacture(null)}
         />
       )}

@@ -7,6 +7,9 @@ import { exportToPDF } from '../../utils/pdfExport';
 interface InvoicePrintViewProps {
   facture: FactureGAS & { totalPaye?: number; soldeRestant?: number };
   client?: ClientGAS;
+  // Optional: pass pre-loaded data from parent to avoid redundant fetches
+  allInvoicesFromParent?: (FactureGAS & { totalPaye?: number; soldeRestant?: number })[];
+  sitesFromParent?: SiteGAS[];
   onClose: () => void;
 }
 
@@ -18,29 +21,34 @@ const isElectron = () => {
   return false;
 };
 
-export default function InvoicePrintView({ facture, client, onClose }: InvoicePrintViewProps) {
+export default function InvoicePrintView({ facture, client, allInvoicesFromParent, sitesFromParent, onClose }: InvoicePrintViewProps) {
   const electronMode = useMemo(() => isElectron(), []);
-  const [sites, setSites] = useState<SiteGAS[]>([]);
-  const [allInvoices, setAllInvoices] = useState<(FactureGAS & { totalPaye?: number; soldeRestant?: number })[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sites, setSites] = useState<SiteGAS[]>(sitesFromParent || []);
+  const [allInvoices, setAllInvoices] = useState<(FactureGAS & { totalPaye?: number; soldeRestant?: number })[]>(
+    allInvoicesFromParent || []
+  );
+  const [loading, setLoading] = useState(!sitesFromParent || !allInvoicesFromParent);
 
   useEffect(() => {
-    loadSites();
+    // Only fetch if parent didn't provide the data
+    if (!sitesFromParent || !allInvoicesFromParent) {
+      loadSites();
+    }
   }, []);
 
   const loadSites = async () => {
-    if (!electronMode || !window.electronAPI) return;
-    
+    if (!electronMode || !window.electronAPI) { setLoading(false); return; }
+
     setLoading(true);
     try {
       const [sitesData, invoicesData] = await Promise.all([
-        window.electronAPI.getSitesGAS(),
-        window.electronAPI.getFacturesGAS()
+        sitesFromParent ? Promise.resolve(sitesFromParent) : window.electronAPI.getSitesGAS(),
+        allInvoicesFromParent ? Promise.resolve(allInvoicesFromParent) : window.electronAPI.getFacturesGAS()
       ]);
-      setSites(sitesData || []);
+      if (!sitesFromParent) setSites(sitesData || []);
 
-      // Always load all client invoices for the prior unpaid table — no longer gated on creances_anterieures
-      if (invoicesData) {
+      // Enrich client invoices with payment summaries
+      if (!allInvoicesFromParent && invoicesData) {
         const clientInvoices = (invoicesData as FactureGAS[]).filter(
           inv => inv.client_id === facture.client_id && inv.id !== facture.id
         );
@@ -57,7 +65,7 @@ export default function InvoicePrintView({ facture, client, onClose }: InvoicePr
         setAllInvoices(enriched);
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des sites:', error);
+      console.error('Erreur lors du chargement:', error);
     } finally {
       setLoading(false);
     }
