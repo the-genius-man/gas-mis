@@ -61,15 +61,23 @@ export function prepareInvoicePrintData(
     const priorUnpaidInvoices: (FactureGAS & { soldeRestant: number })[] = [];
     if (allInvoices) {
       const currentPeriod = (invoice.periode_annee || 0) * 100 + (invoice.periode_mois || 0);
+      console.log('[CREANCES] Invoice:', invoice.numero_facture, 'period:', currentPeriod, 'allInvoices count:', allInvoices.length);
       const unpaid = allInvoices
-        .filter(inv =>
-          inv.id !== invoice.id &&
-          inv.client_id === invoice.client_id &&
-          inv.statut_paiement !== 'ANNULE' &&
-          inv.statut_paiement !== 'PAYE_TOTAL' &&
-          (inv.soldeRestant ?? inv.montant_total_du_client) > 0 &&
-          ((inv.periode_annee || 0) * 100 + (inv.periode_mois || 0)) < currentPeriod
-        )
+        .filter(inv => {
+          const invPeriod = (inv.periode_annee || 0) * 100 + (inv.periode_mois || 0);
+          const solde = inv.soldeRestant ?? inv.montant_total_du_client;
+          const passes =
+            inv.id !== invoice.id &&
+            inv.client_id === invoice.client_id &&
+            inv.statut_paiement !== 'ANNULE' &&
+            inv.statut_paiement !== 'PAYE_TOTAL' &&
+            solde > 0 &&
+            invPeriod < currentPeriod;
+          if (inv.client_id === invoice.client_id && inv.id !== invoice.id) {
+            console.log('[CREANCES] Candidate:', inv.numero_facture, 'period:', invPeriod, 'status:', inv.statut_paiement, 'solde:', solde, 'passes:', passes);
+          }
+          return passes;
+        })
         .map(inv => ({
           ...inv,
           soldeRestant: inv.soldeRestant ?? inv.montant_total_du_client
