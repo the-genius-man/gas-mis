@@ -39,8 +39,8 @@ export default function InvoicePrintView({ facture, client, onClose }: InvoicePr
       ]);
       setSites(sitesData || []);
 
-      // Enrich invoices with payment summaries for the prior unpaid table
-      if (invoicesData && facture.creances_anterieures > 0) {
+      // Always load all client invoices for the prior unpaid table — no longer gated on creances_anterieures
+      if (invoicesData) {
         const clientInvoices = (invoicesData as FactureGAS[]).filter(
           inv => inv.client_id === facture.client_id && inv.id !== facture.id
         );
