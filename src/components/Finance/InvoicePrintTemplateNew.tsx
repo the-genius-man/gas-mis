@@ -118,13 +118,12 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
             />
           </div>
 
-          {/* Company Details - right aligned, 3 lines for registration info */}
+          {/* Company Details - right aligned, 4 lines */}
           <div className="text-right text-sm">
             <h1 className="text-xl font-bold mb-1">GO AHEAD SARLU</h1>
             <p className="font-semibold">Département de Sécurité et Gardiennage</p>
             <p className="text-xs mt-1">RCCM: CD/GOM/RCCM/20-B-00414</p>
-            <p className="text-xs">IMPOT: A2155845A</p>
-            <p className="text-xs">ID NAT.: 19-H5300-N897290</p>
+            <p className="text-xs">ID NAT.: 19-H5300-N897290 &nbsp;|&nbsp; IMPOT: A2155845A</p>
           </div>
         </div>
 

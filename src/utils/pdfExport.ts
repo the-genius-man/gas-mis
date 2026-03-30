@@ -244,6 +244,31 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   let y = 20;
 
   // ── Header ──────────────────────────────────────────────────────────────
+  // Logo — load from disk in Electron context
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    // In dev: public/logo-goahead.png; in prod: resources/logo-goahead.png
+    const logoPaths = [
+      path.join(process.resourcesPath || '', 'logo-goahead.png'),
+      path.join(__dirname || '', '..', 'public', 'logo-goahead.png'),
+      path.join(process.cwd(), 'public', 'logo-goahead.png')
+    ];
+    let logoData: string | null = null;
+    for (const p of logoPaths) {
+      if (fs.existsSync(p)) {
+        logoData = 'data:image/png;base64,' + fs.readFileSync(p).toString('base64');
+        break;
+      }
+    }
+    if (logoData) {
+      // Draw logo on left: x=L, y=15, width=40mm, height=20mm
+      doc.addImage(logoData, 'PNG', L, 15, 40, 20);
+    }
+  } catch (_) {
+    // Logo not available — skip silently
+  }
+
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text('GO AHEAD SARLU', R, y, { align: 'right' });
@@ -254,9 +279,7 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   y += 4;
   doc.text('RCCM: CD/GOM/RCCM/20-B-00414', R, y, { align: 'right' });
   y += 4;
-  doc.text('IMPOT: A2155845A', R, y, { align: 'right' });
-  y += 4;
-  doc.text('ID NAT.: 19-H5300-N897290', R, y, { align: 'right' });
+  doc.text('ID NAT.: 19-H5300-N897290  |  IMPOT: A2155845A', R, y, { align: 'right' });
   y += 8;
 
   // ── Client / Invoice info grid ───────────────────────────────────────────
