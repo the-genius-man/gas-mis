@@ -31,11 +31,11 @@ The enhancements cover: sequential invoice numbering, automatic payment status t
 
 ### Requirement 1: Sequential Invoice Numbering
 
-**User Story:** As a finance manager, I want invoices to be numbered sequentially per year in the format FAC-YYYY-NNN, so that invoice numbers are predictable, auditable, and compliant with OHADA traceability requirements.
+**User Story:** As a finance manager, I want invoices to be numbered sequentially per year in the format FAC-YY-MM-NNN, so that invoice numbers are predictable, auditable, and compliant with OHADA traceability requirements.
 
 #### Acceptance Criteria
 
-1. WHEN the Invoice_Generator creates a new invoice, THE Sequence_Manager SHALL assign a FAC number in the format `FAC-{YYYY}-{NNN}` where `YYYY` is the four-digit emission year and `NNN` is a zero-padded three-digit sequence number starting at 001.
+1. WHEN the Invoice_Generator creates a new invoice, THE Sequence_Manager SHALL assign a FAC number in the format `FAC-{YY}-{MM}-{NNN}` where `YY` is the two-digit emission year, `MM` is the two-digit emission month and `NNN` is a zero-padded three-digit sequence number starting at 001.
 2. WHEN the Invoice_Generator creates multiple invoices in the same year, THE Sequence_Manager SHALL assign strictly incrementing sequence numbers with no gaps or duplicates.
 3. WHEN the Invoice_Generator creates the first invoice of a new calendar year, THE Sequence_Manager SHALL reset the sequence counter to 001 for that year.
 4. WHEN two or more invoice creation requests are processed concurrently, THE Sequence_Manager SHALL use a SQLite transaction with an exclusive lock to guarantee that each request receives a unique sequence number.
@@ -101,7 +101,7 @@ The enhancements cover: sequential invoice numbering, automatic payment status t
 1. THE System SHALL provide an aging report accessible from the invoices module via a dedicated "Rapport d'Ancienneté" button.
 2. THE System SHALL group outstanding invoices (solde_restant > 0, statut_paiement not ANNULE) into four age buckets based on days elapsed since `date_echeance`: 0–30 days, 31–60 days, 61–90 days, and 90+ days.
 3. WHEN an invoice has no `date_echeance`, THE System SHALL place it in the 0–30 days bucket.
-4. THE System SHALL display for each invoice row: client name, invoice number, emission date, due date, total amount, amount paid, outstanding balance, and days overdue.
+4. THE System SHALL display for each invoice row: client name, invoice number, emission date, total amount, amount paid, outstanding balance, and days overdue.
 5. THE System SHALL display a summary row per bucket showing the count of invoices and the total outstanding balance for that bucket.
 6. THE System SHALL display a grand total row showing the total outstanding balance across all buckets.
 7. THE System SHALL allow filtering the aging report by client.
