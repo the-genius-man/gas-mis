@@ -149,9 +149,11 @@ export default function InvoiceForm({ facture, clients, sites, onClose, onSucces
         // Create mode — one invoice per selected month
         for (const mois of selectedMonths) {
           const id = crypto.randomUUID();
+          const clientObj = clients.find(c => c.id === clientId);
           const invoice: FactureGAS = {
             id,
             client_id: clientId,
+            client_nom: clientObj?.nom_entreprise,
             numero_facture: generateInvoiceNumber(mois, annee),
             date_emission: dateEmission,
             date_echeance: dateEcheance,

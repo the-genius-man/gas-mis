@@ -290,7 +290,7 @@ function drawInvoicePage(doc: jsPDF, data: InvoicePrintData): void {
   doc.text('Total à payer', R, y, { align: 'right' });
   y += 5;
   doc.setFont('helvetica', 'normal');
-  doc.text(client?.nom_entreprise || 'Client inconnu', L, y);
+  doc.text(data.clientNomDisplay || client?.nom_entreprise || 'Client inconnu', L, y);
   doc.setFont('helvetica', 'bold');
   doc.text(invoice.numero_facture, 90, y);
   doc.setFontSize(14);

@@ -93,6 +93,7 @@ export interface EmployeGAS {
 export interface FactureGAS {
   id: string;
   client_id: string;
+  client_nom?: string; // Snapshot of client name at invoice creation time
   numero_facture: string;
   date_emission: string;
   date_echeance?: string;

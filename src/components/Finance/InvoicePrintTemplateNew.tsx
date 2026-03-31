@@ -11,6 +11,7 @@ export interface InvoicePrintTemplateProps {
 export interface InvoicePrintData {
   invoice: FactureGAS;
   client: ClientGAS | undefined;
+  clientNomDisplay: string;
   invoiceSites: SiteGAS[];
   priorUnpaidInvoices: (FactureGAS & { soldeRestant: number })[];
 }
@@ -48,7 +49,9 @@ export function prepareInvoicePrintData(
   allInvoices?: (FactureGAS & { totalPaye?: number; soldeRestant?: number })[]
 ): InvoicePrintData[] {
   return invoices.map(invoice => {
+    // Use the snapshot name stored on the invoice; fall back to live lookup
     const client = clients.find(c => c.id === invoice.client_id);
+    const clientNomDisplay = invoice.client_nom || client?.nom_entreprise || 'Client inconnu';
     const invoiceSites = invoice.details
       ? invoice.details.map(detail => {
           const site = sites.find(s => s.id === detail.site_id);
@@ -90,7 +93,7 @@ export function prepareInvoicePrintData(
       priorUnpaidInvoices.push(...unpaid);
     }
 
-    return { invoice, client, invoiceSites, priorUnpaidInvoices };
+    return { invoice, client, clientNomDisplay, invoiceSites, priorUnpaidInvoices };
   });
 }
 
@@ -101,7 +104,7 @@ interface SingleInvoicePrintProps {
 }
 
 function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
-  const { invoice, client } = data;
+  const { invoice, client, clientNomDisplay } = data;
   
   return (
     <div className={`invoice-page bg-white ${!isLast ? 'page-break-after' : ''}`} style={{ width: '210mm', minHeight: '297mm' }}>
@@ -140,7 +143,7 @@ function SingleInvoicePrint({ data, isLast }: SingleInvoicePrintProps) {
           {/* Client */}
           <div>
             <p className="font-semibold mb-1">Client</p>
-            <p className="font-bold">{client?.nom_entreprise || 'Client inconnu'}</p>
+            <p className="font-bold">{clientNomDisplay}</p>
             <p>{client?.contact_nom || ''}</p>
             <p>{client?.telephone || ''}</p>
           </div>

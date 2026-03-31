@@ -265,6 +265,22 @@ function createTables() {
     // Column already exists, ignore
   }
 
+  // Add client_nom snapshot to factures_clients (migration)
+  try {
+    db.exec(`ALTER TABLE factures_clients ADD COLUMN client_nom TEXT`);
+    // Backfill existing invoices with current client name
+    db.exec(`
+      UPDATE factures_clients
+      SET client_nom = (
+        SELECT nom_entreprise FROM clients_gas WHERE clients_gas.id = factures_clients.client_id
+      )
+      WHERE client_nom IS NULL
+    `);
+    console.log('✅ client_nom column added and backfilled in factures_clients');
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   // Factures Clients GAS (Comptabilité OHADA)
   db.exec(`
     CREATE TABLE IF NOT EXISTS factures_clients (
@@ -5240,16 +5256,17 @@ ipcMain.handle('db-add-facture-gas', async (event, facture) => {
   try {
     const stmt = db.prepare(`
       INSERT INTO factures_clients (
-        id, client_id, numero_facture, date_emission, date_echeance, periode_mois,
+        id, client_id, client_nom, numero_facture, date_emission, date_echeance, periode_mois,
         periode_annee, total_gardiens_factures, montant_ht_prestation, montant_frais_supp,
         motif_frais_supp, creances_anterieures, montant_total_ttc, montant_total_du_client,
         devise, statut_paiement, notes_facture
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     stmt.run(
       facture.id,
       facture.client_id,
+      facture.client_nom || null,
       facture.numero_facture,
       facture.date_emission,
       facture.date_echeance || null,
