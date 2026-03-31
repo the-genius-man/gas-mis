@@ -51,11 +51,11 @@ export default function InvoicesManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | StatutFacture>('ALL');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  // Period filter — defaults to current month
+  // Period filter — defaults to current year, previous month
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth() + 1);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(
+    new Date().getMonth() === 0 ? 12 : new Date().getMonth() // previous month (getMonth() is 0-indexed so it gives prev month)
+  );
   const [showForm, setShowForm] = useState(false);
   const [editingFacture, setEditingFacture] = useState<FactureGAS | null>(null);
   const [viewingFacture, setViewingFacture] = useState<FactureWithPayments | null>(null);
@@ -70,7 +70,7 @@ export default function InvoicesManagement() {
 
   useEffect(() => {
     setSelectedInvoiceIds(new Set());
-  }, [searchTerm, statusFilter, dateFrom, dateTo, selectedYear, selectedMonth]);
+  }, [searchTerm, statusFilter, selectedYear, selectedMonth]);
 
   const loadData = async () => {
     setLoading(true);
@@ -343,20 +343,8 @@ export default function InvoicesManagement() {
       ? facture.periode_annee === selectedYear
       : facture.periode_annee === selectedYear && facture.periode_mois === selectedMonth;
 
-    // Date range filter (secondary, applied on top of period)
-    let matchesDateRange = true;
-    if (dateFrom || dateTo) {
-      const factureDate = new Date(facture.date_emission);
-      if (dateFrom) matchesDateRange = matchesDateRange && factureDate >= new Date(dateFrom);
-      if (dateTo) {
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        matchesDateRange = matchesDateRange && factureDate <= toDate;
-      }
-    }
-
-    return matchesSearch && matchesStatus && matchesPeriod && matchesDateRange;
-  }), [factures, searchTerm, statusFilter, selectedYear, selectedMonth, dateFrom, dateTo]);
+    return matchesSearch && matchesStatus && matchesPeriod;
+  }), [factures, searchTerm, statusFilter, selectedYear, selectedMonth]);
 
   // Collection summary for the selected period
   const periodSummary = useMemo(() => {
@@ -436,94 +424,6 @@ export default function InvoicesManagement() {
         </div>
       </div>
 
-      {/* Period Selector */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Year selector */}
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Année:</span>
-            <div className="flex gap-1">
-              {(availableYears.length > 0 ? availableYears : [new Date().getFullYear()]).map(y => (
-                <button
-                  key={y}
-                  onClick={() => { setSelectedYear(y); setSelectedMonth(null); }}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    selectedYear === y && selectedMonth === null
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {y}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="h-5 w-px bg-gray-300" />
-
-          {/* Month pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-gray-700">Mois:</span>
-            <button
-              onClick={() => setSelectedMonth(null)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                selectedMonth === null
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Tous
-            </button>
-            {MONTHS_FR.map((name, i) => {
-              const m = i + 1;
-              const hasFact = availablePeriods.some(p => p.year === selectedYear && p.month === m);
-              if (!hasFact) return null;
-              return (
-                <button
-                  key={m}
-                  onClick={() => setSelectedMonth(m)}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                    selectedMonth === m
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {name.slice(0, 3)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Collection summary bar */}
-        {periodSummary.count > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">
-                {periodSummary.count} facture{periodSummary.count > 1 ? 's' : ''} —{' '}
-                {selectedMonth ? `${MONTHS_FR[selectedMonth - 1]} ${selectedYear}` : `Année ${selectedYear}`}
-              </span>
-              <span className="text-sm font-semibold text-gray-700">{periodSummary.pct}% encaissé</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-              <div
-                className={`h-2 rounded-full transition-all ${periodSummary.pct >= 100 ? 'bg-green-500' : periodSummary.pct > 50 ? 'bg-blue-500' : 'bg-orange-500'}`}
-                style={{ width: `${periodSummary.pct}%` }}
-              />
-            </div>
-            <div className="flex gap-6 text-xs text-gray-600">
-              <span>Total: <strong className="text-gray-900">${periodSummary.total.toLocaleString()}</strong></span>
-              <span>Encaissé: <strong className="text-green-700">${periodSummary.collected.toLocaleString()}</strong></span>
-              <span>Restant: <strong className="text-orange-700">${periodSummary.outstanding.toLocaleString()}</strong></span>
-              {periodSummary.overdue > 0 && (
-                <span className="text-red-600"><strong>{periodSummary.overdue}</strong> en retard</span>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -587,82 +487,97 @@ export default function InvoicesManagement() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Rechercher par numéro de facture ou client..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      {/* Filters — single row */}
+      <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Rechercher facture ou client..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Year dropdown */}
+          <select
+            value={selectedYear}
+            onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedMonth(null); }}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+          >
+            {(availableYears.length > 0 ? availableYears : [new Date().getFullYear()]).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+
+          {/* Month dropdown */}
+          <select
+            value={selectedMonth ?? ''}
+            onChange={(e) => setSelectedMonth(e.target.value === '' ? null : Number(e.target.value))}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Tous les mois</option>
+            {MONTHS_FR.map((name, i) => (
+              <option key={i + 1} value={i + 1}>{name}</option>
+            ))}
+          </select>
+
+          {/* Status filter */}
+          <div className="flex items-center gap-1">
+            <Filter className="h-4 w-4 text-gray-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">Tous statuts</option>
+              <option value="BROUILLON">Brouillon</option>
+              <option value="ENVOYE">Envoyé</option>
+              <option value="PAYE_PARTIEL">Payé Partiel</option>
+              <option value="PAYE_TOTAL">Payé Total</option>
+              <option value="ANNULE">Annulé</option>
+            </select>
+          </div>
+
+          {/* Excel Export */}
+          <button
+            onClick={handleExportToExcel}
+            className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1 text-sm whitespace-nowrap"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Excel
+          </button>
+        </div>
+
+        {/* Collection summary bar */}
+        {periodSummary.count > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-500">
+                {periodSummary.count} facture{periodSummary.count > 1 ? 's' : ''} —{' '}
+                {selectedMonth ? `${MONTHS_FR[selectedMonth - 1]} ${selectedYear}` : `Année ${selectedYear}`}
+              </span>
+              <span className="text-xs font-semibold text-gray-700">{periodSummary.pct}% encaissé</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
+              <div
+                className={`h-1.5 rounded-full transition-all ${periodSummary.pct >= 100 ? 'bg-green-500' : periodSummary.pct > 50 ? 'bg-blue-500' : 'bg-orange-500'}`}
+                style={{ width: `${periodSummary.pct}%` }}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="ALL">Tous les statuts</option>
-                <option value="BROUILLON">Brouillon</option>
-                <option value="ENVOYE">Envoyé</option>
-                <option value="PAYE_PARTIEL">Payé Partiel</option>
-                <option value="PAYE_TOTAL">Payé Total</option>
-                <option value="ANNULE">Annulé</option>
-              </select>
-            </div>
-          </div>
-          
-          {/* Date Range Filter */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-600">Période:</span>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 flex-1">
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Du:</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Au:</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              {(dateFrom || dateTo) && (
-                <button
-                  onClick={() => { setDateFrom(''); setDateTo(''); }}
-                  className="text-sm text-blue-600 hover:text-blue-700 px-2"
-                >
-                  Réinitialiser
-                </button>
+            <div className="flex gap-4 text-xs text-gray-600">
+              <span>Total: <strong className="text-gray-900">${periodSummary.total.toLocaleString()}</strong></span>
+              <span>Encaissé: <strong className="text-green-700">${periodSummary.collected.toLocaleString()}</strong></span>
+              <span>Restant: <strong className="text-orange-700">${periodSummary.outstanding.toLocaleString()}</strong></span>
+              {periodSummary.overdue > 0 && (
+                <span className="text-red-600"><strong>{periodSummary.overdue}</strong> en retard</span>
               )}
             </div>
-            
-            {/* Excel Export Button */}
-            <button
-              onClick={handleExportToExcel}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 whitespace-nowrap"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              <span>Exporter Excel</span>
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Export Selected Button */}
