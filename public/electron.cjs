@@ -268,15 +268,6 @@ function createTables() {
   // Add client_nom snapshot to factures_clients (migration)
   try {
     db.exec(`ALTER TABLE factures_clients ADD COLUMN client_nom TEXT`);
-    // Backfill existing invoices with current client name
-    db.exec(`
-      UPDATE factures_clients
-      SET client_nom = (
-        SELECT nom_entreprise FROM clients_gas WHERE clients_gas.id = factures_clients.client_id
-      )
-      WHERE client_nom IS NULL
-    `);
-    console.log('✅ client_nom column added and backfilled in factures_clients');
   } catch (e) {
     // Column already exists, ignore
   }
