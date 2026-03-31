@@ -152,6 +152,45 @@ export interface PaiementGAS {
   facture?: FactureGAS;
 }
 
+// Facture with computed payment fields
+export interface FactureWithPayments extends FactureGAS {
+  totalPaye: number;
+  soldeRestant: number;
+}
+
+// Avoir (Credit Note)
+export interface AvoirGAS {
+  id: string;
+  numero_avoir: string;
+  facture_id: string;
+  client_id: string;
+  date_avoir: string;
+  montant_avoir: number;
+  motif_avoir: string;
+  devise: DeviseClient;
+  cree_le?: string;
+  // Joined
+  facture?: FactureGAS;
+  client?: ClientGAS;
+}
+
+// Aging bucket for the invoice aging report
+export interface AgingBucket {
+  label: string;           // '0-30 jours', '31-60 jours', etc.
+  invoices: FactureWithPayments[];
+  totalSolde: number;
+}
+
+// Statement line for per-client statements
+export interface StatementLine {
+  date: string;
+  reference: string;
+  type: 'FACTURE' | 'PAIEMENT' | 'AVOIR';
+  debit: number;           // invoice amount
+  credit: number;          // payment or avoir amount
+  balance: number;         // running balance
+}
+
 // Dashboard Stats
 export interface DashboardStats {
   totalEmployees: number;

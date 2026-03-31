@@ -53,6 +53,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deletePaiementGAS: (id) => ipcRenderer.invoke('db-delete-paiement-gas', id),
   getFacturePaiementsSummary: (factureId) => ipcRenderer.invoke('db-get-facture-paiements-summary', factureId),
   
+  // Avoirs GAS (Table: avoirs)
+  createAvoir: (avoir) => ipcRenderer.invoke('db-create-avoir', avoir),
+  getAvoirsForFacture: (factureId) => ipcRenderer.invoke('db-get-avoirs-for-facture', factureId),
+  getAvoirsForClient: (clientId, filters) => ipcRenderer.invoke('db-get-avoirs-for-client', clientId, filters),
+  
   // Dashboard stats
   getDashboardStats: () => ipcRenderer.invoke('db-get-dashboard-stats'),
   

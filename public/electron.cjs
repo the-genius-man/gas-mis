@@ -328,6 +328,42 @@ function createTables() {
     )
   `);
 
+  // Invoice Sequences (sequential numbering per year/month)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS invoice_sequences (
+      year          INTEGER NOT NULL,
+      month         INTEGER NOT NULL,
+      last_sequence INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (year, month)
+    )
+  `);
+
+  // Avoir Sequences (sequential numbering per year)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS avoir_sequences (
+      year          INTEGER NOT NULL PRIMARY KEY,
+      last_sequence INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  // Avoirs (Credit Notes)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS avoirs (
+      id            TEXT    PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+      numero_avoir  TEXT    NOT NULL UNIQUE,
+      facture_id    TEXT    NOT NULL REFERENCES factures_clients(id) ON DELETE RESTRICT,
+      client_id     TEXT    NOT NULL REFERENCES clients_gas(id),
+      date_avoir    TEXT    NOT NULL,
+      montant_avoir REAL    NOT NULL CHECK (montant_avoir > 0),
+      motif_avoir   TEXT    NOT NULL,
+      devise        TEXT    NOT NULL DEFAULT 'USD',
+      cree_le       TEXT    NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_avoirs_facture_id ON avoirs(facture_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_avoirs_client_id  ON avoirs(client_id)`);
+
   console.log('Database tables created successfully');
 
   // ============================================================================
@@ -1530,6 +1566,97 @@ function createHROperationsTables() {
   }
 
   console.log('HR, Operations, Inventory, Disciplinary & Payroll tables created successfully');
+}
+
+// ============================================================================
+// INVOICE NUMBERING HELPERS
+// ============================================================================
+
+function getNextInvoiceNumber(dateEmission, db) {
+  const d = new Date(dateEmission);
+  const yy = String(d.getFullYear()).slice(-2);   // two-digit year
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+
+  const upsert = db.prepare(`
+    INSERT INTO invoice_sequences (year, month, last_sequence)
+    VALUES (?, ?, 1)
+    ON CONFLICT(year, month) DO UPDATE SET last_sequence = last_sequence + 1
+  `);
+  const select = db.prepare(
+    `SELECT last_sequence FROM invoice_sequences WHERE year = ? AND month = ?`
+  );
+
+  // better-sqlite3 is synchronous — wrap in a transaction for atomicity
+  const getNext = db.transaction((y, m) => {
+    upsert.run(y, m);
+    return select.get(y, m).last_sequence;
+  });
+
+  const seq = getNext(year, month);
+  const nnn = String(seq).padStart(3, '0');
+  return `FAC-${yy}-${mm}-${nnn}`;
+}
+
+function getNextAvoirNumber(dateAvoir, db) {
+  const d = new Date(dateAvoir);
+  const yyyy = d.getFullYear();
+
+  const upsert = db.prepare(`
+    INSERT INTO avoir_sequences (year, last_sequence)
+    VALUES (?, 1)
+    ON CONFLICT(year) DO UPDATE SET last_sequence = last_sequence + 1
+  `);
+  const select = db.prepare(
+    `SELECT last_sequence FROM avoir_sequences WHERE year = ?`
+  );
+
+  const getNext = db.transaction((y) => {
+    upsert.run(y);
+    return select.get(y).last_sequence;
+  });
+
+  const seq = getNext(yyyy);
+  const nnn = String(seq).padStart(3, '0');
+  return `AV-${yyyy}-${nnn}`;
+}
+
+// ============================================================================
+// PAYMENT STATUS HELPERS
+// ============================================================================
+
+function updateFacturePaymentStatus(factureId, db) {
+  const facture = db.prepare(
+    `SELECT montant_total_du_client, statut_paiement FROM factures_clients WHERE id = ?`
+  ).get(factureId);
+
+  if (!facture) return;
+  // Skip protected statuses
+  if (facture.statut_paiement === 'ANNULE' || facture.statut_paiement === 'BROUILLON') return;
+
+  const { total_paye } = db.prepare(
+    `SELECT COALESCE(SUM(montant_paye), 0) AS total_paye FROM paiements WHERE facture_id = ?`
+  ).get(factureId);
+
+  const { total_avoir } = db.prepare(
+    `SELECT COALESCE(SUM(montant_avoir), 0) AS total_avoir FROM avoirs WHERE facture_id = ?`
+  ).get(factureId);
+
+  const totalCredit = total_paye + total_avoir;
+  let newStatus;
+
+  if (totalCredit >= facture.montant_total_du_client) {
+    newStatus = 'PAYE_TOTAL';
+  } else if (totalCredit > 0) {
+    newStatus = 'PAYE_PARTIEL';
+  } else {
+    newStatus = 'ENVOYE';
+  }
+
+  db.prepare(
+    `UPDATE factures_clients SET statut_paiement = ? WHERE id = ?`
+  ).run(newStatus, factureId);
 }
 
 function createWindow() {
@@ -5245,7 +5372,7 @@ ipcMain.handle('db-get-factures-gas', async () => {
 
 ipcMain.handle('db-add-facture-gas', async (event, facture) => {
   try {
-    const stmt = db.prepare(`
+    const insertFacture = db.prepare(`
       INSERT INTO factures_clients (
         id, client_id, client_nom, numero_facture, date_emission, date_echeance, periode_mois,
         periode_annee, total_gardiens_factures, montant_ht_prestation, montant_frais_supp,
@@ -5253,48 +5380,56 @@ ipcMain.handle('db-add-facture-gas', async (event, facture) => {
         devise, statut_paiement, notes_facture
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    
-    stmt.run(
-      facture.id,
-      facture.client_id,
-      facture.client_nom || null,
-      facture.numero_facture,
-      facture.date_emission,
-      facture.date_echeance || null,
-      facture.periode_mois || null,
-      facture.periode_annee || null,
-      facture.total_gardiens_factures || 0,
-      facture.montant_ht_prestation || 0,
-      facture.montant_frais_supp || 0,
-      facture.motif_frais_supp || null,
-      facture.creances_anterieures || 0,
-      facture.montant_total_ttc || 0,
-      facture.montant_total_du_client || 0,
-      facture.devise || 'USD',
-      facture.statut_paiement || 'BROUILLON',
-      facture.notes_facture || null
-    );
-    
-    // Insert details if provided
-    if (facture.details && facture.details.length > 0) {
-      const insertDetail = db.prepare(`
-        INSERT INTO factures_details (id, facture_id, site_id, nombre_gardiens_site, montant_forfaitaire_site, description_ligne)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      
-      for (const detail of facture.details) {
-        insertDetail.run(
-          detail.id,
-          facture.id,
-          detail.site_id,
-          detail.nombre_gardiens_site || 0,
-          detail.montant_forfaitaire_site || 0,
-          detail.description_ligne || null
-        );
+
+    const insertDetail = db.prepare(`
+      INSERT INTO factures_details (id, facture_id, site_id, nombre_gardiens_site, montant_forfaitaire_site, description_ligne)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    const addFacture = db.transaction((f) => {
+      // Generate server-side invoice number, ignoring any client-supplied value
+      const numero_facture = getNextInvoiceNumber(f.date_emission, db);
+
+      insertFacture.run(
+        f.id,
+        f.client_id,
+        f.client_nom || null,
+        numero_facture,
+        f.date_emission,
+        f.date_echeance || null,
+        f.periode_mois || null,
+        f.periode_annee || null,
+        f.total_gardiens_factures || 0,
+        f.montant_ht_prestation || 0,
+        f.montant_frais_supp || 0,
+        f.motif_frais_supp || null,
+        f.creances_anterieures || 0,
+        f.montant_total_ttc || 0,
+        f.montant_total_du_client || 0,
+        f.devise || 'USD',
+        f.statut_paiement || 'BROUILLON',
+        f.notes_facture || null
+      );
+
+      // Insert details if provided
+      if (f.details && f.details.length > 0) {
+        for (const detail of f.details) {
+          insertDetail.run(
+            detail.id,
+            f.id,
+            detail.site_id,
+            detail.nombre_gardiens_site || 0,
+            detail.montant_forfaitaire_site || 0,
+            detail.description_ligne || null
+          );
+        }
       }
-    }
-    
-    return { success: true, id: facture.id };
+
+      return { ...f, numero_facture };
+    });
+
+    const savedFacture = addFacture(facture);
+    return { success: true, id: savedFacture.id, facture: savedFacture };
   } catch (error) {
     console.error('Error adding facture GAS:', error);
     throw error;
@@ -5439,20 +5574,22 @@ ipcMain.handle('db-add-paiement-gas', async (event, paiement) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
-    stmt.run(
-      paiement.id,
-      paiement.facture_id,
-      paiement.date_paiement,
-      paiement.montant_paye,
-      paiement.devise || 'USD',
-      paiement.mode_paiement || 'ESPECES',
-      paiement.reference_paiement || null,
-      paiement.banque_origine || null,
-      paiement.notes || null
-    );
-    
-    // Update facture status based on total payments
-    updateFacturePaymentStatus(paiement.facture_id);
+    const insertAndUpdateStatus = db.transaction((p) => {
+      stmt.run(
+        p.id,
+        p.facture_id,
+        p.date_paiement,
+        p.montant_paye,
+        p.devise || 'USD',
+        p.mode_paiement || 'ESPECES',
+        p.reference_paiement || null,
+        p.banque_origine || null,
+        p.notes || null
+      );
+      updateFacturePaymentStatus(p.facture_id, db);
+    });
+
+    insertAndUpdateStatus(paiement);
     
     // ============================================================================
     // Record payment in Treasury (Finance Module Integration)
@@ -5544,7 +5681,7 @@ ipcMain.handle('db-update-paiement-gas', async (event, paiement) => {
     );
     
     // Update facture status
-    updateFacturePaymentStatus(paiement.facture_id);
+    updateFacturePaymentStatus(paiement.facture_id, db);
     
     return { success: true };
   } catch (error) {
@@ -5557,14 +5694,15 @@ ipcMain.handle('db-delete-paiement-gas', async (event, id) => {
   try {
     // Get facture_id before deleting
     const paiement = db.prepare('SELECT facture_id FROM paiements WHERE id = ?').get(id);
-    
-    // Delete paiement
-    db.prepare('DELETE FROM paiements WHERE id = ?').run(id);
-    
-    // Update facture status
-    if (paiement) {
-      updateFacturePaymentStatus(paiement.facture_id);
-    }
+
+    const deleteAndUpdateStatus = db.transaction((paiementId) => {
+      db.prepare('DELETE FROM paiements WHERE id = ?').run(paiementId);
+      if (paiement) {
+        updateFacturePaymentStatus(paiement.facture_id, db);
+      }
+    });
+
+    deleteAndUpdateStatus(id);
     
     return { success: true };
   } catch (error) {
@@ -5573,54 +5711,103 @@ ipcMain.handle('db-delete-paiement-gas', async (event, id) => {
   }
 });
 
-ipcMain.handle('db-get-facture-paiements-summary', async (event, factureId) => {
+ipcMain.handle('db-create-avoir', async (event, avoir) => {
   try {
-    const facture = db.prepare('SELECT montant_total_du_client, devise FROM factures_clients WHERE id = ?').get(factureId);
-    const totalPaye = db.prepare('SELECT COALESCE(SUM(montant_paye), 0) as total FROM paiements WHERE facture_id = ?').get(factureId);
-    
-    return {
-      montant_total: facture?.montant_total_du_client || 0,
-      montant_paye: totalPaye?.total || 0,
-      solde_restant: (facture?.montant_total_du_client || 0) - (totalPaye?.total || 0),
-      devise: facture?.devise || 'USD'
-    };
+    // Compute current solde_restant
+    const facture = db.prepare(
+      `SELECT montant_total_du_client, statut_paiement FROM factures_clients WHERE id = ?`
+    ).get(avoir.facture_id);
+
+    if (!facture) return { error: 'Facture introuvable' };
+    if (facture.statut_paiement === 'ANNULE') return { error: 'Impossible de créer un avoir sur une facture annulée' };
+
+    const { total_paye } = db.prepare(
+      `SELECT COALESCE(SUM(montant_paye), 0) AS total_paye FROM paiements WHERE facture_id = ?`
+    ).get(avoir.facture_id);
+
+    const { total_avoir } = db.prepare(
+      `SELECT COALESCE(SUM(montant_avoir), 0) AS total_avoir FROM avoirs WHERE facture_id = ?`
+    ).get(avoir.facture_id);
+
+    const solde_restant = Math.max(0, facture.montant_total_du_client - total_paye - total_avoir);
+
+    if (avoir.montant_avoir <= 0) return { error: 'Le montant de l\'avoir doit être supérieur à 0' };
+    if (avoir.montant_avoir > solde_restant) {
+      return { error: `Le montant de l'avoir (${avoir.montant_avoir}) dépasse le solde restant (${solde_restant.toFixed(2)} ${avoir.devise || 'USD'})` };
+    }
+
+    const createAvoir = db.transaction((a) => {
+      const numero_avoir = getNextAvoirNumber(a.date_avoir, db);
+      db.prepare(`
+        INSERT INTO avoirs (id, numero_avoir, facture_id, client_id, date_avoir, montant_avoir, motif_avoir, devise)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        a.id,
+        numero_avoir,
+        a.facture_id,
+        a.client_id,
+        a.date_avoir,
+        a.montant_avoir,
+        a.motif_avoir,
+        a.devise || 'USD'
+      );
+      updateFacturePaymentStatus(a.facture_id, db);
+      return { ...a, numero_avoir };
+    });
+
+    const savedAvoir = createAvoir(avoir);
+    return { success: true, avoir: savedAvoir };
   } catch (error) {
-    console.error('Error getting paiements summary:', error);
-    throw error;
+    console.error('Error creating avoir:', error);
+    return { error: error.message };
   }
 });
 
-// Helper function to update facture payment status
-function updateFacturePaymentStatus(factureId) {
+ipcMain.handle('db-get-avoirs-for-facture', async (event, factureId) => {
   try {
-    const facture = db.prepare('SELECT montant_total_du_client FROM factures_clients WHERE id = ?').get(factureId);
-    const totalPaye = db.prepare('SELECT COALESCE(SUM(montant_paye), 0) as total FROM paiements WHERE facture_id = ?').get(factureId);
-    
-    if (!facture) return;
-    
-    let newStatus;
-    const montantDu = facture.montant_total_du_client;
-    const montantPaye = totalPaye?.total || 0;
-    
-    if (montantPaye >= montantDu) {
-      newStatus = 'PAYE_TOTAL';
-    } else if (montantPaye > 0) {
-      newStatus = 'PAYE_PARTIEL';
-    } else {
-      // Keep current status if no payment (could be BROUILLON or ENVOYE)
-      const currentStatus = db.prepare('SELECT statut_paiement FROM factures_clients WHERE id = ?').get(factureId);
-      if (currentStatus?.statut_paiement === 'PAYE_TOTAL' || currentStatus?.statut_paiement === 'PAYE_PARTIEL') {
-        newStatus = 'ENVOYE';
-      } else {
-        return; // Don't change status
-      }
-    }
-    
-    db.prepare('UPDATE factures_clients SET statut_paiement = ? WHERE id = ?').run(newStatus, factureId);
+    const avoirs = db.prepare(
+      `SELECT * FROM avoirs WHERE facture_id = ? ORDER BY date_avoir DESC`
+    ).all(factureId);
+    return avoirs;
   } catch (error) {
-    console.error('Error updating facture payment status:', error);
+    console.error('Error fetching avoirs for facture:', error);
+    return { error: error.message };
   }
-}
+});
+
+ipcMain.handle('db-get-avoirs-for-client', async (event, clientId, filters) => {
+  try {
+    let query = `SELECT * FROM avoirs WHERE client_id = ?`;
+    const params = [clientId];
+
+    if (filters?.dateDebut) {
+      query += ` AND date_avoir >= ?`;
+      params.push(filters.dateDebut);
+    }
+    if (filters?.dateFin) {
+      query += ` AND date_avoir <= ?`;
+      params.push(filters.dateFin);
+    }
+
+    query += ` ORDER BY date_avoir ASC`;
+
+    const avoirs = db.prepare(query).all(...params);
+    return avoirs;
+  } catch (error) {
+    console.error('Error fetching avoirs for client:', error);
+    return { error: error.message };
+  }
+});
+
+ipcMain.handle('db-get-facture-paiements-summary', (event, factureId) => {
+  const facture = db.prepare(`SELECT montant_total_du_client, devise FROM factures_clients WHERE id = ?`).get(factureId);
+  const { total_paye } = db.prepare(`SELECT COALESCE(SUM(montant_paye), 0) AS total_paye FROM paiements WHERE facture_id = ?`).get(factureId);
+  const { total_avoir } = db.prepare(`SELECT COALESCE(SUM(montant_avoir), 0) AS total_avoir FROM avoirs WHERE facture_id = ?`).get(factureId);
+  const montant_paye = total_paye + total_avoir;
+  const solde_restant = Math.max(0, facture.montant_total_du_client - montant_paye);
+  return { montant_paye, solde_restant, montant_total: facture.montant_total_du_client, devise: facture.devise || 'USD' };
+});
+
 
 // Seed database with sample data
 ipcMain.handle('db-seed-data', async () => {

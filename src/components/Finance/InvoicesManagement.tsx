@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { 
   FileText, Plus, Search, Filter, DollarSign, Calendar, Building2,
-  Edit, Trash2, AlertCircle, CheckCircle, Clock, XCircle, CreditCard, Send, CalendarDays, Printer, Download, FileSpreadsheet, Trash
+  Edit, Trash2, AlertCircle, CheckCircle, Clock, XCircle, CreditCard, Send, CalendarDays, Printer, Download, FileSpreadsheet, Trash, BookOpen
 } from 'lucide-react';
 import { FactureGAS, ClientGAS, SiteGAS, StatutFacture } from '../../types';
 import InvoiceForm from './InvoiceForm';
@@ -9,6 +9,8 @@ import PaymentForm from './PaymentForm';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import BulkInvoiceWizard from './BulkInvoiceWizard';
 import InvoicePrintView from './InvoicePrintView';
+import InvoiceAgingReport from './InvoiceAgingReport';
+import ClientStatement from './ClientStatement';
 import { exportInvoicesToPDF } from '../../utils/pdfExport';
 import { exportToExcel } from '../../utils/excelExport';
 
@@ -20,7 +22,10 @@ const isElectron = () => {
   return false;
 };
 
-const getStatusConfig = (status: StatutFacture) => {
+const getStatusConfig = (status: StatutFacture, overdue = false) => {
+  if (overdue) {
+    return { label: 'En Retard', color: 'bg-red-100 text-red-800', icon: AlertCircle, bgColor: 'bg-red-50' };
+  }
   switch (status) {
     case 'BROUILLON':
       return { label: 'Brouillon', color: 'bg-gray-100 text-gray-800', icon: FileText };
@@ -42,6 +47,12 @@ interface FactureWithPayments extends FactureGAS {
   soldeRestant: number;
 }
 
+function isOverdue(facture: FactureWithPayments): boolean {
+  if (facture.statut_paiement === 'PAYE_TOTAL' || facture.statut_paiement === 'ANNULE') return false;
+  if (!facture.date_echeance) return false;
+  return new Date(facture.date_echeance) < new Date() && facture.soldeRestant > 0;
+}
+
 export default function InvoicesManagement() {
   const electronMode = useMemo(() => isElectron(), []);
   
@@ -50,7 +61,7 @@ export default function InvoicesManagement() {
   const [sites, setSites] = useState<SiteGAS[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | StatutFacture>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'EN_RETARD' | StatutFacture>('ALL');
   // Period filter — defaults to current year, previous month
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number | null>(
@@ -62,6 +73,8 @@ export default function InvoicesManagement() {
   const [printingFacture, setPrintingFacture] = useState<FactureWithPayments | null>(null);
   const [payingFacture, setPayingFacture] = useState<FactureWithPayments | null>(null);
   const [showBulkWizard, setShowBulkWizard] = useState(false);
+  const [showAgingReport, setShowAgingReport] = useState(false);
+  const [statementClient, setStatementClient] = useState<ClientGAS | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -336,7 +349,8 @@ export default function InvoicesManagement() {
       facture.numero_facture.toLowerCase().includes(searchTerm.toLowerCase()) ||
       clientName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'ALL' || facture.statut_paiement === statusFilter;
+    const matchesStatus = statusFilter === 'ALL'
+      || (statusFilter === 'EN_RETARD' ? isOverdue(facture) : facture.statut_paiement === statusFilter);
 
     // Period filter
     const matchesPeriod = selectedMonth === null
@@ -366,11 +380,7 @@ export default function InvoicesManagement() {
     totalPaye: factures.reduce((sum, f) => sum + f.totalPaye, 0),
     enAttente: factures.filter(f => f.statut_paiement === 'ENVOYE' || f.statut_paiement === 'PAYE_PARTIEL')
       .reduce((sum, f) => sum + f.soldeRestant, 0),
-    enRetard: factures.filter(f => {
-      if (f.statut_paiement === 'PAYE_TOTAL' || f.statut_paiement === 'ANNULE') return false;
-      if (!f.date_echeance) return false;
-      return new Date(f.date_echeance) < new Date();
-    }).length
+    enRetard: factures.filter(isOverdue).length
   };
 
   if (!electronMode) {
@@ -413,6 +423,13 @@ export default function InvoicesManagement() {
           >
             <CalendarDays className="h-4 w-4" />
             <span>Facturation Mensuelle</span>
+          </button>
+          <button
+            onClick={() => setShowAgingReport(true)}
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+          >
+            <AlertCircle className="h-4 w-4" />
+            <span>Rapport d'Ancienneté</span>
           </button>
           <button
             onClick={() => setShowForm(true)}
@@ -539,6 +556,7 @@ export default function InvoicesManagement() {
               <option value="PAYE_PARTIEL">Payé Partiel</option>
               <option value="PAYE_TOTAL">Payé Total</option>
               <option value="ANNULE">Annulé</option>
+              <option value="EN_RETARD">En Retard</option>
             </select>
           </div>
 
@@ -642,7 +660,7 @@ export default function InvoicesManagement() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredFactures.map((facture) => {
-                  const statusConfig = getStatusConfig(facture.statut_paiement);
+                  const statusConfig = getStatusConfig(facture.statut_paiement, isOverdue(facture));
                   const StatusIcon = statusConfig.icon;
                   const canPay = facture.statut_paiement !== 'PAYE_TOTAL' && facture.statut_paiement !== 'ANNULE' && facture.statut_paiement !== 'BROUILLON';
                   
@@ -707,6 +725,14 @@ export default function InvoicesManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Relevé de Compte button */}
+                          <button
+                            onClick={() => setStatementClient(getClient(facture.client_id) || null)}
+                            className="p-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors"
+                            title="Relevé de Compte"
+                          >
+                            <BookOpen className="h-4 w-4" />
+                          </button>
                           {/* Send invoice button - only for BROUILLON */}
                           {facture.statut_paiement === 'BROUILLON' && (
                             <button
@@ -827,6 +853,24 @@ export default function InvoicesManagement() {
           existingInvoices={factures}
           onClose={handleBulkWizardClose}
           onSuccess={handleBulkWizardSuccess}
+        />
+      )}
+
+      {/* Invoice Aging Report Modal */}
+      {showAgingReport && (
+        <InvoiceAgingReport
+          factures={factures}
+          clients={clients}
+          onClose={() => setShowAgingReport(false)}
+        />
+      )}
+
+      {/* Client Statement Modal */}
+      {statementClient && (
+        <ClientStatement
+          client={statementClient}
+          allFactures={factures}
+          onClose={() => setStatementClient(null)}
         />
       )}
 

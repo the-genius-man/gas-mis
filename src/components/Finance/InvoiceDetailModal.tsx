@@ -2,11 +2,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   X, FileText, Building2, Calendar, MapPin, 
   CreditCard, Clock, Trash2, Plus,
-  User, Phone, Mail, Printer, Download
+  User, Phone, Mail, Printer, Download, FileX
 } from 'lucide-react';
-import { FactureGAS, ClientGAS, PaiementGAS, ModePaiement, SiteGAS } from '../../types';
+import { FactureGAS, ClientGAS, PaiementGAS, ModePaiement, SiteGAS, AvoirGAS } from '../../types';
 import { exportToPDF } from '../../utils/pdfExport';
 import InvoicePrintTemplateNew from './InvoicePrintTemplateNew';
+import CreditNoteForm from './CreditNoteForm';
+import CreditNotePrintTemplate from './CreditNotePrintTemplate';
 
 interface FactureWithPayments extends FactureGAS {
   totalPaye: number;
@@ -64,10 +66,14 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'details' | 'paiements'>('details');
   const [showPrintTemplate, setShowPrintTemplate] = useState(false);
+  const [showCreditNoteForm, setShowCreditNoteForm] = useState(false);
+  const [printingAvoir, setPrintingAvoir] = useState<AvoirGAS | null>(null);
+  const [avoirs, setAvoirs] = useState<AvoirGAS[]>([]);
 
   useEffect(() => {
     loadPaiements();
     loadSites();
+    loadAvoirs();
   }, [facture.id]);
 
   const loadPaiements = async () => {
@@ -92,6 +98,17 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
       setSites(data || []);
     } catch (error) {
       console.error('Erreur lors du chargement des sites:', error);
+    }
+  };
+
+  const loadAvoirs = async () => {
+    if (!electronMode || !window.electronAPI) return;
+
+    try {
+      const data = await window.electronAPI.getAvoirsForFacture(facture.id);
+      setAvoirs(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des avoirs:', error);
     }
   };
 
@@ -377,7 +394,7 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">Chargement des paiements...</p>
                 </div>
-              ) : paiements.length > 0 ? (
+              ) : paiements.length > 0 || avoirs.length > 0 ? (
                 <div className="space-y-3">
                   {paiements.map((paiement) => (
                     <div key={paiement.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -426,6 +443,51 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
                           title="Supprimer ce paiement"
                         >
                           <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Avoirs (credit notes) */}
+                  {avoirs.map((avoir) => (
+                    <div key={avoir.id} className="bg-white border border-purple-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <FileX className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-gray-900">
+                                -{avoir.montant_avoir.toLocaleString()} {avoir.devise}
+                              </p>
+                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+                                Note de crédit
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {new Date(avoir.date_avoir).toLocaleDateString('fr-FR', {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </p>
+                            <p className="text-xs text-purple-700 font-medium mt-1">{avoir.numero_avoir}</p>
+                            {avoir.motif_avoir && (
+                              <p className="text-xs text-gray-500 mt-1 italic">{avoir.motif_avoir}</p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setPrintingAvoir(avoir);
+                            setTimeout(() => window.print(), 300);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                          title="Imprimer l'avoir"
+                        >
+                          <Printer className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
@@ -480,6 +542,15 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
             >
               Fermer
             </button>
+            {facture.statut_paiement !== 'ANNULE' && (
+              <button
+                onClick={() => setShowCreditNoteForm(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              >
+                <FileX className="h-4 w-4" />
+                Créer un Avoir
+              </button>
+            )}
             {canPay && (
               <button
                 onClick={onPayment}
@@ -502,6 +573,39 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
             sites={sites}
             allInvoices={allInvoices}
           />
+        </div>
+      )}
+
+      {/* Credit Note Form Modal */}
+      {showCreditNoteForm && (
+        <CreditNoteForm
+          facture={facture}
+          client={client}
+          onClose={() => setShowCreditNoteForm(false)}
+          onSuccess={() => {
+            setShowCreditNoteForm(false);
+            loadAvoirs();
+            onRefresh();
+          }}
+        />
+      )}
+
+      {/* Credit Note Print Template */}
+      {printingAvoir && (
+        <div className="fixed inset-0 bg-white z-[200] overflow-auto print-avoir-template">
+          <CreditNotePrintTemplate
+            avoir={printingAvoir}
+            facture={facture}
+            client={client}
+          />
+          <div className="no-print flex justify-end p-4 gap-2">
+            <button
+              onClick={() => setPrintingAvoir(null)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              Fermer
+            </button>
+          </div>
         </div>
       )}
     </div>
