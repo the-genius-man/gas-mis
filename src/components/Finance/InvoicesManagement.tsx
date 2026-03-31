@@ -53,6 +53,9 @@ export default function InvoicesManagement() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | StatutFacture>('ALL');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // Period filter — defaults to current month
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth() + 1);
   const [showForm, setShowForm] = useState(false);
   const [editingFacture, setEditingFacture] = useState<FactureGAS | null>(null);
   const [viewingFacture, setViewingFacture] = useState<FactureWithPayments | null>(null);
@@ -66,9 +69,8 @@ export default function InvoicesManagement() {
   }, []);
 
   useEffect(() => {
-    // Clear selection when filters change
     setSelectedInvoiceIds(new Set());
-  }, [searchTerm, statusFilter, dateFrom, dateTo]);
+  }, [searchTerm, statusFilter, dateFrom, dateTo, selectedYear, selectedMonth]);
 
   const loadData = async () => {
     setLoading(true);
@@ -307,7 +309,28 @@ export default function InvoicesManagement() {
     }
   };
 
-  const filteredFactures = factures.filter(facture => {
+  const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+  // Derive available periods from loaded invoices
+  const availablePeriods = useMemo(() => {
+    const seen = new Set<string>();
+    const periods: { year: number; month: number }[] = [];
+    factures.forEach(f => {
+      if (f.periode_annee && f.periode_mois) {
+        const key = `${f.periode_annee}-${f.periode_mois}`;
+        if (!seen.has(key)) { seen.add(key); periods.push({ year: f.periode_annee, month: f.periode_mois }); }
+      }
+    });
+    return periods.sort((a, b) => b.year !== a.year ? b.year - a.year : b.month - a.month);
+  }, [factures]);
+
+  // Available years for the year selector
+  const availableYears = useMemo(() => {
+    const years = new Set(availablePeriods.map(p => p.year));
+    return Array.from(years).sort((a, b) => b - a);
+  }, [availablePeriods]);
+
+  const filteredFactures = useMemo(() => factures.filter(facture => {
     const clientName = getClientName(facture.client_id);
     const matchesSearch =
       facture.numero_facture.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -315,23 +338,38 @@ export default function InvoicesManagement() {
 
     const matchesStatus = statusFilter === 'ALL' || facture.statut_paiement === statusFilter;
 
-    // Date range filter
+    // Period filter
+    const matchesPeriod = selectedMonth === null
+      ? facture.periode_annee === selectedYear
+      : facture.periode_annee === selectedYear && facture.periode_mois === selectedMonth;
+
+    // Date range filter (secondary, applied on top of period)
     let matchesDateRange = true;
     if (dateFrom || dateTo) {
       const factureDate = new Date(facture.date_emission);
-      if (dateFrom) {
-        const fromDate = new Date(dateFrom);
-        matchesDateRange = matchesDateRange && factureDate >= fromDate;
-      }
+      if (dateFrom) matchesDateRange = matchesDateRange && factureDate >= new Date(dateFrom);
       if (dateTo) {
         const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999); // Include the entire day
+        toDate.setHours(23, 59, 59, 999);
         matchesDateRange = matchesDateRange && factureDate <= toDate;
       }
     }
 
-    return matchesSearch && matchesStatus && matchesDateRange;
-  });
+    return matchesSearch && matchesStatus && matchesPeriod && matchesDateRange;
+  }), [factures, searchTerm, statusFilter, selectedYear, selectedMonth, dateFrom, dateTo]);
+
+  // Collection summary for the selected period
+  const periodSummary = useMemo(() => {
+    const total = filteredFactures.reduce((s, f) => s + f.montant_total_du_client, 0);
+    const collected = filteredFactures.reduce((s, f) => s + f.totalPaye, 0);
+    const outstanding = filteredFactures.reduce((s, f) => s + f.soldeRestant, 0);
+    const pct = total > 0 ? Math.round((collected / total) * 100) : 0;
+    const overdue = filteredFactures.filter(f => {
+      if (f.statut_paiement === 'PAYE_TOTAL' || f.statut_paiement === 'ANNULE') return false;
+      return f.date_echeance && new Date(f.date_echeance) < new Date();
+    }).length;
+    return { total, collected, outstanding, pct, overdue, count: filteredFactures.length };
+  }, [filteredFactures]);
 
   // Calculate statistics
   const stats = {
@@ -396,6 +434,94 @@ export default function InvoicesManagement() {
             <span>Nouvelle Facture</span>
           </button>
         </div>
+      </div>
+
+      {/* Period Selector */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          {/* Year selector */}
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">Année:</span>
+            <div className="flex gap-1">
+              {(availableYears.length > 0 ? availableYears : [new Date().getFullYear()]).map(y => (
+                <button
+                  key={y}
+                  onClick={() => { setSelectedYear(y); setSelectedMonth(null); }}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    selectedYear === y && selectedMonth === null
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-5 w-px bg-gray-300" />
+
+          {/* Month pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-gray-700">Mois:</span>
+            <button
+              onClick={() => setSelectedMonth(null)}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                selectedMonth === null
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Tous
+            </button>
+            {MONTHS_FR.map((name, i) => {
+              const m = i + 1;
+              const hasFact = availablePeriods.some(p => p.year === selectedYear && p.month === m);
+              if (!hasFact) return null;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setSelectedMonth(m)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    selectedMonth === m
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {name.slice(0, 3)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Collection summary bar */}
+        {periodSummary.count > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-600">
+                {periodSummary.count} facture{periodSummary.count > 1 ? 's' : ''} —{' '}
+                {selectedMonth ? `${MONTHS_FR[selectedMonth - 1]} ${selectedYear}` : `Année ${selectedYear}`}
+              </span>
+              <span className="text-sm font-semibold text-gray-700">{periodSummary.pct}% encaissé</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+              <div
+                className={`h-2 rounded-full transition-all ${periodSummary.pct >= 100 ? 'bg-green-500' : periodSummary.pct > 50 ? 'bg-blue-500' : 'bg-orange-500'}`}
+                style={{ width: `${periodSummary.pct}%` }}
+              />
+            </div>
+            <div className="flex gap-6 text-xs text-gray-600">
+              <span>Total: <strong className="text-gray-900">${periodSummary.total.toLocaleString()}</strong></span>
+              <span>Encaissé: <strong className="text-green-700">${periodSummary.collected.toLocaleString()}</strong></span>
+              <span>Restant: <strong className="text-orange-700">${periodSummary.outstanding.toLocaleString()}</strong></span>
+              {periodSummary.overdue > 0 && (
+                <span className="text-red-600"><strong>{periodSummary.overdue}</strong> en retard</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Statistics Cards */}
