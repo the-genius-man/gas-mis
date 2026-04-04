@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { X, Download, FileText, Printer } from 'lucide-react';
+import jsPDF from 'jspdf';
 import { FactureWithPayments, ClientGAS } from '../../types';
 import { exportToExcel } from '../../utils/excelExport';
 
@@ -49,121 +50,194 @@ function formatDate(dateStr: string | undefined): string {
   return new Date(dateStr).toLocaleDateString('fr-FR');
 }
 
-// ─── Print template ──────────────────────────────────────────────────────────
+// ─── Native jsPDF export ─────────────────────────────────────────────────────
 
-interface PrintData {
-  clientName: string;
-  invoices: FactureWithPayments[];
-  getClientName: (f: FactureWithPayments) => string;
-  getDaysOverdue: (f: FactureWithPayments) => number;
-}
+function exportAgingToPDF(
+  clientSections: { clientName: string; invoices: FactureWithPayments[] }[],
+  title: string,
+  getDaysOverdue: (f: FactureWithPayments) => number
+): void {
+  if (clientSections.length === 0) return;
 
-function PrintSection({ clientName, invoices, getDaysOverdue }: PrintData) {
-  const total = invoices.reduce((s, f) => s + f.soldeRestant, 0);
-  const devise = invoices[0]?.devise || 'USD';
-  return (
-    <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
-      <div style={{ background: '#1e40af', color: 'white', padding: '6px 10px', fontWeight: 'bold', fontSize: '11pt', marginBottom: '4px' }}>
-        {clientName}
-      </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
-        <thead>
-          <tr style={{ background: '#f3f4f6', borderBottom: '1px solid #d1d5db' }}>
-            <th style={{ textAlign: 'left', padding: '4px 6px' }}>N° Facture</th>
-            <th style={{ textAlign: 'left', padding: '4px 6px' }}>Date émission</th>
-            <th style={{ textAlign: 'left', padding: '4px 6px' }}>Échéance</th>
-            <th style={{ textAlign: 'right', padding: '4px 6px' }}>Montant total</th>
-            <th style={{ textAlign: 'right', padding: '4px 6px' }}>Montant payé</th>
-            <th style={{ textAlign: 'right', padding: '4px 6px' }}>Solde restant</th>
-            <th style={{ textAlign: 'right', padding: '4px 6px' }}>Jours retard</th>
-            <th style={{ textAlign: 'left', padding: '4px 6px' }}>Tranche</th>
-          </tr>
-        </thead>
-        <tbody>
-          {invoices.map((f, i) => (
-            <tr key={f.id} style={{ borderBottom: '1px solid #e5e7eb', background: i % 2 === 0 ? 'white' : '#f9fafb' }}>
-              <td style={{ padding: '4px 6px', fontFamily: 'monospace' }}>{f.numero_facture}</td>
-              <td style={{ padding: '4px 6px' }}>{formatDate(f.date_emission)}</td>
-              <td style={{ padding: '4px 6px' }}>{formatDate(f.date_echeance)}</td>
-              <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatCurrency(f.montant_total_du_client, f.devise)}</td>
-              <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatCurrency(f.totalPaye, f.devise)}</td>
-              <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 'bold' }}>{formatCurrency(f.soldeRestant, f.devise)}</td>
-              <td style={{ padding: '4px 6px', textAlign: 'right' }}>{getDaysOverdue(f)} j</td>
-              <td style={{ padding: '4px 6px' }}>{BUCKET_LABELS[getBucket(f)]}</td>
-            </tr>
-          ))}
-          <tr style={{ borderTop: '2px solid #1e40af', fontWeight: 'bold', background: '#eff6ff' }}>
-            <td colSpan={5} style={{ padding: '4px 6px' }}>Total {clientName}</td>
-            <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatCurrency(total, devise)}</td>
-            <td colSpan={2} />
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-}
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const L = 10;
+  const R = 287;
+  const W = R - L;
+  const printDate = new Date().toLocaleDateString('fr-FR');
+  const totalInvoices = clientSections.reduce((s, c) => s + c.invoices.length, 0);
 
-interface AgingPrintTemplateProps {
-  title: string;
-  printDate: string;
-  clientSections: { clientName: string; invoices: FactureWithPayments[] }[];
-  grandTotal: number;
-  grandDevise: string;
-  getClientName: (f: FactureWithPayments) => string;
-  getDaysOverdue: (f: FactureWithPayments) => number;
-}
+  // Column x positions (landscape A4 = 297mm wide)
+  const COL = {
+    facture:  L,
+    emission: L + 32,
+    echeance: L + 60,
+    total:    L + 90,
+    paye:     L + 120,
+    solde:    L + 150,
+    jours:    L + 178,
+    tranche:  L + 196,
+  };
 
-function AgingPrintTemplate({ title, printDate, clientSections, grandTotal, grandDevise, getClientName, getDaysOverdue }: AgingPrintTemplateProps) {
-  return (
-    <div id="aging-print-template" style={{ display: 'none' }}>
-      <style>{`
-        @media print {
-          body > * { display: none !important; }
-          #aging-print-template { display: block !important; }
-          @page { size: A4 landscape; margin: 12mm; }
-        }
-      `}</style>
-      <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
-        {/* Company header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', borderBottom: '2px solid #1e40af', paddingBottom: '10px' }}>
-          <div>
-            <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#1e40af' }}>GO AHEAD SARLU</div>
-            <div style={{ fontSize: '9pt', color: '#6b7280' }}>Département de Sécurité et Gardiennage</div>
-            <div style={{ fontSize: '8pt', color: '#6b7280' }}>RCCM: CD/GOM/RCCM/20-B-00414 | ID NAT.: 19-H5300-N897290</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>{title}</div>
-            <div style={{ fontSize: '9pt', color: '#6b7280' }}>Imprimé le {printDate}</div>
-            <div style={{ fontSize: '9pt', color: '#6b7280' }}>{clientSections.reduce((s, c) => s + c.invoices.length, 0)} facture(s) en attente</div>
-          </div>
-        </div>
+  let y = 14;
+  let pageNum = 1;
 
-        {/* Client sections */}
-        {clientSections.map(({ clientName, invoices }) => (
-          <PrintSection
-            key={clientName}
-            clientName={clientName}
-            invoices={invoices}
-            getClientName={getClientName}
-            getDaysOverdue={getDaysOverdue}
-          />
-        ))}
+  const addHeader = () => {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 64, 175);
+    doc.text('GO AHEAD SARLU', L, y);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(107, 114, 128);
+    doc.text('Département de Sécurité et Gardiennage  |  RCCM: CD/GOM/RCCM/20-B-00414', L, y + 5);
 
-        {/* Grand total */}
-        {clientSections.length > 1 && (
-          <div style={{ borderTop: '3px solid #1e40af', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12pt' }}>
-            <span>TOTAL GÉNÉRAL</span>
-            <span>{formatCurrency(grandTotal, grandDevise)}</span>
-          </div>
-        )}
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(17, 24, 39);
+    doc.text(title, R, y, { align: 'right' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(107, 114, 128);
+    doc.text(`Imprimé le ${printDate}  |  ${totalInvoices} facture(s) en attente`, R, y + 5, { align: 'right' });
 
-        {/* Footer */}
-        <div style={{ marginTop: '24px', borderTop: '1px solid #d1d5db', paddingTop: '8px', fontSize: '8pt', color: '#6b7280', textAlign: 'center' }}>
-          70, Av Abattoir, Q Kyeshero, Goma - RDC | +243 974 821 064 | gas@goahead.africa
-        </div>
-      </div>
-    </div>
-  );
+    y += 10;
+    doc.setDrawColor(30, 64, 175);
+    doc.setLineWidth(0.5);
+    doc.line(L, y, R, y);
+    y += 6;
+    doc.setTextColor(17, 24, 39);
+  };
+
+  const addColumnHeaders = () => {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFillColor(243, 244, 246);
+    doc.rect(L, y - 3, W, 6, 'F');
+    doc.setTextColor(75, 85, 99);
+    doc.text('N° Facture',    COL.facture,  y);
+    doc.text('Date émission', COL.emission, y);
+    doc.text('Échéance',      COL.echeance, y);
+    doc.text('Montant total', COL.total + 18, y, { align: 'right' });
+    doc.text('Montant payé',  COL.paye  + 18, y, { align: 'right' });
+    doc.text('Solde restant', COL.solde + 18, y, { align: 'right' });
+    doc.text('Jours',         COL.jours + 10, y, { align: 'right' });
+    doc.text('Tranche',       COL.tranche, y);
+    y += 5;
+    doc.setTextColor(17, 24, 39);
+  };
+
+  const checkPageBreak = (needed: number = 8) => {
+    if (y + needed > 195) {
+      doc.addPage();
+      pageNum++;
+      y = 14;
+      addHeader();
+      addColumnHeaders();
+    }
+  };
+
+  addHeader();
+
+  let grandTotal = 0;
+  let grandDevise = clientSections[0]?.invoices[0]?.devise || 'USD';
+
+  for (const { clientName, invoices } of clientSections) {
+    checkPageBreak(14);
+
+    // Client header bar
+    doc.setFillColor(30, 64, 175);
+    doc.rect(L, y - 3, W, 7, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    const clientTotal = invoices.reduce((s, f) => s + f.soldeRestant, 0);
+    const devise = invoices[0]?.devise || 'USD';
+    doc.text(clientName, L + 2, y + 1);
+    doc.text(`${clientTotal.toFixed(2)} ${devise}`, R - 2, y + 1, { align: 'right' });
+    y += 7;
+    doc.setTextColor(17, 24, 39);
+
+    addColumnHeaders();
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+
+    for (let i = 0; i < invoices.length; i++) {
+      checkPageBreak(7);
+      const f = invoices[i];
+      const days = getDaysOverdue(f);
+
+      if (i % 2 === 1) {
+        doc.setFillColor(249, 250, 251);
+        doc.rect(L, y - 3.5, W, 6, 'F');
+      }
+
+      doc.setTextColor(17, 24, 39);
+      doc.text(f.numero_facture,                                    COL.facture,  y);
+      doc.text(formatDate(f.date_emission),                         COL.emission, y);
+      doc.text(formatDate(f.date_echeance),                         COL.echeance, y);
+      doc.text(`${f.montant_total_du_client.toFixed(2)} ${f.devise}`, COL.total + 18, y, { align: 'right' });
+      doc.text(`${f.totalPaye.toFixed(2)} ${f.devise}`,              COL.paye  + 18, y, { align: 'right' });
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${f.soldeRestant.toFixed(2)} ${f.devise}`,           COL.solde + 18, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+
+      // Days badge color
+      if (days === 0) doc.setTextColor(107, 114, 128);
+      else if (days <= 30) doc.setTextColor(161, 98, 7);
+      else doc.setTextColor(185, 28, 28);
+      doc.text(`${days} j`, COL.jours + 10, y, { align: 'right' });
+      doc.setTextColor(17, 24, 39);
+      doc.text(BUCKET_LABELS[getBucket(f)], COL.tranche, y);
+      y += 6;
+    }
+
+    // Client subtotal row
+    checkPageBreak(7);
+    doc.setFillColor(239, 246, 255);
+    doc.rect(L, y - 3.5, W, 6.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(30, 64, 175);
+    doc.text(`Sous-total ${clientName} (${invoices.length} facture${invoices.length > 1 ? 's' : ''})`, COL.facture, y);
+    doc.text(`${clientTotal.toFixed(2)} ${devise}`, COL.solde + 18, y, { align: 'right' });
+    doc.setTextColor(17, 24, 39);
+    y += 8;
+
+    grandTotal += clientTotal;
+    grandDevise = devise;
+  }
+
+  // Grand total
+  if (clientSections.length > 1) {
+    checkPageBreak(10);
+    doc.setDrawColor(30, 64, 175);
+    doc.setLineWidth(0.8);
+    doc.line(L, y - 2, R, y - 2);
+    doc.setFillColor(30, 64, 175);
+    doc.rect(L, y - 1, W, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text('TOTAL GÉNÉRAL', L + 2, y + 4);
+    doc.text(`${grandTotal.toFixed(2)} ${grandDevise}`, R - 2, y + 4, { align: 'right' });
+    y += 12;
+  }
+
+  // Footer on last page
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(107, 114, 128);
+  doc.setDrawColor(209, 213, 219);
+  doc.setLineWidth(0.3);
+  doc.line(L, 200, R, 200);
+  doc.text('70, Av Abattoir, Q Kyeshero, Goma - RDC  |  +243 974 821 064  |  gas@goahead.africa', 148, 204, { align: 'center' });
+
+  const filename = title === "Rapport d'Ancienneté des Créances"
+    ? `Creances_Clients_${new Date().toISOString().slice(0, 10)}.pdf`
+    : `Creances_${clientSections[0]?.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+  doc.save(filename);
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -230,21 +304,10 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
       .map(([clientName, invoices]) => ({ clientName, invoices }));
   }, [allOutstanding, clientFilter, clients]);
 
-  const printGrandTotal = useMemo(
-    () => printClientSections.reduce((s, c) => s + c.invoices.reduce((ss, f) => ss + f.soldeRestant, 0), 0),
-    [printClientSections]
-  );
-
   const printGrandDevise = allOutstanding.find(f => f.soldeRestant > 0)?.devise || 'USD';
 
   const handlePrint = () => {
-    const el = document.getElementById('aging-print-template');
-    if (el) el.style.display = 'block';
-    window.print();
-    setTimeout(() => {
-      const el2 = document.getElementById('aging-print-template');
-      if (el2) el2.style.display = 'none';
-    }, 1000);
+    exportAgingToPDF(printClientSections, printTitle, getDaysOverdue);
   };
 
   const handleExportExcel = () => {
@@ -285,7 +348,7 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
 
   const printTitle = selectedClientName
     ? `Créances — ${selectedClientName}`
-    : 'Rapport d\'Ancienneté des Créances';
+    : "Rapport d'Ancienneté des Créances";
 
   const headerBar = (
     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
@@ -423,25 +486,12 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
     </div>
   );
 
-  const printTemplate = (
-    <AgingPrintTemplate
-      title={printTitle}
-      printDate={new Date().toLocaleDateString('fr-FR')}
-      clientSections={printClientSections}
-      grandTotal={printGrandTotal}
-      grandDevise={printGrandDevise}
-      getClientName={getClientName}
-      getDaysOverdue={getDaysOverdue}
-    />
-  );
-
   if (inline) {
     return (
       <div className="flex flex-col">
         {headerBar}
         {filterBar}
         {body}
-        {printTemplate}
       </div>
     );
   }
@@ -453,7 +503,6 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
         {filterBar}
         <div className="flex-1 overflow-y-auto">{body}</div>
       </div>
-      {printTemplate}
     </div>
   );
 };
