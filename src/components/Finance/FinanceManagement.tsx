@@ -13,7 +13,8 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   RefreshCw,
-  FileText
+  FileText,
+  HandCoins
 } from 'lucide-react';
 import { 
   Depense, 
@@ -28,8 +29,9 @@ import DepenseForm from './DepenseForm';
 import EntreeForm from './EntreeForm';
 import TaxSettings from './TaxSettings';
 import FinanceReports from './FinanceReports';
+import DebtLoanManagement from './OhadaDebtLoanManagement';
 
-type TabType = 'dashboard' | 'entrees' | 'depenses' | 'mouvements' | 'taxes' | 'reports';
+type TabType = 'dashboard' | 'entrees' | 'depenses' | 'mouvements' | 'taxes' | 'reports' | 'debts';
 
 export default function FinanceManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -229,6 +231,7 @@ export default function FinanceManagement() {
             { id: 'entrees', label: 'Entrées', icon: TrendingUp },
             { id: 'depenses', label: 'Dépenses', icon: TrendingDown },
             { id: 'mouvements', label: 'Journal de Caisse', icon: RefreshCw },
+            { id: 'debts', label: 'Dettes & Prêts', icon: HandCoins },
             { id: 'taxes', label: 'Paramètres Fiscaux', icon: DollarSign },
             { id: 'reports', label: 'Rapports', icon: FileText },
           ].map((tab) => (
@@ -557,6 +560,9 @@ export default function FinanceManagement() {
 
       {/* Reports Tab */}
       {activeTab === 'reports' && <FinanceReports />}
+
+      {/* Debts Tab */}
+      {activeTab === 'debts' && <DebtLoanManagement />}
 
       {/* Mouvements Tab */}
       {activeTab === 'mouvements' && (

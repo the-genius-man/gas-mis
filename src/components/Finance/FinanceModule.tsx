@@ -1,25 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Building2, 
-  MapPin, 
-  FileText, 
-  Wallet, 
-  TrendingUp, 
-  TrendingDown, 
-  RefreshCw, 
-  DollarSign, 
-  BarChart3,
-  CreditCard,
-  HandCoins
+  MapPin,
 } from 'lucide-react';
 import ClientsManagement from './ClientsManagement';
 import SitesManagement from './SitesManagement';
-import InvoicesManagement from './InvoicesManagement';
-import FinanceManagement from './FinanceManagement';
-import FinanceReports from './FinanceReports';
-import DebtLoanManagement from './OhadaDebtLoanManagement';
 
-type Tab = 'clients' | 'sites' | 'invoices' | 'debts' | 'treasury' | 'reports';
+type Tab = 'clients' | 'sites';
 
 // Check if running in Electron
 const isElectron = () => {
@@ -40,7 +27,7 @@ export default function FinanceModule() {
   };
 
   const navigateToInvoices = () => {
-    setActiveTab('invoices');
+    // Invoices are now in the Facturation sidebar item
   };
 
   const tabs = [
@@ -48,37 +35,11 @@ export default function FinanceModule() {
       id: 'clients' as Tab,
       label: 'Clients',
       icon: Building2,
-      description: 'Gestion des clients et contrats',
     },
     {
       id: 'sites' as Tab,
       label: 'Sites',
       icon: MapPin,
-      description: 'Emplacements de sécurité',
-    },
-    {
-      id: 'invoices' as Tab,
-      label: 'Facturation',
-      icon: FileText,
-      description: 'Factures et paiements',
-    },
-    {
-      id: 'debts' as Tab,
-      label: 'Dettes & Prêts OHADA',
-      icon: HandCoins,
-      description: 'Gestion conforme OHADA avec comptabilité automatique',
-    },
-    {
-      id: 'treasury' as Tab,
-      label: 'Trésorerie',
-      icon: Wallet,
-      description: 'Gestion financière et comptable',
-    },
-    {
-      id: 'reports' as Tab,
-      label: 'Rapports',
-      icon: BarChart3,
-      description: 'Analyses et rapports financiers',
     },
   ];
 
@@ -99,14 +60,6 @@ export default function FinanceModule() {
         return <ClientsManagement onNavigateToSites={navigateToSites} onNavigateToInvoices={navigateToInvoices} />;
       case 'sites':
         return <SitesManagement />;
-      case 'invoices':
-        return <InvoicesManagement />;
-      case 'debts':
-        return <DebtLoanManagement />;
-      case 'treasury':
-        return <FinanceManagement />;
-      case 'reports':
-        return <FinanceReports />;
       default:
         return null;
     }
@@ -137,10 +90,7 @@ export default function FinanceModule() {
                 `}
               >
                 <Icon className="w-4 h-4" />
-                <div className="text-left">
-                  <div>{tab.label}</div>
-                  <div className="text-xs text-gray-500 font-normal">{tab.description}</div>
-                </div>
+                <span>{tab.label}</span>
               </button>
             );
           })}
