@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, Download, FileText } from 'lucide-react';
+import { X, Download, FileText, Printer } from 'lucide-react';
 import { FactureWithPayments, ClientGAS } from '../../types';
 import { exportToExcel } from '../../utils/excelExport';
 
@@ -7,7 +7,6 @@ interface InvoiceAgingReportProps {
   factures: FactureWithPayments[];
   clients: ClientGAS[];
   onClose: () => void;
-  /** When true, renders as a full-page section instead of a modal overlay */
   inline?: boolean;
 }
 
@@ -50,6 +49,125 @@ function formatDate(dateStr: string | undefined): string {
   return new Date(dateStr).toLocaleDateString('fr-FR');
 }
 
+// ─── Print template ──────────────────────────────────────────────────────────
+
+interface PrintData {
+  clientName: string;
+  invoices: FactureWithPayments[];
+  getClientName: (f: FactureWithPayments) => string;
+  getDaysOverdue: (f: FactureWithPayments) => number;
+}
+
+function PrintSection({ clientName, invoices, getDaysOverdue }: PrintData) {
+  const total = invoices.reduce((s, f) => s + f.soldeRestant, 0);
+  const devise = invoices[0]?.devise || 'USD';
+  return (
+    <div style={{ marginBottom: '24px', pageBreakInside: 'avoid' }}>
+      <div style={{ background: '#1e40af', color: 'white', padding: '6px 10px', fontWeight: 'bold', fontSize: '11pt', marginBottom: '4px' }}>
+        {clientName}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
+        <thead>
+          <tr style={{ background: '#f3f4f6', borderBottom: '1px solid #d1d5db' }}>
+            <th style={{ textAlign: 'left', padding: '4px 6px' }}>N° Facture</th>
+            <th style={{ textAlign: 'left', padding: '4px 6px' }}>Date émission</th>
+            <th style={{ textAlign: 'left', padding: '4px 6px' }}>Échéance</th>
+            <th style={{ textAlign: 'right', padding: '4px 6px' }}>Montant total</th>
+            <th style={{ textAlign: 'right', padding: '4px 6px' }}>Montant payé</th>
+            <th style={{ textAlign: 'right', padding: '4px 6px' }}>Solde restant</th>
+            <th style={{ textAlign: 'right', padding: '4px 6px' }}>Jours retard</th>
+            <th style={{ textAlign: 'left', padding: '4px 6px' }}>Tranche</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invoices.map((f, i) => (
+            <tr key={f.id} style={{ borderBottom: '1px solid #e5e7eb', background: i % 2 === 0 ? 'white' : '#f9fafb' }}>
+              <td style={{ padding: '4px 6px', fontFamily: 'monospace' }}>{f.numero_facture}</td>
+              <td style={{ padding: '4px 6px' }}>{formatDate(f.date_emission)}</td>
+              <td style={{ padding: '4px 6px' }}>{formatDate(f.date_echeance)}</td>
+              <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatCurrency(f.montant_total_du_client, f.devise)}</td>
+              <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatCurrency(f.totalPaye, f.devise)}</td>
+              <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 'bold' }}>{formatCurrency(f.soldeRestant, f.devise)}</td>
+              <td style={{ padding: '4px 6px', textAlign: 'right' }}>{getDaysOverdue(f)} j</td>
+              <td style={{ padding: '4px 6px' }}>{BUCKET_LABELS[getBucket(f)]}</td>
+            </tr>
+          ))}
+          <tr style={{ borderTop: '2px solid #1e40af', fontWeight: 'bold', background: '#eff6ff' }}>
+            <td colSpan={5} style={{ padding: '4px 6px' }}>Total {clientName}</td>
+            <td style={{ padding: '4px 6px', textAlign: 'right' }}>{formatCurrency(total, devise)}</td>
+            <td colSpan={2} />
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+interface AgingPrintTemplateProps {
+  title: string;
+  printDate: string;
+  clientSections: { clientName: string; invoices: FactureWithPayments[] }[];
+  grandTotal: number;
+  grandDevise: string;
+  getClientName: (f: FactureWithPayments) => string;
+  getDaysOverdue: (f: FactureWithPayments) => number;
+}
+
+function AgingPrintTemplate({ title, printDate, clientSections, grandTotal, grandDevise, getClientName, getDaysOverdue }: AgingPrintTemplateProps) {
+  return (
+    <div id="aging-print-template" style={{ display: 'none' }}>
+      <style>{`
+        @media print {
+          body > * { display: none !important; }
+          #aging-print-template { display: block !important; }
+          @page { size: A4 landscape; margin: 12mm; }
+        }
+      `}</style>
+      <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
+        {/* Company header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', borderBottom: '2px solid #1e40af', paddingBottom: '10px' }}>
+          <div>
+            <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#1e40af' }}>GO AHEAD SARLU</div>
+            <div style={{ fontSize: '9pt', color: '#6b7280' }}>Département de Sécurité et Gardiennage</div>
+            <div style={{ fontSize: '8pt', color: '#6b7280' }}>RCCM: CD/GOM/RCCM/20-B-00414 | ID NAT.: 19-H5300-N897290</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '13pt', fontWeight: 'bold' }}>{title}</div>
+            <div style={{ fontSize: '9pt', color: '#6b7280' }}>Imprimé le {printDate}</div>
+            <div style={{ fontSize: '9pt', color: '#6b7280' }}>{clientSections.reduce((s, c) => s + c.invoices.length, 0)} facture(s) en attente</div>
+          </div>
+        </div>
+
+        {/* Client sections */}
+        {clientSections.map(({ clientName, invoices }) => (
+          <PrintSection
+            key={clientName}
+            clientName={clientName}
+            invoices={invoices}
+            getClientName={getClientName}
+            getDaysOverdue={getDaysOverdue}
+          />
+        ))}
+
+        {/* Grand total */}
+        {clientSections.length > 1 && (
+          <div style={{ borderTop: '3px solid #1e40af', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12pt' }}>
+            <span>TOTAL GÉNÉRAL</span>
+            <span>{formatCurrency(grandTotal, grandDevise)}</span>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ marginTop: '24px', borderTop: '1px solid #d1d5db', paddingTop: '8px', fontSize: '8pt', color: '#6b7280', textAlign: 'center' }}>
+          70, Av Abattoir, Q Kyeshero, Goma - RDC | +243 974 821 064 | gas@goahead.africa
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clients, onClose, inline = false }) => {
   const [clientFilter, setClientFilter] = useState<string>('ALL');
 
@@ -90,6 +208,45 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
   const getDaysOverdue = (f: FactureWithPayments) =>
     Math.max(0, Math.floor((Date.now() - new Date(f.date_echeance || Date.now()).getTime()) / 86400000));
 
+  // Build per-client sections for the print template
+  const allOutstanding = useMemo(() =>
+    factures.filter(f => f.soldeRestant > 0 && f.statut_paiement !== 'ANNULE'),
+    [factures]
+  );
+
+  const printClientSections = useMemo(() => {
+    const targetInvoices = clientFilter === 'ALL'
+      ? allOutstanding
+      : allOutstanding.filter(f => f.client_id === clientFilter);
+
+    const byClient = new Map<string, FactureWithPayments[]>();
+    for (const f of targetInvoices) {
+      const name = getClientName(f);
+      if (!byClient.has(name)) byClient.set(name, []);
+      byClient.get(name)!.push(f);
+    }
+    return Array.from(byClient.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([clientName, invoices]) => ({ clientName, invoices }));
+  }, [allOutstanding, clientFilter, clients]);
+
+  const printGrandTotal = useMemo(
+    () => printClientSections.reduce((s, c) => s + c.invoices.reduce((ss, f) => ss + f.soldeRestant, 0), 0),
+    [printClientSections]
+  );
+
+  const printGrandDevise = allOutstanding.find(f => f.soldeRestant > 0)?.devise || 'USD';
+
+  const handlePrint = () => {
+    const el = document.getElementById('aging-print-template');
+    if (el) el.style.display = 'block';
+    window.print();
+    setTimeout(() => {
+      const el2 = document.getElementById('aging-print-template');
+      if (el2) el2.style.display = 'none';
+    }, 1000);
+  };
+
   const handleExportExcel = () => {
     const rows: Record<string, any>[] = [];
     for (const bucketKey of ['0-30', '31-60', '61-90', '90+'] as const) {
@@ -122,6 +279,13 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
   };
 
   const totalInvoiceCount = Object.values(buckets).reduce((s, arr) => s + arr.length, 0);
+  const selectedClientName = clientFilter !== 'ALL'
+    ? uniqueClients.find(c => c.id === clientFilter)?.nom
+    : null;
+
+  const printTitle = selectedClientName
+    ? `Créances — ${selectedClientName}`
+    : 'Rapport d\'Ancienneté des Créances';
 
   const headerBar = (
     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
@@ -133,8 +297,19 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <button onClick={handleExportExcel}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+        {/* Print all — always visible */}
+        <button
+          onClick={handlePrint}
+          title="Imprimer tout (groupé par client)"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+        >
+          <Printer className="w-4 h-4" />
+          {selectedClientName ? `Imprimer — ${selectedClientName}` : 'Imprimer tout'}
+        </button>
+        <button
+          onClick={handleExportExcel}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+        >
           <Download className="w-4 h-4" />
           Exporter Excel
         </button>
@@ -157,6 +332,11 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
           <option value="ALL">Tous les clients</option>
           {uniqueClients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
         </select>
+        {selectedClientName && (
+          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+            Le bouton Imprimer n'imprimera que ce client
+          </span>
+        )}
       </div>
     </div>
   );
@@ -243,12 +423,25 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
     </div>
   );
 
+  const printTemplate = (
+    <AgingPrintTemplate
+      title={printTitle}
+      printDate={new Date().toLocaleDateString('fr-FR')}
+      clientSections={printClientSections}
+      grandTotal={printGrandTotal}
+      grandDevise={printGrandDevise}
+      getClientName={getClientName}
+      getDaysOverdue={getDaysOverdue}
+    />
+  );
+
   if (inline) {
     return (
       <div className="flex flex-col">
         {headerBar}
         {filterBar}
         {body}
+        {printTemplate}
       </div>
     );
   }
@@ -260,6 +453,7 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
         {filterBar}
         <div className="flex-1 overflow-y-auto">{body}</div>
       </div>
+      {printTemplate}
     </div>
   );
 };
