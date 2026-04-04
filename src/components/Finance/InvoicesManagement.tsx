@@ -9,7 +9,6 @@ import PaymentForm from './PaymentForm';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import BulkInvoiceWizard from './BulkInvoiceWizard';
 import InvoicePrintView from './InvoicePrintView';
-import InvoiceAgingReport from './InvoiceAgingReport';
 import ClientStatement from './ClientStatement';
 import { exportInvoicesToPDF } from '../../utils/pdfExport';
 import { exportToExcel } from '../../utils/excelExport';
@@ -73,7 +72,6 @@ export default function InvoicesManagement() {
   const [printingFacture, setPrintingFacture] = useState<FactureWithPayments | null>(null);
   const [payingFacture, setPayingFacture] = useState<FactureWithPayments | null>(null);
   const [showBulkWizard, setShowBulkWizard] = useState(false);
-  const [showAgingReport, setShowAgingReport] = useState(false);
   const [statementClient, setStatementClient] = useState<ClientGAS | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
 
@@ -423,13 +421,6 @@ export default function InvoicesManagement() {
           >
             <CalendarDays className="h-4 w-4" />
             <span>Facturation Mensuelle</span>
-          </button>
-          <button
-            onClick={() => setShowAgingReport(true)}
-            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
-          >
-            <AlertCircle className="h-4 w-4" />
-            <span>Rapport d'Ancienneté</span>
           </button>
           <button
             onClick={() => setShowForm(true)}
@@ -853,15 +844,6 @@ export default function InvoicesManagement() {
           existingInvoices={factures}
           onClose={handleBulkWizardClose}
           onSuccess={handleBulkWizardSuccess}
-        />
-      )}
-
-      {/* Invoice Aging Report Modal */}
-      {showAgingReport && (
-        <InvoiceAgingReport
-          factures={factures}
-          clients={clients}
-          onClose={() => setShowAgingReport(false)}
         />
       )}
 

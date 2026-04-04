@@ -13,6 +13,7 @@ import ClientList from './components/Operations/ClientList';
 import SiteList from './components/Operations/SiteList';
 import FinanceModule from './components/Finance/FinanceModule';
 import InvoicesManagement from './components/Finance/InvoicesManagement';
+import FacturationModule from './components/Finance/FacturationModule';
 import FinanceManagement from './components/Finance/FinanceManagement';
 import SettingsPage from './components/Settings/SettingsPage';
 import UserManagement from './components/Settings/UserManagement';
@@ -326,7 +327,7 @@ function AppContent() {
         );
       case 'facturation':
         return electronMode ? (
-          <InvoicesManagement />
+          <FacturationModule />
         ) : (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
