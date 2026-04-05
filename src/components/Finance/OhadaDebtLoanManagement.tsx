@@ -285,18 +285,6 @@ export default function OhadaDebtLoanManagement() {
         </button>
       </div>
 
-      {/* OHADA Compliance Notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-blue-800">
-          <Calculator className="w-5 h-5" />
-          <span className="font-medium">Conformité OHADA</span>
-        </div>
-        <p className="text-sm text-blue-700 mt-1">
-          Ce module respecte les normes OHADA avec intégration au plan comptable, 
-          écritures automatiques en partie double et classification selon les comptes 161-168 (dettes) et 261-268 (prêts).
-        </p>
-      </div>
-
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8">
