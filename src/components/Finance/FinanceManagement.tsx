@@ -14,7 +14,9 @@ import {
   ArrowUpCircle,
   RefreshCw,
   FileText,
-  HandCoins
+  HandCoins,
+  BookOpen,
+  BarChart3
 } from 'lucide-react';
 import { 
   Depense, 
@@ -30,8 +32,10 @@ import EntreeForm from './EntreeForm';
 import TaxSettings from './TaxSettings';
 import FinanceReports from './FinanceReports';
 import DebtLoanManagement from './OhadaDebtLoanManagement';
+import JournalComptable from './JournalComptable';
+import GrandLivre from './GrandLivre';
 
-type TabType = 'dashboard' | 'entrees' | 'depenses' | 'mouvements' | 'taxes' | 'reports' | 'debts';
+type TabType = 'dashboard' | 'entrees' | 'depenses' | 'mouvements' | 'debts' | 'journal' | 'grandlivre' | 'taxes' | 'reports';
 
 export default function FinanceManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -232,6 +236,8 @@ export default function FinanceManagement() {
             { id: 'depenses', label: 'Dépenses', icon: TrendingDown },
             { id: 'mouvements', label: 'Journal de Caisse', icon: RefreshCw },
             { id: 'debts', label: 'Dettes & Prêts', icon: HandCoins },
+            { id: 'journal', label: 'Journal Comptable', icon: BookOpen },
+            { id: 'grandlivre', label: 'Grand Livre', icon: BarChart3 },
             { id: 'taxes', label: 'Paramètres Fiscaux', icon: DollarSign },
             { id: 'reports', label: 'Rapports', icon: FileText },
           ].map((tab) => (
@@ -563,6 +569,12 @@ export default function FinanceManagement() {
 
       {/* Debts Tab */}
       {activeTab === 'debts' && <DebtLoanManagement />}
+
+      {/* Journal Comptable Tab */}
+      {activeTab === 'journal' && <JournalComptable />}
+
+      {/* Grand Livre Tab */}
+      {activeTab === 'grandlivre' && <GrandLivre />}
 
       {/* Mouvements Tab */}
       {activeTab === 'mouvements' && (

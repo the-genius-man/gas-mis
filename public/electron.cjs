@@ -1659,6 +1659,48 @@ function updateFacturePaymentStatus(factureId, db) {
   ).run(newStatus, factureId);
 }
 
+// ============================================================================
+// OHADA ACCOUNTING ENTRY HELPER
+// ============================================================================
+
+/**
+ * Creates a double-entry accounting record (écriture comptable) in BROUILLON status.
+ * Called automatically when invoices are sent, payments received, avoirs created, or expenses recorded.
+ *
+ * @param {object} opts
+ * @param {string} opts.libelle       - Human-readable description
+ * @param {string} opts.type_operation - TypeOperationComptable value
+ * @param {string} opts.source_id     - ID of the source document (facture, paiement, etc.)
+ * @param {number} opts.montant       - Total amount
+ * @param {string} opts.devise        - Currency (USD/CDF)
+ * @param {string} opts.date_ecriture - ISO date string
+ * @param {string} opts.numero_piece  - Reference number (invoice number, etc.)
+ * @param {Array}  opts.lignes        - Array of { compte, libelle, sens, montant, tiers_id, tiers_nom }
+ * @param {object} db                 - better-sqlite3 database instance
+ */
+function createEcritureComptable({ libelle, type_operation, source_id, montant, devise, date_ecriture, numero_piece, lignes }, db) {
+  try {
+    const ecritureId = crypto.randomUUID();
+    db.prepare(`
+      INSERT INTO ecritures_comptables (id, date_ecriture, numero_piece, libelle, type_operation, source_id, montant_total, devise, statut)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'BROUILLON')
+    `).run(ecritureId, date_ecriture, numero_piece || null, libelle, type_operation, source_id || null, montant, devise || 'USD');
+
+    const insertLigne = db.prepare(`
+      INSERT INTO lignes_ecritures (id, ecriture_id, compte_comptable, libelle_compte, sens, montant, devise, tiers_id, tiers_nom)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const l of lignes) {
+      insertLigne.run(crypto.randomUUID(), ecritureId, l.compte, l.libelle || null, l.sens, l.montant, devise || 'USD', l.tiers_id || null, l.tiers_nom || null);
+    }
+    return ecritureId;
+  } catch (err) {
+    // Never block the main operation — log and continue
+    console.error('[OHADA] Failed to create accounting entry:', err.message);
+    return null;
+  }
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -5489,6 +5531,27 @@ ipcMain.handle('db-update-facture-gas', async (event, facture) => {
       }
     }
     
+    // Auto-generate OHADA accounting entry when invoice is sent (BROUILLON → ENVOYE)
+    if (facture.statut_paiement === 'ENVOYE') {
+      const prevStatut = db.prepare('SELECT statut_paiement FROM factures_clients WHERE id = ?').get(facture.id);
+      if (prevStatut && prevStatut.statut_paiement === 'BROUILLON') {
+        const clientNom = facture.client_nom || db.prepare('SELECT nom_entreprise FROM clients_gas WHERE id = ?').get(facture.client_id)?.nom_entreprise || 'Client';
+        createEcritureComptable({
+          libelle: `Facture ${facture.numero_facture} — ${clientNom}`,
+          type_operation: 'RECETTE',
+          source_id: facture.id,
+          montant: facture.montant_total_du_client,
+          devise: facture.devise || 'USD',
+          date_ecriture: facture.date_emission,
+          numero_piece: facture.numero_facture,
+          lignes: [
+            { compte: '411', libelle: 'Clients', sens: 'DEBIT', montant: facture.montant_total_du_client, tiers_id: facture.client_id, tiers_nom: clientNom },
+            { compte: '706', libelle: 'Services Vendus', sens: 'CREDIT', montant: facture.montant_total_du_client },
+          ],
+        }, db);
+      }
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Error updating facture GAS:', error);
@@ -5652,7 +5715,31 @@ ipcMain.handle('db-add-paiement-gas', async (event, paiement) => {
       // Log but don't fail the payment if treasury recording fails
       console.error('Error recording payment in treasury:', treasuryError);
     }
-    
+
+    // Auto-generate OHADA accounting entry: Débit 512/571 (Banque/Caisse) / Crédit 411 (Clients)
+    try {
+      const facture = db.prepare('SELECT numero_facture, client_id, client_nom FROM factures_clients WHERE id = ?').get(paiement.facture_id);
+      const clientNom = facture?.client_nom || db.prepare('SELECT nom_entreprise FROM clients_gas WHERE id = ?').get(facture?.client_id)?.nom_entreprise || 'Client';
+      const modePaiement = paiement.mode_paiement || 'ESPECES';
+      const compteEncaissement = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? '571' : '512';
+      const libelleCompte = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? 'Caisse' : 'Banques';
+      createEcritureComptable({
+        libelle: `Encaissement ${facture?.numero_facture || ''} — ${clientNom}`,
+        type_operation: 'RECETTE',
+        source_id: paiement.id,
+        montant: paiement.montant_paye,
+        devise: paiement.devise || 'USD',
+        date_ecriture: paiement.date_paiement,
+        numero_piece: paiement.reference_paiement || facture?.numero_facture,
+        lignes: [
+          { compte: compteEncaissement, libelle: libelleCompte, sens: 'DEBIT', montant: paiement.montant_paye },
+          { compte: '411', libelle: 'Clients', sens: 'CREDIT', montant: paiement.montant_paye, tiers_id: facture?.client_id, tiers_nom: clientNom },
+        ],
+      }, db);
+    } catch (acctError) {
+      console.error('Error creating accounting entry for payment:', acctError);
+    }
+
     return { success: true, id: paiement.id };
   } catch (error) {
     console.error('Error adding paiement:', error);
@@ -5756,6 +5843,28 @@ ipcMain.handle('db-create-avoir', async (event, avoir) => {
     });
 
     const savedAvoir = createAvoir(avoir);
+
+    // Auto-generate OHADA accounting entry: Débit 706 (Services) / Crédit 411 (Clients)
+    try {
+      const factureInfo = db.prepare('SELECT numero_facture, client_id, client_nom FROM factures_clients WHERE id = ?').get(avoir.facture_id);
+      const clientNom = factureInfo?.client_nom || db.prepare('SELECT nom_entreprise FROM clients_gas WHERE id = ?').get(factureInfo?.client_id)?.nom_entreprise || 'Client';
+      createEcritureComptable({
+        libelle: `Avoir ${savedAvoir.numero_avoir} sur ${factureInfo?.numero_facture || ''} — ${avoir.motif_avoir}`,
+        type_operation: 'RECETTE',
+        source_id: savedAvoir.id,
+        montant: avoir.montant_avoir,
+        devise: avoir.devise || 'USD',
+        date_ecriture: avoir.date_avoir,
+        numero_piece: savedAvoir.numero_avoir,
+        lignes: [
+          { compte: '706', libelle: 'Services Vendus', sens: 'DEBIT', montant: avoir.montant_avoir },
+          { compte: '411', libelle: 'Clients', sens: 'CREDIT', montant: avoir.montant_avoir, tiers_id: avoir.client_id, tiers_nom: clientNom },
+        ],
+      }, db);
+    } catch (acctError) {
+      console.error('Error creating accounting entry for avoir:', acctError);
+    }
+
     return { success: true, avoir: savedAvoir };
   } catch (error) {
     console.error('Error creating avoir:', error);
@@ -6979,6 +7088,31 @@ ipcMain.handle('db-add-depense', async (event, depense) => {
       depense.montant, depense.devise || 'USD', depense.description,
       depense.id, soldeAvant, soldeApres
     );
+
+    // Auto-generate OHADA accounting entry: Débit 6x (Charges) / Crédit 512/571 (Banque/Caisse)
+    try {
+      const categorie = db.prepare('SELECT nom_categorie, code_compte FROM categories_depenses WHERE id = ?').get(depense.categorie_id);
+      const compteCharge = categorie?.code_compte || '63';
+      const libelleCharge = categorie?.nom_categorie || 'Autres charges';
+      const modePaiement = depense.mode_paiement || 'ESPECES';
+      const compteCredit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? '571' : '512';
+      const libelleCredit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? 'Caisse' : 'Banques';
+      createEcritureComptable({
+        libelle: `Dépense — ${depense.description}`,
+        type_operation: 'DEPENSE',
+        source_id: depense.id,
+        montant: depense.montant,
+        devise: depense.devise || 'USD',
+        date_ecriture: depense.date_depense,
+        numero_piece: depense.reference_piece,
+        lignes: [
+          { compte: compteCharge, libelle: libelleCharge, sens: 'DEBIT', montant: depense.montant, tiers_nom: depense.beneficiaire },
+          { compte: compteCredit, libelle: libelleCredit, sens: 'CREDIT', montant: depense.montant },
+        ],
+      }, db);
+    } catch (acctError) {
+      console.error('Error creating accounting entry for depense:', acctError);
+    }
 
     return { success: true, id: depense.id };
   } catch (error) {
