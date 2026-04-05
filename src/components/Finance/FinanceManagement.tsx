@@ -35,7 +35,7 @@ import DebtLoanManagement from './OhadaDebtLoanManagement';
 import JournalComptable from './JournalComptable';
 import GrandLivre from './GrandLivre';
 
-type TabType = 'dashboard' | 'entrees' | 'depenses' | 'mouvements' | 'debts' | 'journal' | 'grandlivre' | 'taxes' | 'reports';
+type TabType = 'dashboard' | 'entrees' | 'depenses' | 'debts' | 'journal' | 'grandlivre';
 
 export default function FinanceManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -234,12 +234,9 @@ export default function FinanceManagement() {
             { id: 'dashboard', label: 'Tableau de bord', icon: Wallet },
             { id: 'entrees', label: 'Entrées', icon: TrendingUp },
             { id: 'depenses', label: 'Dépenses', icon: TrendingDown },
-            { id: 'mouvements', label: 'Journal de Caisse', icon: RefreshCw },
             { id: 'debts', label: 'Dettes & Prêts', icon: HandCoins },
             { id: 'journal', label: 'Journal Comptable', icon: BookOpen },
             { id: 'grandlivre', label: 'Grand Livre', icon: BarChart3 },
-            { id: 'taxes', label: 'Paramètres Fiscaux', icon: DollarSign },
-            { id: 'reports', label: 'Rapports', icon: FileText },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -561,12 +558,6 @@ export default function FinanceManagement() {
         </div>
       )}
 
-      {/* Taxes Tab */}
-      {activeTab === 'taxes' && <TaxSettings />}
-
-      {/* Reports Tab */}
-      {activeTab === 'reports' && <FinanceReports />}
-
       {/* Debts Tab */}
       {activeTab === 'debts' && <DebtLoanManagement />}
 
@@ -575,95 +566,6 @@ export default function FinanceManagement() {
 
       {/* Grand Livre Tab */}
       {activeTab === 'grandlivre' && <GrandLivre />}
-
-      {/* Mouvements Tab */}
-      {activeTab === 'mouvements' && (
-        <div className="space-y-4">
-          {/* Filters */}
-          <div className="flex items-center gap-4">
-            <select
-              value={filterCompte}
-              onChange={(e) => setFilterCompte(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tous les comptes</option>
-              {comptes.map((compte) => (
-                <option key={compte.id} value={compte.id}>{compte.nom_compte}</option>
-              ))}
-            </select>
-            <input
-              type="date"
-              value={filterDateDebut}
-              onChange={(e) => setFilterDateDebut(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="date"
-              value={filterDateFin}
-              onChange={(e) => setFilterDateFin(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Mouvements Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Compte</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Libellé</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Solde après</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMouvements.map((mouvement) => (
-                  <tr key={mouvement.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {new Date(mouvement.date_mouvement).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{mouvement.nom_compte}</td>
-                    <td className="px-4 py-3 text-center">
-                      {mouvement.type_mouvement === 'ENTREE' ? (
-                        <span className="inline-flex items-center gap-1 text-green-600">
-                          <ArrowDownCircle className="w-4 h-4" /> Entrée
-                        </span>
-                      ) : mouvement.type_mouvement === 'SORTIE' ? (
-                        <span className="inline-flex items-center gap-1 text-red-600">
-                          <ArrowUpCircle className="w-4 h-4" /> Sortie
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-blue-600">
-                          <RefreshCw className="w-4 h-4" /> Transfert
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{mouvement.libelle}</td>
-                    <td className={`px-4 py-3 text-sm text-right font-medium ${
-                      mouvement.type_mouvement === 'ENTREE' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {mouvement.type_mouvement === 'ENTREE' ? '+' : '-'}
-                      {mouvement.montant.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {mouvement.devise}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-600">
-                      {mouvement.solde_apres.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {mouvement.devise}
-                    </td>
-                  </tr>
-                ))}
-                {filteredMouvements.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                      Aucun mouvement trouvé
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* Depense Form Modal */}
       {showDepenseForm && (
