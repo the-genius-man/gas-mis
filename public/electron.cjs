@@ -4346,121 +4346,31 @@ async function generateDeductionSchedule(deductionId, deduction) {
   }
 }
 
-// ============================================================================
-// BACKFILL: Generate accounting entries for existing records that predate
-// the auto-generation feature. Safe to run multiple times (idempotent).
-// ============================================================================
-
-function backfillAccountingEntries() {
+// One-shot flush: clears entrees, depenses, mouvements and accounting entries.
+// Runs once, then marks itself done via a DB flag so it never runs again.
+function flushFinanceDataOnce() {
   try {
-    // ── Dépenses ──────────────────────────────────────────────────────────────
-    const depenses = db.prepare(`
-      SELECT d.*, c.nom_categorie, c.code_compte
-      FROM depenses d
-      LEFT JOIN categories_depenses c ON d.categorie_id = c.id
-      WHERE d.statut = 'VALIDEE'
-        AND NOT EXISTS (
-          SELECT 1 FROM ecritures_comptables e
-          WHERE e.source_id = d.id AND e.type_operation = 'DEPENSE'
-        )
-    `).all();
+    // Use a simple settings table to track if flush has run
+    db.exec(`CREATE TABLE IF NOT EXISTS _app_flags (key TEXT PRIMARY KEY, value TEXT)`);
+    const flag = db.prepare(`SELECT value FROM _app_flags WHERE key = 'finance_flush_v1'`).get();
+    if (flag) return; // already done
 
-    for (const d of depenses) {
-      const compteCharge = d.code_compte || '63';
-      const libelleCharge = d.nom_categorie || 'Autres charges';
-      const modePaiement = d.mode_paiement || 'ESPECES';
-      const compteCredit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? '571' : '512';
-      const libelleCredit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? 'Caisse' : 'Banques';
-      createEcritureComptable({
-        libelle: `Dépense — ${d.description}`,
-        type_operation: 'DEPENSE',
-        source_id: d.id,
-        montant: d.montant,
-        devise: d.devise || 'USD',
-        date_ecriture: d.date_depense,
-        numero_piece: d.reference_piece,
-        lignes: [
-          { compte: compteCharge, libelle: libelleCharge, sens: 'DEBIT', montant: d.montant, tiers_nom: d.beneficiaire },
-          { compte: compteCredit, libelle: libelleCredit, sens: 'CREDIT', montant: d.montant },
-        ],
-      }, db);
-    }
-
-    // ── Entrées (non-client-payment deposits) ─────────────────────────────────
-    const entrees = db.prepare(`
-      SELECT e.*
-      FROM entrees e
-      WHERE NOT EXISTS (
-        SELECT 1 FROM ecritures_comptables ec
-        WHERE ec.source_id = e.id AND ec.type_operation = 'RECETTE'
-      )
-    `).all();
-
-    for (const e of entrees) {
-      const modePaiement = e.mode_paiement || 'ESPECES';
-      const compteDebit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? '571' : '512';
-      const libelleDebit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? 'Caisse' : 'Banques';
-      // For client payments, credit 411; for deposits, credit 47 (Débiteurs divers)
-      const compteCredit = e.source_type === 'PAIEMENT_CLIENT' ? '411' : '47';
-      const libelleCredit = e.source_type === 'PAIEMENT_CLIENT' ? 'Clients' : 'Débiteurs divers';
-      createEcritureComptable({
-        libelle: e.description || 'Entrée de trésorerie',
-        type_operation: 'RECETTE',
-        source_id: e.id,
-        montant: e.montant,
-        devise: e.devise || 'USD',
-        date_ecriture: e.date_entree,
-        numero_piece: e.reference,
-        lignes: [
-          { compte: compteDebit, libelle: libelleDebit, sens: 'DEBIT', montant: e.montant },
-          { compte: compteCredit, libelle: libelleCredit, sens: 'CREDIT', montant: e.montant },
-        ],
-      }, db);
-    }
-
-    // ── Paiements clients (invoice payments) ──────────────────────────────────
-    const paiements = db.prepare(`
-      SELECT p.*, f.numero_facture, f.client_id, f.client_nom
-      FROM paiements p
-      LEFT JOIN factures_clients f ON p.facture_id = f.id
-      WHERE NOT EXISTS (
-        SELECT 1 FROM ecritures_comptables ec
-        WHERE ec.source_id = p.id AND ec.type_operation = 'RECETTE'
-      )
-    `).all();
-
-    for (const p of paiements) {
-      const clientNom = p.client_nom || db.prepare('SELECT nom_entreprise FROM clients_gas WHERE id = ?').get(p.client_id)?.nom_entreprise || 'Client';
-      const modePaiement = p.mode_paiement || 'ESPECES';
-      const compteEncaissement = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? '571' : '512';
-      const libelleCompte = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? 'Caisse' : 'Banques';
-      createEcritureComptable({
-        libelle: `Encaissement ${p.numero_facture || ''} — ${clientNom}`,
-        type_operation: 'RECETTE',
-        source_id: p.id,
-        montant: p.montant_paye,
-        devise: p.devise || 'USD',
-        date_ecriture: p.date_paiement,
-        numero_piece: p.reference_paiement || p.numero_facture,
-        lignes: [
-          { compte: compteEncaissement, libelle: libelleCompte, sens: 'DEBIT', montant: p.montant_paye },
-          { compte: '411', libelle: 'Clients', sens: 'CREDIT', montant: p.montant_paye, tiers_id: p.client_id, tiers_nom: clientNom },
-        ],
-      }, db);
-    }
-
-    const total = depenses.length + entrees.length + paiements.length;
-    if (total > 0) {
-      console.log(`[OHADA] Backfilled ${total} accounting entries (${depenses.length} dépenses, ${entrees.length} entrées, ${paiements.length} paiements).`);
-    }
+    db.prepare('DELETE FROM lignes_ecritures').run();
+    db.prepare('DELETE FROM ecritures_comptables').run();
+    db.prepare('DELETE FROM mouvements_tresorerie').run();
+    db.prepare('DELETE FROM entrees').run();
+    db.prepare('DELETE FROM depenses').run();
+    db.prepare('UPDATE comptes_tresorerie SET solde_actuel = 0').run();
+    db.prepare(`INSERT INTO _app_flags (key, value) VALUES ('finance_flush_v1', 'done')`).run();
+    console.log('[FLUSH] Finance data cleared successfully.');
   } catch (err) {
-    console.error('[OHADA] Backfill failed:', err.message);
+    console.error('[FLUSH] Failed:', err.message);
   }
 }
 
 app.whenReady().then(() => {
   initDatabase();
-  backfillAccountingEntries();
+  flushFinanceDataOnce();
   createWindow();
 
   app.on('activate', () => {
