@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, Building2, Edit, MapPin, Phone, Mail, FileText, DollarSign, 
-  Calendar, CreditCard, User, Users
+  Calendar, CreditCard, User, Users, BookOpen
 } from 'lucide-react';
-import { ClientGAS, SiteGAS, StatutClient } from '../../types';
+import { ClientGAS, SiteGAS, StatutClient, FactureWithPayments } from '../../types';
+import ClientStatement from './ClientStatement';
 
 interface ClientWithStats extends ClientGAS {
   totalPrice: number;
@@ -21,6 +22,31 @@ interface ClientDetailModalProps {
 }
 
 export default function ClientDetailModal({ client, sites, onClose, onEdit, onStatusChange, onNavigateToSites }: ClientDetailModalProps) {
+  const [showStatement, setShowStatement] = useState(false);
+  const [statementFactures, setStatementFactures] = useState<FactureWithPayments[]>([]);
+  const [loadingStatement, setLoadingStatement] = useState(false);
+
+  const handleOpenStatement = async () => {
+    if (!window.electronAPI) return;
+    setLoadingStatement(true);
+    try {
+      const facturesData = await window.electronAPI.getFacturesGAS();
+      const enriched: FactureWithPayments[] = await Promise.all(
+        (facturesData || []).map(async (f: any) => {
+          try {
+            const summary = await window.electronAPI!.getFacturePaiementsSummary(f.id);
+            return { ...f, totalPaye: summary.montant_paye, soldeRestant: summary.solde_restant };
+          } catch {
+            return { ...f, totalPaye: 0, soldeRestant: f.montant_total_du_client };
+          }
+        })
+      );
+      setStatementFactures(enriched);
+      setShowStatement(true);
+    } finally {
+      setLoadingStatement(false);
+    }
+  };
   const getStatusBadge = (statut: string) => {
     switch (statut) {
       case 'ACTIF':
@@ -33,6 +59,7 @@ export default function ClientDetailModal({ client, sites, onClose, onEdit, onSt
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         {/* Header */}
@@ -73,6 +100,14 @@ export default function ClientDetailModal({ client, sites, onClose, onEdit, onSt
                 🧪 Test
               </button>
             )}
+            <button
+              onClick={handleOpenStatement}
+              disabled={loadingStatement}
+              className="flex items-center gap-2 px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg disabled:opacity-50"
+            >
+              <BookOpen className="w-4 h-4" />
+              {loadingStatement ? 'Chargement...' : 'Relevé de Compte'}
+            </button>
             <button
               onClick={onEdit}
               className="flex items-center gap-2 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg"
@@ -326,5 +361,15 @@ export default function ClientDetailModal({ client, sites, onClose, onEdit, onSt
         </div>
       </div>
     </div>
+
+      {/* Client Statement Modal */}
+      {showStatement && (
+        <ClientStatement
+          client={client}
+          allFactures={statementFactures}
+          onClose={() => setShowStatement(false)}
+        />
+      )}
+    </>
   );
 }
