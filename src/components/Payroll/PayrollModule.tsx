@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { DollarSign, Users, FileText, AlertCircle, BarChart3, Minus } from 'lucide-react';
+import { DollarSign, FileText, AlertCircle, Minus } from 'lucide-react';
 import PayrollManagement from './PayrollManagement';
 import AdvancesManagement from './AdvancesManagement';
 import UnpaidSalariesManagement from './UnpaidSalariesManagement';
 import DeductionsManagement from './DeductionsManagement';
-import PayrollReports from './PayrollReports';
 
-type TabType = 'payroll' | 'advances' | 'deductions' | 'unpaid' | 'reports';
+type TabType = 'payroll' | 'advances' | 'deductions' | 'unpaid';
 
 export default function PayrollModule() {
   const [activeTab, setActiveTab] = useState<TabType>('payroll');
@@ -16,7 +15,6 @@ export default function PayrollModule() {
     { id: 'advances' as TabType, label: 'Avances', icon: FileText },
     { id: 'deductions' as TabType, label: 'Déductions', icon: Minus },
     { id: 'unpaid' as TabType, label: 'Salaires Impayés', icon: AlertCircle },
-    { id: 'reports' as TabType, label: 'Rapports', icon: BarChart3 },
   ];
 
   return (
@@ -58,7 +56,6 @@ export default function PayrollModule() {
         {activeTab === 'advances' && <AdvancesManagement />}
         {activeTab === 'deductions' && <DeductionsManagement />}
         {activeTab === 'unpaid' && <UnpaidSalariesManagement />}
-        {activeTab === 'reports' && <PayrollReports />}
       </div>
     </div>
   );

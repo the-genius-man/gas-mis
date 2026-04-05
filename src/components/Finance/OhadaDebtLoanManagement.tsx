@@ -293,7 +293,6 @@ export default function OhadaDebtLoanManagement() {
             { id: 'debts', label: 'Dettes (Passif)', icon: TrendingUp },
             { id: 'loans', label: 'Prêts (Actif)', icon: TrendingDown },
             { id: 'payments', label: 'Paiements', icon: DollarSign },
-            { id: 'reports', label: 'Rapports OHADA', icon: FileText },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -744,55 +743,6 @@ export default function OhadaDebtLoanManagement() {
                   )}
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reports Tab */}
-      {activeTab === 'reports' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Rapports OHADA - Dettes & Prêts
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-                <Calculator className="w-8 h-8 text-blue-600 mb-2" />
-                <h4 className="font-medium text-gray-900">Bilan OHADA</h4>
-                <p className="text-sm text-gray-500">Position des dettes (Passif) et prêts (Actif)</p>
-              </button>
-              
-              <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-                <BookOpen className="w-8 h-8 text-green-600 mb-2" />
-                <h4 className="font-medium text-gray-900">Grand Livre</h4>
-                <p className="text-sm text-gray-500">Mouvements par compte OHADA</p>
-              </button>
-              
-              <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-                <Calendar className="w-8 h-8 text-purple-600 mb-2" />
-                <h4 className="font-medium text-gray-900">Échéancier</h4>
-                <p className="text-sm text-gray-500">Calendrier des paiements à venir</p>
-              </button>
-              
-              <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-                <AlertTriangle className="w-8 h-8 text-red-600 mb-2" />
-                <h4 className="font-medium text-gray-900">Éléments en Retard</h4>
-                <p className="text-sm text-gray-500">Dettes et prêts en retard de paiement</p>
-              </button>
-              
-              <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-                <DollarSign className="w-8 h-8 text-yellow-600 mb-2" />
-                <h4 className="font-medium text-gray-900">Analyse des Intérêts</h4>
-                <p className="text-sm text-gray-500">Produits et charges d'intérêts</p>
-              </button>
-              
-              <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 text-left">
-                <Download className="w-8 h-8 text-gray-600 mb-2" />
-                <h4 className="font-medium text-gray-900">Export Excel</h4>
-                <p className="text-sm text-gray-500">Export des données pour analyse</p>
-              </button>
             </div>
           </div>
         </div>

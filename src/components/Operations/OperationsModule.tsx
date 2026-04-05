@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { Users, Calendar, AlertTriangle, UserCheck, FileText, MapPin, Activity, Clock } from 'lucide-react';
+import { Users, Calendar, AlertTriangle, UserCheck, MapPin, Activity, Clock } from 'lucide-react';
 import RoteurManagement from './RoteurManagement';
 import AgentsManagement from './AgentsManagement';
 import ActionsManagement from '../Disciplinary/ActionsManagement';
-import OperationsReports from './OperationsReports';
 import SitesManagement from '../Finance/SitesManagement';
 import OperationsDashboard from './OperationsDashboard';
 import ShiftManagement from './ShiftManagement';
 
-type TabType = 'dashboard' | 'agents' | 'sites' | 'rotation' | 'shifts' | 'discipline' | 'reports';
+type TabType = 'dashboard' | 'agents' | 'sites' | 'rotation' | 'shifts' | 'discipline';
 
 const OperationsModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -20,7 +19,6 @@ const OperationsModule: React.FC = () => {
     { id: 'rotation' as TabType, label: 'Rotation', icon: Users },
     { id: 'shifts' as TabType, label: 'Équipes', icon: Clock },
     { id: 'discipline' as TabType, label: 'Discipline', icon: AlertTriangle },
-    { id: 'reports' as TabType, label: 'Rapports', icon: FileText },
   ];
 
   return (
@@ -58,7 +56,6 @@ const OperationsModule: React.FC = () => {
         {activeTab === 'rotation' && <RoteurManagement />}
         {activeTab === 'shifts' && <ShiftManagement />}
         {activeTab === 'discipline' && <ActionsManagement />}
-        {activeTab === 'reports' && <OperationsReports />}
       </div>
     </div>
   );

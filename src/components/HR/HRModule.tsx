@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Users, Calendar, Clock, CalendarDays, FileText } from 'lucide-react';
+import { Users, Calendar, Clock, CalendarDays } from 'lucide-react';
 import EmployeesManagement from './EmployeesManagement';
 import LeaveManagement from './LeaveManagement';
 import LeaveCalendar from './LeaveCalendar';
-import HRReports from './HRReports';
 
-type TabType = 'employees' | 'leave' | 'calendar' | 'provisions' | 'reports';
+type TabType = 'employees' | 'leave' | 'calendar' | 'provisions';
 
 const HRModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('employees');
@@ -15,7 +14,6 @@ const HRModule: React.FC = () => {
     { id: 'leave' as TabType, label: 'Demandes de Congé', icon: Calendar },
     { id: 'calendar' as TabType, label: 'Calendrier', icon: CalendarDays },
     { id: 'provisions' as TabType, label: 'Provisions Congés', icon: Clock },
-    { id: 'reports' as TabType, label: 'Rapports', icon: FileText },
   ];
 
   return (
@@ -51,7 +49,6 @@ const HRModule: React.FC = () => {
         {activeTab === 'leave' && <LeaveManagement />}
         {activeTab === 'calendar' && <LeaveCalendar />}
         {activeTab === 'provisions' && <LeaveManagement showProvisions />}
-        {activeTab === 'reports' && <HRReports />}
       </div>
     </div>
   );

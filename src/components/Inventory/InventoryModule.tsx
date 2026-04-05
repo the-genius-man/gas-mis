@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Package, ClipboardList, FileText } from 'lucide-react';
+import { Package, ClipboardList } from 'lucide-react';
 import EquipmentManagement from './EquipmentManagement';
-import InventoryReports from './InventoryReports';
 
-type TabType = 'equipment' | 'assignments' | 'reports';
+type TabType = 'equipment' | 'assignments';
 
 const InventoryModule: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('equipment');
@@ -11,7 +10,6 @@ const InventoryModule: React.FC = () => {
   const tabs = [
     { id: 'equipment' as TabType, label: 'Équipements', icon: Package },
     { id: 'assignments' as TabType, label: 'Affectations', icon: ClipboardList },
-    { id: 'reports' as TabType, label: 'Rapports', icon: FileText },
   ];
 
   return (
@@ -52,7 +50,6 @@ const InventoryModule: React.FC = () => {
             </div>
           </div>
         )}
-        {activeTab === 'reports' && <InventoryReports />}
       </div>
     </div>
   );
