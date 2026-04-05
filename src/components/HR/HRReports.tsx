@@ -217,7 +217,7 @@ export default function HRReports() {
     const wsDeployments = XLSX.utils.aoa_to_sheet(deploymentsData);
     XLSX.utils.book_append_sheet(wb, wsDeployments, 'Déploiements');
 
-    XLSX.writeFile(wb, `Rapport_RH_${dateRange.startDate}_${dateRange.endDate}.xlsx`);
+    XLSX.writeFile(wb, `GAS ${new Date().getFullYear()} - Rapport-RH_${dateRange.startDate}_${dateRange.endDate}.xlsx`);
   };
 
   if (loading) {

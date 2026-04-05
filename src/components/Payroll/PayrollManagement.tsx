@@ -574,7 +574,8 @@ export default function PayrollManagement() {
 
       // Save PDF
       const monthName = getMonthName(selectedPeriod.mois);
-      doc.save(`GAS ${selectedPeriod.annee} - Bulletins_Paie_${monthName}.pdf`);
+      const today = new Date().toISOString().slice(0, 10);
+      doc.save(`GAS ${selectedPeriod.annee} - Bulletins-Paie_${monthName}_${today}.pdf`);
 
     } catch (error) {
       console.error('Error exporting PDF:', error);

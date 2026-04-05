@@ -382,7 +382,7 @@ export default function FinanceReports() {
     const wsCashFlow = XLSX.utils.aoa_to_sheet(cashFlowData);
     XLSX.utils.book_append_sheet(wb, wsCashFlow, 'Flux de Trésorerie');
 
-    XLSX.writeFile(wb, `Rapport_Financier_${dateRange.startDate}_${dateRange.endDate}.xlsx`);
+    XLSX.writeFile(wb, `GAS ${new Date().getFullYear()} - Rapport-Financier_${dateRange.startDate}_${dateRange.endDate}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -500,7 +500,7 @@ export default function FinanceReports() {
       doc.text('Rapport Financier - Confidentiel', margin, doc.internal.pageSize.height - 10);
     }
 
-    doc.save(`Rapport_Financier_${dateRange.startDate}_${dateRange.endDate}.pdf`);
+    doc.save(`GAS ${new Date().getFullYear()} - Rapport-Financier_${dateRange.startDate}_${dateRange.endDate}.pdf`);
   };
 
   if (loading) {

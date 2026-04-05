@@ -470,7 +470,7 @@ export default function OperationsReports() {
     const wsIncidents = XLSX.utils.aoa_to_sheet(incidentsData);
     XLSX.utils.book_append_sheet(wb, wsIncidents, 'Incidents');
 
-    XLSX.writeFile(wb, `Rapport_Operations_${dateRange.startDate}_${dateRange.endDate}.xlsx`);
+    XLSX.writeFile(wb, `GAS ${new Date().getFullYear()} - Rapport-Opérations_${dateRange.startDate}_${dateRange.endDate}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -623,7 +623,7 @@ export default function OperationsReports() {
       doc.text('Rapport Opérations - Confidentiel', margin, doc.internal.pageSize.height - 10);
     }
 
-    doc.save(`Rapport_Operations_${dateRange.startDate}_${dateRange.endDate}.pdf`);
+    doc.save(`GAS ${new Date().getFullYear()} - Rapport-Opérations_${dateRange.startDate}_${dateRange.endDate}.pdf`);
   };
 
   const handleExport = () => {

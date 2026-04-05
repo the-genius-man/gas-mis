@@ -216,10 +216,11 @@ export default function InvoicesManagement() {
       alert('Veuillez sélectionner au moins une facture');
       return;
     }
-    const currentYear = new Date().getFullYear();
+    const today = new Date().toISOString().slice(0, 10);
+    const year = new Date().getFullYear();
     const filename = selectedInvoices.length === 1
-      ? `GAS - ${currentYear} - Invoice ${selectedInvoices[0].numero_facture}.pdf`
-      : `GAS - ${currentYear} - Invoice ${selectedInvoices.length} factures.pdf`;
+      ? `GAS ${year} - Facture_${selectedInvoices[0].numero_facture}_${today}.pdf`
+      : `GAS ${year} - Factures_${selectedInvoices.length}-factures_${today}.pdf`;
 
     exportInvoicesToPDF(selectedInvoices, clients, sites, factures, filename);
     setSelectedInvoiceIds(new Set());
@@ -244,7 +245,7 @@ export default function InvoicesManagement() {
       'Gardiens': facture.total_gardiens_factures
     }));
 
-    exportToExcel(dataToExport, 'Factures_GAS', 'Factures');
+    exportToExcel(dataToExport, `GAS ${new Date().getFullYear()} - Factures`, 'Factures');
   };
 
   // Bulk send selected invoices (BROUILLON → ENVOYE)

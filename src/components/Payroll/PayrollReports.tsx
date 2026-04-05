@@ -195,7 +195,7 @@ export default function PayrollReports() {
     const wsCategory = XLSX.utils.aoa_to_sheet(categoryData);
     XLSX.utils.book_append_sheet(wb, wsCategory, 'Par Catégorie');
 
-    XLSX.writeFile(wb, `Rapport_Paie_${periodName.replace(' ', '_')}.xlsx`);
+    XLSX.writeFile(wb, `GAS ${new Date().getFullYear()} - Rapport-Paie_${periodName.replace(' ', '-')}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const getMonthName = (month: number) => {

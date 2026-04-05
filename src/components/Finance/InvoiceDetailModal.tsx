@@ -148,7 +148,9 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
         return;
       }
 
-      const filename = `Facture_${facture.numero_facture}.pdf`;
+      const today = new Date().toISOString().slice(0, 10);
+      const year = new Date().getFullYear();
+      const filename = `GAS ${year} - Facture_${facture.numero_facture}_${today}.pdf`;
       await exportToPDF(invoiceElement, filename, {
         orientation: 'portrait',
         format: 'a4',

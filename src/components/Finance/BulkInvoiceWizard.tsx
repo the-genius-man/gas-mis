@@ -1312,8 +1312,9 @@ export default function BulkInvoiceWizard({
       }
       
       // Generate filename
-      const date = new Date().toISOString().split('T')[0];
-      const filename = `Factures_${date}_${selectedInvoices.length}factures.pdf`;
+      const date = new Date().toISOString().slice(0, 10);
+      const year = new Date().getFullYear();
+      const filename = `GAS ${year} - Factures_${selectedInvoices.length}-factures_${date}.pdf`;
       
       // Export to PDF
       await exportMultipleToPDF(elements, filename, {

@@ -212,7 +212,7 @@ export default function InventoryReports() {
     const wsLifecycle = XLSX.utils.aoa_to_sheet(lifecycleData);
     XLSX.utils.book_append_sheet(wb, wsLifecycle, 'Cycle de Vie');
 
-    XLSX.writeFile(wb, `Rapport_Inventaire_${dateRange.startDate}_${dateRange.endDate}.xlsx`);
+    XLSX.writeFile(wb, `GAS ${new Date().getFullYear()} - Rapport-Inventaire_${dateRange.startDate}_${dateRange.endDate}.xlsx`);
   };
 
   if (loading) {

@@ -229,7 +229,7 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
         Devise: devise,
       }
     );
-    exportToExcel(rows, `Releve_Client_${client.nom_entreprise.replace(/\s+/g, '_')}`, 'Relevé');
+    exportToExcel(rows, `GAS ${new Date().getFullYear()} - Relevé-Client_${client.nom_entreprise.replace(/\s+/g, '-')}`, 'Relevé');
   };
 
   return (

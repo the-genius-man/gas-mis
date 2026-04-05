@@ -256,7 +256,9 @@ export default function PayslipDetail({ payslip, onClose }: PayslipDetailProps) 
     doc.text(`Statut: ${payslip.statut}`, pageWidth / 2, footerY + 5, { align: 'center' });
 
     // Save PDF
-    doc.save(`Bulletin_Paie_${payslip.matricule}_${payslip.nom_complet.replace(/\s+/g, '_')}.pdf`);
+    const today = new Date().toISOString().slice(0, 10);
+    const year = new Date().getFullYear();
+    doc.save(`GAS ${year} - Bulletin-Paie_${payslip.matricule}_${payslip.nom_complet.replace(/\s+/g, '-')}_${today}.pdf`);
   };
 
   return (

@@ -233,9 +233,11 @@ function exportAgingToPDF(
   doc.line(L, 200, R, 200);
   doc.text('70, Av Abattoir, Q Kyeshero, Goma - RDC  |  +243 974 821 064  |  gas@goahead.africa', 148, 204, { align: 'center' });
 
-  const filename = title === "Rapport d'Ancienneté des Créances"
-    ? `Creances_Clients_${new Date().toISOString().slice(0, 10)}.pdf`
-    : `Creances_${clientSections[0]?.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const year = new Date().getFullYear();
+  const date = new Date().toISOString().slice(0, 10);
+  const filename = clientSections.length === 1
+    ? `GAS ${year} - Créances_${clientSections[0].clientName.replace(/\s+/g, '-')}_${date}.pdf`
+    : `GAS ${year} - Rapport-Créances_${date}.pdf`;
 
   doc.save(filename);
 }
@@ -338,7 +340,7 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
     }
     rows.push({ Tranche: 'GRAND TOTAL', Client: '', 'N° Facture': '', "Date d'émission": '',
       'Montant total': '', 'Montant payé': '', 'Solde restant': grandTotal, 'Jours de retard': '', Devise: '' });
-    exportToExcel(rows, 'Rapport_Anciennete', 'Ancienneté');
+    exportToExcel(rows, `GAS ${new Date().getFullYear()} - Rapport-Créances`, 'Ancienneté');
   };
 
   const totalInvoiceCount = Object.values(buckets).reduce((s, arr) => s + arr.length, 0);
