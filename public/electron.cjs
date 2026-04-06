@@ -5731,7 +5731,23 @@ ipcMain.handle('db-add-paiement-gas', async (event, paiement) => {
           paiement.montant_paye, devise, libelle,
           paiement.id, soldeAvant, soldeApres
         );
-        
+
+        // Record in Entrées table so it appears in Finance > Entrées
+        const entreeId = 'ent-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        db.prepare(`
+          INSERT INTO entrees (
+            id, compte_tresorerie_id, date_entree, montant, devise,
+            source_type, facture_id, description, reference, mode_paiement
+          ) VALUES (?, ?, ?, ?, ?, 'PAIEMENT_CLIENT', ?, ?, ?, ?)
+        `).run(
+          entreeId, compteId, paiement.date_paiement,
+          paiement.montant_paye, devise,
+          paiement.facture_id,
+          libelle,
+          paiement.reference_paiement || null,
+          paiement.mode_paiement || 'ESPECES'
+        );
+
         console.log(`Payment recorded in treasury: ${compteId}, amount: ${paiement.montant_paye} ${devise}`);
       }
     } catch (treasuryError) {
@@ -5813,6 +5829,13 @@ ipcMain.handle('db-delete-paiement-gas', async (event, id) => {
     });
 
     deleteAndUpdateStatus(id);
+
+    // Remove the corresponding entree and accounting entry (use facture_id captured before delete)
+    if (paiement) {
+      db.prepare(`DELETE FROM entrees WHERE facture_id = ? AND source_type = 'PAIEMENT_CLIENT'`).run(paiement.facture_id);
+    }
+    db.prepare(`DELETE FROM lignes_ecritures WHERE ecriture_id IN (SELECT id FROM ecritures_comptables WHERE source_id = ?)`).run(id);
+    db.prepare(`DELETE FROM ecritures_comptables WHERE source_id = ?`).run(id);
     
     return { success: true };
   } catch (error) {
