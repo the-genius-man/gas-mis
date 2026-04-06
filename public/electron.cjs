@@ -5727,74 +5727,29 @@ ipcMain.handle('db-add-paiement-gas', async (event, paiement) => {
     // ============================================================================
     // Record payment in Treasury (Finance Module Integration)
     // ============================================================================
+    const devise = paiement.devise || 'USD';
+    const modePaiementTreasury = paiement.mode_paiement || 'ESPECES';
+    let compteId;
+    if (modePaiementTreasury === 'ESPECES') {
+      compteId = devise === 'USD' ? 'caisse-usd' : 'caisse-cdf';
+    } else if (modePaiementTreasury === 'VIREMENT' || modePaiementTreasury === 'CHEQUE') {
+      compteId = 'banque-usd';
+    } else if (modePaiementTreasury === 'MOBILE_MONEY') {
+      compteId = 'mobile-money';
+    } else {
+      compteId = devise === 'USD' ? 'caisse-usd' : 'caisse-cdf';
+    }
+
     try {
-      // Determine which treasury account to credit based on payment mode and currency
-      let compteId;
-      const devise = paiement.devise || 'USD';
-      const modePaiement = paiement.mode_paiement || 'ESPECES';
-      
-      if (modePaiement === 'ESPECES') {
-        compteId = devise === 'USD' ? 'caisse-usd' : 'caisse-cdf';
-      } else if (modePaiement === 'VIREMENT' || modePaiement === 'CHEQUE') {
-        compteId = 'banque-usd';
-      } else if (modePaiement === 'MOBILE_MONEY') {
-        compteId = 'mobile-money';
-      } else {
-        compteId = devise === 'USD' ? 'caisse-usd' : 'caisse-cdf';
-      }
-      
-      // Check if treasury account exists
       const compte = db.prepare('SELECT * FROM comptes_tresorerie WHERE id = ?').get(compteId);
-      
       if (compte) {
         const soldeAvant = compte.solde_actuel || 0;
         const soldeApres = soldeAvant + paiement.montant_paye;
-        
-        // Update treasury account balance
-        db.prepare('UPDATE comptes_tresorerie SET solde_actuel = ? WHERE id = ?')
-          .run(soldeApres, compteId);
-        
-        // Get invoice and client info for the movement label
-        const facture = db.prepare(`
-          SELECT f.numero_facture, c.nom_entreprise 
-          FROM factures_clients f 
-          LEFT JOIN clients_gas c ON f.client_id = c.id 
-          WHERE f.id = ?
-        `).get(paiement.facture_id);
-        
-        const libelle = facture 
-          ? `Paiement ${facture.nom_entreprise || 'Client'} - Facture ${facture.numero_facture}`
-          : `Paiement client - Facture`;
-        
-        // Record the movement
+        db.prepare('UPDATE comptes_tresorerie SET solde_actuel = ? WHERE id = ?').run(soldeApres, compteId);
+        const facture = db.prepare(`SELECT f.numero_facture, c.nom_entreprise FROM factures_clients f LEFT JOIN clients_gas c ON f.client_id = c.id WHERE f.id = ?`).get(paiement.facture_id);
+        const libelle = facture ? `Paiement ${facture.nom_entreprise || 'Client'} - Facture ${facture.numero_facture}` : `Paiement client - Facture`;
         const mouvementId = 'mvt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        db.prepare(`
-          INSERT INTO mouvements_tresorerie (
-            id, compte_tresorerie_id, date_mouvement, type_mouvement, montant, devise,
-            libelle, type_source, source_id, solde_avant, solde_apres
-          ) VALUES (?, ?, ?, 'ENTREE', ?, ?, ?, 'PAIEMENT_CLIENT', ?, ?, ?)
-        `).run(
-          mouvementId, compteId, paiement.date_paiement,
-          paiement.montant_paye, devise, libelle,
-          paiement.id, soldeAvant, soldeApres
-        );
-
-        // Record in Entrées table so it appears in Finance > Entrées
-        const entreeId = 'ent-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        db.prepare(`
-          INSERT INTO entrees (
-            id, compte_tresorerie_id, date_entree, montant, devise,
-            source_type, facture_id, description, reference, mode_paiement
-          ) VALUES (?, ?, ?, ?, ?, 'PAIEMENT_CLIENT', ?, ?, ?, ?)
-        `).run(
-          entreeId, compteId, paiement.date_paiement,
-          paiement.montant_paye, devise,
-          paiement.facture_id,
-          libelle,
-          paiement.reference_paiement || null,
-          paiement.mode_paiement || 'ESPECES'
-        );
-
+        db.prepare(`INSERT INTO mouvements_tresorerie (id, compte_tresorerie_id, date_mouvement, type_mouvement, montant, devise, libelle, type_source, source_id, solde_avant, solde_apres) VALUES (?, ?, ?, 'ENTREE', ?, ?, ?, 'PAIEMENT_CLIENT', ?, ?, ?)`).run(mouvementId, compteId, paiement.date_paiement, paiement.montant_paye, devise, libelle, paiement.id, soldeAvant, soldeApres);
         console.log(`Payment recorded in treasury: ${compteId}, amount: ${paiement.montant_paye} ${devise}`);
       }
     } catch (treasuryError) {
@@ -5806,14 +5761,13 @@ ipcMain.handle('db-add-paiement-gas', async (event, paiement) => {
       const factureInfo = db.prepare('SELECT numero_facture, client_id, client_nom FROM factures_clients WHERE id = ?').get(paiement.facture_id);
       const clientNom = factureInfo?.client_nom || db.prepare('SELECT nom_entreprise FROM clients_gas WHERE id = ?').get(factureInfo?.client_id)?.nom_entreprise || 'Client';
       const entreeLibelle = `Paiement ${clientNom} - Facture ${factureInfo?.numero_facture || ''}`;
-      const entreeId = 'ent-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
       db.prepare(`
         INSERT INTO entrees (
           id, compte_tresorerie_id, date_entree, montant, devise,
           source_type, facture_id, description, reference, mode_paiement
         ) VALUES (?, ?, ?, ?, ?, 'PAIEMENT_CLIENT', ?, ?, ?, ?)
       `).run(
-        entreeId, compteId, paiement.date_paiement,
+        crypto.randomUUID(), compteId, paiement.date_paiement,
         paiement.montant_paye, paiement.devise || 'USD',
         paiement.facture_id,
         entreeLibelle,
