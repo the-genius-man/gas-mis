@@ -7438,24 +7438,53 @@ ipcMain.handle('db-add-entree', async (event, entree) => {
         'Enregistré via module Finance'
       );
 
-      // Update invoice payment status
-      const facture = db.prepare('SELECT montant_total_du_client FROM factures_clients WHERE id = ?').get(entree.facture_id);
-      const totalPaye = db.prepare('SELECT COALESCE(SUM(montant_paye), 0) as total FROM paiements WHERE facture_id = ?').get(entree.facture_id);
-      
-      if (facture) {
-        let newStatus;
-        const montantDu = facture.montant_total_du_client || 0;
-        const montantPaye = totalPaye?.total || 0;
-        
-        if (montantPaye >= montantDu) {
-          newStatus = 'PAYE_TOTAL';
-        } else if (montantPaye > 0) {
-          newStatus = 'PAYE_PARTIEL';
-        } else {
-          newStatus = 'ENVOYE';
-        }
-        
-        db.prepare('UPDATE factures_clients SET statut_paiement = ? WHERE id = ?').run(newStatus, entree.facture_id);
+      // Update invoice payment status using the same engine as direct payments
+      updateFacturePaymentStatus(entree.facture_id, db);
+
+      // Create OHADA accounting entry: Débit 512/571 / Crédit 411
+      try {
+        const factureInfo = db.prepare('SELECT numero_facture, client_id, client_nom FROM factures_clients WHERE id = ?').get(entree.facture_id);
+        const clientNom = factureInfo?.client_nom || db.prepare('SELECT nom_entreprise FROM clients_gas WHERE id = ?').get(factureInfo?.client_id)?.nom_entreprise || 'Client';
+        const modePaiement = entree.mode_paiement || 'ESPECES';
+        const compteEncaissement = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? '571' : '512';
+        const libelleCompte = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? 'Caisse' : 'Banques';
+        createEcritureComptable({
+          libelle: `Encaissement ${factureInfo?.numero_facture || ''} — ${clientNom}`,
+          type_operation: 'RECETTE',
+          source_id: paiementId,
+          montant: entree.montant,
+          devise: entree.devise || 'USD',
+          date_ecriture: entree.date_entree,
+          numero_piece: entree.reference || factureInfo?.numero_facture,
+          lignes: [
+            { compte: compteEncaissement, libelle: libelleCompte, sens: 'DEBIT', montant: entree.montant },
+            { compte: '411', libelle: 'Clients', sens: 'CREDIT', montant: entree.montant, tiers_id: factureInfo?.client_id, tiers_nom: clientNom },
+          ],
+        }, db);
+      } catch (acctError) {
+        console.error('Error creating accounting entry for entree payment:', acctError);
+      }
+    } else {
+      // Non-invoice entries (DEPOT, AUTRE): Débit 512/571 / Crédit 47 (Débiteurs divers)
+      try {
+        const modePaiement = entree.mode_paiement || 'ESPECES';
+        const compteDebit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? '571' : '512';
+        const libelleDebit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? 'Caisse' : 'Banques';
+        createEcritureComptable({
+          libelle: entree.description || 'Entrée de trésorerie',
+          type_operation: 'RECETTE',
+          source_id: entree.id,
+          montant: entree.montant,
+          devise: entree.devise || 'USD',
+          date_ecriture: entree.date_entree,
+          numero_piece: entree.reference,
+          lignes: [
+            { compte: compteDebit, libelle: libelleDebit, sens: 'DEBIT', montant: entree.montant },
+            { compte: '47', libelle: 'Débiteurs divers', sens: 'CREDIT', montant: entree.montant },
+          ],
+        }, db);
+      } catch (acctError) {
+        console.error('Error creating accounting entry for entree:', acctError);
       }
     }
 
