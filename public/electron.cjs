@@ -3812,6 +3812,53 @@ ipcMain.handle('db-valider-ecriture', async (event, { ecritureId, valide_par }) 
   }
 });
 
+// Update accounting entry (BROUILLON only — header + lines)
+ipcMain.handle('db-update-ecriture', async (event, { ecriture, lignes }) => {
+  try {
+    // Only allow editing BROUILLON entries
+    const existing = db.prepare('SELECT statut FROM ecritures_comptables WHERE id = ?').get(ecriture.id);
+    if (!existing) return { error: 'Écriture introuvable' };
+    if (existing.statut !== 'BROUILLON') return { error: 'Seules les écritures en brouillon peuvent être modifiées' };
+
+    // Validate balance: sum of debits must equal sum of credits
+    const totalDebit = lignes.filter(l => l.sens === 'DEBIT').reduce((s, l) => s + Number(l.montant), 0);
+    const totalCredit = lignes.filter(l => l.sens === 'CREDIT').reduce((s, l) => s + Number(l.montant), 0);
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      return { error: `Écriture déséquilibrée: Débit ${totalDebit.toFixed(2)} ≠ Crédit ${totalCredit.toFixed(2)}` };
+    }
+
+    const updateEcriture = db.transaction(() => {
+      // Update header
+      db.prepare(`
+        UPDATE ecritures_comptables SET
+          date_ecriture = ?, libelle = ?, numero_piece = ?, montant_total = ?, devise = ?
+        WHERE id = ?
+      `).run(ecriture.date_ecriture, ecriture.libelle, ecriture.numero_piece || null, totalDebit, ecriture.devise || 'USD', ecriture.id);
+
+      // Replace all lines
+      db.prepare('DELETE FROM lignes_ecritures WHERE ecriture_id = ?').run(ecriture.id);
+      const insertLigne = db.prepare(`
+        INSERT INTO lignes_ecritures (id, ecriture_id, compte_comptable, libelle_compte, sens, montant, devise, tiers_id, tiers_nom)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const l of lignes) {
+        insertLigne.run(
+          crypto.randomUUID(), ecriture.id,
+          l.compte_comptable, l.libelle_compte || null,
+          l.sens, Number(l.montant), ecriture.devise || 'USD',
+          l.tiers_id || null, l.tiers_nom || null
+        );
+      }
+    });
+
+    updateEcriture();
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating ecriture:', error);
+    return { error: error.message };
+  }
+});
+
 // Get grand livre (general ledger) by account
 ipcMain.handle('db-get-grand-livre', async (event, filters = {}) => {
   try {

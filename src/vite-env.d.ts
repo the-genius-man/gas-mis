@@ -77,6 +77,7 @@ interface ElectronAPI {
   getEcrituresComptables: (filters?: any) => Promise<any[]>;
   getLignesEcriture: (ecritureId: string) => Promise<any[]>;
   validerEcriture: (data: any) => Promise<any>;
+  updateEcritureComptable: (data: any) => Promise<any>;
   getGrandLivre: (filters?: any) => Promise<any[]>;
   getBilanOhada: (data: any) => Promise<any[]>;
   
