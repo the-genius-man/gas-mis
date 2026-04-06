@@ -5751,11 +5751,31 @@ ipcMain.handle('db-add-paiement-gas', async (event, paiement) => {
         console.log(`Payment recorded in treasury: ${compteId}, amount: ${paiement.montant_paye} ${devise}`);
       }
     } catch (treasuryError) {
-      // Log but don't fail the payment if treasury recording fails
       console.error('Error recording payment in treasury:', treasuryError);
     }
 
-    // Auto-generate OHADA accounting entry: Débit 512/571 (Banque/Caisse) / Crédit 411 (Clients)
+    // Record in Entrées table so it always appears in Finance > Entrées
+    try {
+      const factureInfo = db.prepare('SELECT numero_facture, client_id, client_nom FROM factures_clients WHERE id = ?').get(paiement.facture_id);
+      const clientNom = factureInfo?.client_nom || db.prepare('SELECT nom_entreprise FROM clients_gas WHERE id = ?').get(factureInfo?.client_id)?.nom_entreprise || 'Client';
+      const entreeLibelle = `Paiement ${clientNom} - Facture ${factureInfo?.numero_facture || ''}`;
+      const entreeId = 'ent-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      db.prepare(`
+        INSERT INTO entrees (
+          id, compte_tresorerie_id, date_entree, montant, devise,
+          source_type, facture_id, description, reference, mode_paiement
+        ) VALUES (?, ?, ?, ?, ?, 'PAIEMENT_CLIENT', ?, ?, ?, ?)
+      `).run(
+        entreeId, compteId, paiement.date_paiement,
+        paiement.montant_paye, paiement.devise || 'USD',
+        paiement.facture_id,
+        entreeLibelle,
+        paiement.reference_paiement || null,
+        paiement.mode_paiement || 'ESPECES'
+      );
+    } catch (entreeError) {
+      console.error('Error recording entree for payment:', entreeError);
+    }
     try {
       const facture = db.prepare('SELECT numero_facture, client_id, client_nom FROM factures_clients WHERE id = ?').get(paiement.facture_id);
       const clientNom = facture?.client_nom || db.prepare('SELECT nom_entreprise FROM clients_gas WHERE id = ?').get(facture?.client_id)?.nom_entreprise || 'Client';
@@ -7181,6 +7201,45 @@ ipcMain.handle('db-update-depense', async (event, depense) => {
       depense.reference_piece || null, depense.mode_paiement || 'ESPECES',
       depense.statut || 'VALIDEE', depense.id
     );
+
+    // Update the linked accounting entry if it exists
+    try {
+      const ecriture = db.prepare(`SELECT id FROM ecritures_comptables WHERE source_id = ? AND type_operation = 'DEPENSE'`).get(depense.id);
+      if (ecriture) {
+        const categorie = db.prepare('SELECT nom_categorie, code_compte FROM categories_depenses WHERE id = ?').get(depense.categorie_id);
+        const compteCharge = categorie?.code_compte || '63';
+        const libelleCharge = categorie?.nom_categorie || 'Autres charges';
+        const modePaiement = depense.mode_paiement || 'ESPECES';
+        const compteCredit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? '571' : '512';
+        const libelleCredit = (modePaiement === 'ESPECES' || modePaiement === 'MOBILE_MONEY') ? 'Caisse' : 'Banques';
+
+        // Update header
+        db.prepare(`
+          UPDATE ecritures_comptables SET
+            date_ecriture = ?, libelle = ?, montant_total = ?, devise = ?, numero_piece = ?
+          WHERE id = ?
+        `).run(
+          depense.date_depense,
+          `Dépense — ${depense.description}`,
+          depense.montant,
+          depense.devise || 'USD',
+          depense.reference_piece || null,
+          ecriture.id
+        );
+
+        // Replace lines
+        db.prepare('DELETE FROM lignes_ecritures WHERE ecriture_id = ?').run(ecriture.id);
+        const insertLigne = db.prepare(`
+          INSERT INTO lignes_ecritures (id, ecriture_id, compte_comptable, libelle_compte, sens, montant, devise, tiers_nom)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        insertLigne.run(crypto.randomUUID(), ecriture.id, compteCharge, libelleCharge, 'DEBIT', depense.montant, depense.devise || 'USD', depense.beneficiaire || null);
+        insertLigne.run(crypto.randomUUID(), ecriture.id, compteCredit, libelleCredit, 'CREDIT', depense.montant, depense.devise || 'USD', null);
+      }
+    } catch (acctError) {
+      console.error('Error updating accounting entry for depense:', acctError);
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Error updating depense:', error);

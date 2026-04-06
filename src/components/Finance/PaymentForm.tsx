@@ -240,26 +240,26 @@ export default function PaymentForm({ paiement, facture, soldeRestant, onClose, 
             </div>
           </div>
 
-          {/* Reference (for non-cash payments) */}
-          {showReferenceField && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Référence du Paiement
-              </label>
-              <input
-                type="text"
-                name="reference_paiement"
-                value={formData.reference_paiement}
-                onChange={handleChange}
-                placeholder={
-                  formData.mode_paiement === 'VIREMENT' ? 'N° de virement' :
-                  formData.mode_paiement === 'CHEQUE' ? 'N° de chèque' :
-                  formData.mode_paiement === 'MOBILE_MONEY' ? 'N° de transaction' : ''
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-          )}
+          {/* Reference — always shown, required for non-cash */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              N° Reçu / Référence {showReferenceField && <span className="text-red-500">*</span>}
+            </label>
+            <input
+              type="text"
+              name="reference_paiement"
+              value={formData.reference_paiement}
+              onChange={handleChange}
+              required={showReferenceField}
+              placeholder={
+                formData.mode_paiement === 'ESPECES' ? 'N° reçu (optionnel)' :
+                formData.mode_paiement === 'VIREMENT' ? 'N° de virement' :
+                formData.mode_paiement === 'CHEQUE' ? 'N° de chèque' :
+                formData.mode_paiement === 'MOBILE_MONEY' ? 'N° de transaction' : ''
+              }
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
 
           {/* Bank (for bank transfers and checks) */}
           {showBankField && (
