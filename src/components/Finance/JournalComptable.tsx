@@ -310,7 +310,7 @@ export default function JournalComptable() {
     const year = new Date().getFullYear();
     const date = new Date().toISOString().slice(0, 10);
     const L = 10, R = 287;
-    let y = drawPdfHeader(doc, `Journal des Écritures Comptables — ${date}`, undefined, L, R);
+    let y = await drawPdfHeader(doc, `Journal des Écritures Comptables — ${date}`, undefined, L, R);
     doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setFillColor(243, 244, 246);
     doc.rect(L, y - 3, R - L, 6, 'F');
     doc.text('Date', L + 1, y); doc.text('N° Pièce', L + 22, y); doc.text('Libellé', L + 50, y);

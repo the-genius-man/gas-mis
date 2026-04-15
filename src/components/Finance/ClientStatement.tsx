@@ -181,7 +181,7 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
     const date = new Date().toISOString().slice(0, 10);
     const L = 15, R = 195, W = R - L;
 
-    let y = drawPdfHeader(doc, 'RELEVÉ DE COMPTE', `Période : ${formatDate(dateDebut)} — ${formatDate(dateFin)}`);
+    let y = await drawPdfHeader(doc, 'RELEVÉ DE COMPTE', `Période : ${formatDate(dateDebut)} — ${formatDate(dateFin)}`);
 
     // Client info
     doc.setTextColor(17, 24, 39); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);

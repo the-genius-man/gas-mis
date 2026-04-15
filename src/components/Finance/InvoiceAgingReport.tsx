@@ -53,7 +53,7 @@ function formatDate(dateStr: string | undefined): string {
 
 // ─── Native jsPDF export ─────────────────────────────────────────────────────
 
-function exportAgingToPDF(
+async function exportAgingToPDF(
   clientSections: { clientName: string; invoices: FactureWithPayments[] }[],
   title: string,
   getDaysOverdue: (f: FactureWithPayments) => number
@@ -82,8 +82,8 @@ function exportAgingToPDF(
   let y = 14;
   let pageNum = 1;
 
-  const addHeader = () => {
-    y = drawPdfHeader(doc, title, `Imprimé le ${printDate}  |  ${totalInvoices} facture(s) en attente`, L, R);
+  const addHeader = async () => {
+    y = await drawPdfHeader(doc, title, `Imprimé le ${printDate}  |  ${totalInvoices} facture(s) en attente`, L, R);
   };
 
   const addColumnHeaders = () => {
@@ -109,12 +109,12 @@ function exportAgingToPDF(
       doc.addPage();
       pageNum++;
       y = 14;
-      addHeader();
+      await addHeader();
       addColumnHeaders();
     }
   };
 
-  addHeader();
+  await addHeader();
 
   let grandTotal = 0;
   let grandDevise = clientSections[0]?.invoices[0]?.devise || 'USD';
@@ -280,8 +280,8 @@ const InvoiceAgingReport: React.FC<InvoiceAgingReportProps> = ({ factures, clien
 
   const printGrandDevise = allOutstanding.find(f => f.soldeRestant > 0)?.devise || 'USD';
 
-  const handlePrint = () => {
-    exportAgingToPDF(printClientSections, printTitle, getDaysOverdue);
+  const handlePrint = async () => {
+    await exportAgingToPDF(printClientSections, printTitle, getDaysOverdue);
   };
 
   const handleExportExcel = () => {

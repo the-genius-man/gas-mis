@@ -85,7 +85,7 @@ export default function GrandLivre() {
     const year = new Date().getFullYear();
     const date = new Date().toISOString().slice(0, 10);
     const L = 10, R = 287;
-    let y = drawPdfHeader(doc, `Grand Livre — ${date}`, undefined, L, R);
+    let y = await drawPdfHeader(doc, `Grand Livre — ${date}`, undefined, L, R);
 
     for (const [compte, acc] of grouped) {
       if (y > 185) { doc.addPage(); y = 18; }

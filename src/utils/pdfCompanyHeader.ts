@@ -20,27 +20,44 @@ export const GAS_COMPANY = {
 };
 
 /**
- * Tries to load the company logo from disk (Electron context).
+ * Tries to load the company logo.
+ * In Electron dev: fetches from the Vite dev server (localhost:5173).
+ * In Electron prod: reads from disk via Node fs.
  * Returns base64 data URI or null if unavailable.
  */
-function loadLogoData(): string | null {
+async function loadLogoData(): Promise<string | null> {
+  // Try fetching from the renderer's origin first (works in both dev and prod)
+  try {
+    const response = await fetch('/logo-goahead.png');
+    if (response.ok) {
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (_) { /* fall through to fs approach */ }
+
+  // Fallback: Node fs (packaged Electron)
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const fs = require('fs');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const path = require('path');
-    // Mirror the exact paths used in pdfExport.ts (which works for invoices)
     const candidates = [
       path.join(process.resourcesPath || '', 'logo-goahead.png'),
-      path.join(__dirname || '', '..', 'public', 'logo-goahead.png'),
       path.join(process.cwd(), 'public', 'logo-goahead.png'),
+      path.join(__dirname || '', '..', 'public', 'logo-goahead.png'),
     ];
     for (const p of candidates) {
       if (fs.existsSync(p)) {
         return 'data:image/png;base64,' + fs.readFileSync(p).toString('base64');
       }
     }
-  } catch (_) { /* not in Electron or fs unavailable */ }
+  } catch (_) { /* not available */ }
+
   return null;
 }
 
@@ -53,17 +70,17 @@ function loadLogoData(): string | null {
  *
  * @returns y position immediately after the separator line (ready for content)
  */
-export function drawPdfHeader(
+export async function drawPdfHeader(
   doc: jsPDF,
   docTitle: string,
   subtitle?: string,
   L = 15,
   R = 195
-): number {
+): Promise<number> {
   const startY = 14;
 
   // ── Logo (left) ──────────────────────────────────────────────────────────
-  const logoData = loadLogoData();
+  const logoData = await loadLogoData();
   if (logoData) {
     doc.addImage(logoData, 'PNG', L, startY, 40, 20);
   }
