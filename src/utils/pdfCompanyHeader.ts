@@ -29,10 +29,11 @@ function loadLogoData(): string | null {
     const fs = require('fs');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const path = require('path');
+    // Mirror the exact paths used in pdfExport.ts (which works for invoices)
     const candidates = [
-      path.join((process as any).resourcesPath || '', 'logo-goahead.png'),
-      path.join((process as any).cwd?.() || '', 'public', 'logo-goahead.png'),
+      path.join(process.resourcesPath || '', 'logo-goahead.png'),
       path.join(__dirname || '', '..', 'public', 'logo-goahead.png'),
+      path.join(process.cwd(), 'public', 'logo-goahead.png'),
     ];
     for (const p of candidates) {
       if (fs.existsSync(p)) {
