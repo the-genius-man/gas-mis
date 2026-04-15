@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Printer, Download, FileText } from 'lucide-react';
+import { X, Download, FileText } from 'lucide-react';
+import jsPDF from 'jspdf';
 import { ClientGAS, FactureWithPayments, PaiementGAS, AvoirGAS, StatementLine } from '../../types';
 import { exportToExcel } from '../../utils/excelExport';
 
@@ -173,6 +174,115 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
 
   const devise = client.devise_preferee || 'USD';
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const year = new Date().getFullYear();
+    const date = new Date().toISOString().slice(0, 10);
+    const L = 15, R = 195, W = R - L;
+    let y = 18;
+
+    // Header
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 64, 175);
+    doc.text('GO AHEAD SARLU', L, y);
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
+    doc.text('Département de Sécurité et Gardiennage  |  RCCM: CD/GOM/RCCM/20-B-00414', L, y + 5);
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(17, 24, 39);
+    doc.text('RELEVÉ DE COMPTE', R, y, { align: 'right' });
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
+    doc.text(`Période : ${formatDate(dateDebut)} — ${formatDate(dateFin)}`, R, y + 5, { align: 'right' });
+    y += 10;
+    doc.setDrawColor(30, 64, 175); doc.setLineWidth(0.5); doc.line(L, y, R, y); y += 6;
+
+    // Client info
+    doc.setTextColor(17, 24, 39); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.text(client.nom_entreprise, L, y); y += 5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+    if (client.contact_nom) { doc.text(client.contact_nom, L, y); y += 4; }
+    if (client.telephone) { doc.text(client.telephone, L, y); y += 4; }
+    if (client.adresse_facturation) { doc.text(client.adresse_facturation, L, y); y += 4; }
+    y += 4;
+
+    // Table header
+    doc.setFillColor(243, 244, 246); doc.rect(L, y - 3, W, 6, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(75, 85, 99);
+    doc.text('Date', L + 1, y); doc.text('Référence', L + 22, y); doc.text('Type', L + 65, y);
+    doc.text('Débit', L + 105, y, { align: 'right' }); doc.text('Crédit', L + 135, y, { align: 'right' });
+    doc.text('Solde', R, y, { align: 'right' });
+    y += 5; doc.setDrawColor(209, 213, 219); doc.setLineWidth(0.3); doc.line(L, y - 1, R, y - 1);
+
+    // Opening balance row
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(107, 114, 128);
+    doc.setFillColor(249, 250, 251); doc.rect(L, y - 2, W, 5.5, 'F');
+    doc.text(formatDate(dateDebut), L + 1, y + 1.5);
+    doc.text("Solde d'ouverture", L + 22, y + 1.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(openingBalance.toFixed(2), R, y + 1.5, { align: 'right' });
+    y += 6;
+
+    // Transaction rows
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(17, 24, 39);
+    for (let i = 0; i < lines.length; i++) {
+      if (y > 260) {
+        doc.addPage(); y = 18;
+        doc.setFillColor(243, 244, 246); doc.rect(L, y - 3, W, 6, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(75, 85, 99);
+        doc.text('Date', L + 1, y); doc.text('Référence', L + 22, y); doc.text('Type', L + 65, y);
+        doc.text('Débit', L + 105, y, { align: 'right' }); doc.text('Crédit', L + 135, y, { align: 'right' });
+        doc.text('Solde', R, y, { align: 'right' });
+        y += 5; doc.setFont('helvetica', 'normal'); doc.setTextColor(17, 24, 39);
+      }
+      const line = lines[i];
+      if (i % 2 === 1) { doc.setFillColor(249, 250, 251); doc.rect(L, y - 2, W, 5.5, 'F'); }
+      doc.setFontSize(8);
+      doc.text(formatDate(line.date), L + 1, y + 1.5);
+      doc.text(line.reference.substring(0, 25), L + 22, y + 1.5);
+      // Type badge text
+      if (line.type === 'FACTURE') doc.setTextColor(29, 78, 216);
+      else if (line.type === 'PAIEMENT') doc.setTextColor(21, 128, 61);
+      else doc.setTextColor(133, 77, 14);
+      doc.text(line.type, L + 65, y + 1.5);
+      doc.setTextColor(17, 24, 39);
+      if (line.debit > 0) doc.text(line.debit.toFixed(2), L + 105, y + 1.5, { align: 'right' });
+      if (line.credit > 0) { doc.setTextColor(21, 128, 61); doc.text(line.credit.toFixed(2), L + 135, y + 1.5, { align: 'right' }); doc.setTextColor(17, 24, 39); }
+      doc.setFont('helvetica', 'bold');
+      doc.text(line.balance.toFixed(2), R, y + 1.5, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      y += 6;
+    }
+
+    // Summary
+    y += 4;
+    if (y > 240) { doc.addPage(); y = 18; }
+    doc.setDrawColor(30, 64, 175); doc.setLineWidth(0.5); doc.line(L, y, R, y); y += 6;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text('Récapitulatif', L, y); y += 5;
+    const summaryRows = [
+      { label: "Solde d'ouverture", value: openingBalance, color: [17, 24, 39] as [number,number,number] },
+      { label: 'Total facturé', value: totalInvoiced, color: [29, 78, 216] as [number,number,number] },
+      { label: 'Total payé', value: -totalPaid, color: [21, 128, 61] as [number,number,number] },
+      { label: 'Total crédité (avoirs)', value: -totalCredited, color: [133, 77, 14] as [number,number,number] },
+    ];
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+    for (const row of summaryRows) {
+      doc.setTextColor(75, 85, 99); doc.text(row.label, L + 2, y);
+      doc.setTextColor(...row.color); doc.setFont('helvetica', 'bold');
+      doc.text(row.value.toFixed(2) + ' ' + devise, R, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal'); y += 5;
+    }
+    doc.setLineWidth(0.8); doc.setDrawColor(30, 64, 175); doc.line(L + 80, y - 1, R, y - 1);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(30, 64, 175);
+    doc.text('Solde de clôture', L + 2, y + 4);
+    doc.text(closingBalance.toFixed(2) + ' ' + devise, R, y + 4, { align: 'right' });
+
+    // Footer
+    const footerY = 282;
+    doc.setDrawColor(209, 213, 219); doc.setLineWidth(0.3); doc.line(L, footerY, R, footerY);
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
+    doc.text('70, Av Abattoir, Q Kyeshero, Goma - RDC  |  +243 974 821 064  |  gas@goahead.africa', 105, footerY + 4, { align: 'center' });
+    doc.text('BANK OF AFRICA  |  Compte: 04530670005  |  Intitulé: GO AHEAD SARL', 105, footerY + 8, { align: 'center' });
+
+    doc.save(`GAS ${year} - Relevé-Client_${client.nom_entreprise.replace(/\s+/g, '-')}_${date}.pdf`);
+  };
+
   const handleExportExcel = () => {
     const rows = lines.map(l => ({
       Date: formatDate(l.date),
@@ -236,21 +346,8 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
 
   return (
     <>
-      {/* Print-only styles */}
-      <style>{`
-        @media print {
-          body > * { display: none !important; }
-          .client-statement-print { display: block !important; }
-          .no-print { display: none !important; }
-          .print-only { display: block !important; }
-        }
-        @media screen {
-          .print-only { display: none !important; }
-        }
-      `}</style>
-
       {/* Modal overlay (screen only) */}
-      <div className={inline ? 'flex flex-col' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 no-print'}>
+      <div className={inline ? 'flex flex-col' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'}>
         <div className={inline ? 'flex flex-col' : 'bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col'}>
           {/* Modal header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 no-print">
@@ -263,11 +360,11 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => window.print()}
+                onClick={handleExportPDF}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
               >
-                <Printer className="w-4 h-4" />
-                Imprimer
+                <Download className="w-4 h-4" />
+                Exporter PDF
               </button>
               <button
                 onClick={handleExportExcel}
@@ -328,135 +425,6 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
               closingBalance={closingBalance}
               devise={devise}
             />
-          </div>
-        </div>
-      </div>
-
-      {/* Print-only full-page statement */}
-      <div className="client-statement-print" style={{ display: 'none' }}>
-        <div style={{ width: '210mm', minHeight: '297mm', padding: '15mm', fontFamily: 'Arial, sans-serif', fontSize: '10pt', margin: '0 auto', boxSizing: 'border-box' }}>
-          {/* Company header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-            <div style={{ width: '52mm' }}>
-              <img src="/logo-goahead.png" alt="Go Ahead" style={{ height: '60px', width: 'auto', display: 'block' }} />
-            </div>
-            <div style={{ textAlign: 'right', fontSize: '10pt' }}>
-              <div style={{ fontSize: '14pt', fontWeight: 'bold', marginBottom: '4px' }}>GO AHEAD SARLU</div>
-              <div style={{ fontWeight: '600' }}>Département de Sécurité et Gardiennage</div>
-              <div style={{ fontSize: '8pt', marginTop: '4px' }}>RCCM: CD/GOM/RCCM/20-B-00414</div>
-              <div style={{ fontSize: '8pt' }}>ID NAT.: 19-H5300-N897290 &nbsp;|&nbsp; IMPOT: A2155845A</div>
-            </div>
-          </div>
-
-          {/* Document title */}
-          <div style={{ textAlign: 'center', marginBottom: '16px', borderTop: '2px solid black', borderBottom: '2px solid black', padding: '8px 0' }}>
-            <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>RELEVÉ DE COMPTE</div>
-            <div style={{ fontSize: '9pt', marginTop: '4px' }}>
-              Période : {formatDate(dateDebut)} — {formatDate(dateFin)}
-            </div>
-          </div>
-
-          {/* Client info */}
-          <div style={{ marginBottom: '16px', fontSize: '10pt' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Client :</div>
-            <div style={{ fontWeight: 'bold' }}>{client.nom_entreprise}</div>
-            {client.contact_nom && <div>{client.contact_nom}</div>}
-            {client.telephone && <div>{client.telephone}</div>}
-            {client.adresse_facturation && <div>{client.adresse_facturation}</div>}
-          </div>
-
-          {/* Statement table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
-            <thead>
-              <tr style={{ borderTop: '2px solid black', borderBottom: '1px solid black', backgroundColor: '#f3f4f6' }}>
-                <th style={{ textAlign: 'left', padding: '6px 4px' }}>Date</th>
-                <th style={{ textAlign: 'left', padding: '6px 4px' }}>Référence</th>
-                <th style={{ textAlign: 'left', padding: '6px 4px' }}>Type</th>
-                <th style={{ textAlign: 'right', padding: '6px 4px' }}>Débit</th>
-                <th style={{ textAlign: 'right', padding: '6px 4px' }}>Crédit</th>
-                <th style={{ textAlign: 'right', padding: '6px 4px' }}>Solde</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Opening balance row */}
-              <tr style={{ borderBottom: '1px solid #e5e7eb', fontStyle: 'italic', backgroundColor: '#f9fafb' }}>
-                <td style={{ padding: '5px 4px' }}>{formatDate(dateDebut)}</td>
-                <td style={{ padding: '5px 4px' }} colSpan={2}>Solde d'ouverture</td>
-                <td style={{ padding: '5px 4px', textAlign: 'right' }}></td>
-                <td style={{ padding: '5px 4px', textAlign: 'right' }}></td>
-                <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 'bold' }}>
-                  {formatCurrency(openingBalance, devise)}
-                </td>
-              </tr>
-              {lines.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ padding: '12px 4px', textAlign: 'center', color: '#9ca3af', fontStyle: 'italic' }}>
-                    Aucune transaction sur cette période
-                  </td>
-                </tr>
-              ) : (
-                lines.map((line, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '5px 4px' }}>{formatDate(line.date)}</td>
-                    <td style={{ padding: '5px 4px', fontFamily: 'monospace', fontSize: '8pt' }}>{line.reference}</td>
-                    <td style={{ padding: '5px 4px' }}>
-                      <span style={{
-                        padding: '1px 6px',
-                        borderRadius: '4px',
-                        fontSize: '8pt',
-                        fontWeight: '600',
-                        backgroundColor: line.type === 'FACTURE' ? '#dbeafe' : line.type === 'PAIEMENT' ? '#dcfce7' : '#fef9c3',
-                        color: line.type === 'FACTURE' ? '#1d4ed8' : line.type === 'PAIEMENT' ? '#15803d' : '#854d0e',
-                      }}>
-                        {line.type}
-                      </span>
-                    </td>
-                    <td style={{ padding: '5px 4px', textAlign: 'right' }}>
-                      {line.debit > 0 ? formatCurrency(line.debit, devise) : ''}
-                    </td>
-                    <td style={{ padding: '5px 4px', textAlign: 'right' }}>
-                      {line.credit > 0 ? formatCurrency(line.credit, devise) : ''}
-                    </td>
-                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: '600' }}>
-                      {formatCurrency(line.balance, devise)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-
-          {/* Summary section */}
-          <div style={{ border: '1px solid #d1d5db', borderRadius: '6px', padding: '12px', marginBottom: '24px', backgroundColor: '#f9fafb' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '10pt' }}>Récapitulatif</div>
-            {[
-              { label: 'Solde d\'ouverture', value: openingBalance },
-              { label: 'Total facturé', value: totalInvoiced },
-              { label: 'Total payé', value: -totalPaid },
-              { label: 'Total crédité (avoirs)', value: -totalCredited },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '9pt' }}>
-                <span>{label}</span>
-                <span style={{ fontWeight: '600' }}>{formatCurrency(value, devise)}</span>
-              </div>
-            ))}
-            <div style={{ borderTop: '2px solid black', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '11pt' }}>
-              <span>Solde de clôture</span>
-              <span>{formatCurrency(closingBalance, devise)}</span>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div style={{ borderTop: '2px solid black', paddingTop: '10px', textAlign: 'center', fontSize: '8pt', marginTop: 'auto' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-              Adresse: 70, Av Abattoir, Q Kyeshero, En Diagonal de la Cathédrale, Goma - RDC
-            </div>
-            <div style={{ marginBottom: '4px' }}>
-              +243 974 821 064; +243 855 307 832 | gas@goahead.africa | www.goahead.africa
-            </div>
-            <div style={{ fontWeight: '600' }}>
-              BANK OF AFRICA; Compte: 04530670005; Intitulé: GO AHEAD SARL
-            </div>
           </div>
         </div>
       </div>
