@@ -1,6 +1,6 @@
 /**
  * Shared jsPDF company header and footer for all GAS PDF exports.
- * Keeps branding consistent and changes in one place.
+ * Keeps branding consistent — change once, applies everywhere.
  */
 import jsPDF from 'jspdf';
 
@@ -20,17 +20,37 @@ export const GAS_COMPANY = {
 };
 
 /**
- * Draws the company header on the current page.
+ * Tries to load the company logo from disk (Electron context).
+ * Returns base64 data URI or null if unavailable.
+ */
+function loadLogoData(): string | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require('path');
+    const candidates = [
+      path.join((process as any).resourcesPath || '', 'logo-goahead.png'),
+      path.join((process as any).cwd?.() || '', 'public', 'logo-goahead.png'),
+      path.join(__dirname || '', '..', 'public', 'logo-goahead.png'),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        return 'data:image/png;base64,' + fs.readFileSync(p).toString('base64');
+      }
+    }
+  } catch (_) { /* not in Electron or fs unavailable */ }
+  return null;
+}
+
+/**
+ * Draws the full company header — logo left, company details right,
+ * document title + subtitle right, blue separator line.
  *
- * Portrait (A4): L=15, R=195, pageWidth=210
- * Landscape (A4): L=10, R=287, pageWidth=297
+ * Portrait A4:  L=15, R=195
+ * Landscape A4: L=10, R=287
  *
- * @param doc       jsPDF instance
- * @param docTitle  Document title shown on the right (e.g. "RELEVÉ DE COMPTE")
- * @param subtitle  Optional subtitle below the title (e.g. date range)
- * @param L         Left margin in mm (default 15)
- * @param R         Right margin in mm (default 195 for portrait)
- * @returns         The y position after the header (ready for content)
+ * @returns y position immediately after the separator line (ready for content)
  */
 export function drawPdfHeader(
   doc: jsPDF,
@@ -39,62 +59,69 @@ export function drawPdfHeader(
   L = 15,
   R = 195
 ): number {
-  let y = 18;
+  const startY = 14;
 
-  // Company name (left, blue)
-  doc.setFontSize(14);
+  // ── Logo (left) ──────────────────────────────────────────────────────────
+  const logoData = loadLogoData();
+  if (logoData) {
+    doc.addImage(logoData, 'PNG', L, startY, 40, 20);
+  }
+
+  // ── Company details (right) ───────────────────────────────────────────────
+  doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 64, 175);
-  doc.text(GAS_COMPANY.name, L, y);
+  doc.setTextColor(17, 24, 39);
+  doc.text(GAS_COMPANY.name, R, startY + 5, { align: 'right' });
 
-  // Department + RCCM (left, gray)
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(107, 114, 128);
-  doc.text(`${GAS_COMPANY.department}  |  ${GAS_COMPANY.rccm}`, L, y + 5);
+  doc.text(GAS_COMPANY.department, R, startY + 10, { align: 'right' });
+  doc.text(GAS_COMPANY.rccm, R, startY + 14, { align: 'right' });
+  doc.text(`${GAS_COMPANY.idNat}  |  ${GAS_COMPANY.impot}`, R, startY + 18, { align: 'right' });
 
-  // Document title (right, dark)
+  // ── Document title + subtitle (below logo area) ───────────────────────────
+  let y = startY + 26;
+
+  doc.setDrawColor(30, 64, 175);
+  doc.setLineWidth(0.5);
+  doc.line(L, y, R, y);
+  y += 5;
+
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(17, 24, 39);
-  doc.text(docTitle, R, y, { align: 'right' });
+  doc.text(docTitle, L, y);
 
-  // Subtitle (right, gray)
   if (subtitle) {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(107, 114, 128);
-    doc.text(subtitle, R, y + 5, { align: 'right' });
+    doc.text(subtitle, R, y, { align: 'right' });
   }
 
-  // Separator line
-  y += 12;
-  doc.setDrawColor(30, 64, 175);
-  doc.setLineWidth(0.5);
-  doc.line(L, y, R, y);
-  y += 6;
-
-  // Reset text color
+  y += 7;
   doc.setTextColor(17, 24, 39);
-
   return y;
 }
 
 /**
- * Draws the company footer at the bottom of the current page.
+ * Draws the company footer (address, phone/email, bank details).
  *
- * @param doc       jsPDF instance
- * @param footerY   Y position for the footer line (default 280 for portrait, 200 for landscape)
- * @param centerX   Center X for centered text (default 105 for portrait, 148 for landscape)
+ * @param footerY  Y position of the separator line
+ * @param centerX  Center X for text (105 portrait, 148 landscape)
  */
 export function drawPdfFooter(
   doc: jsPDF,
   footerY = 280,
   centerX = 105
 ): void {
-  doc.setDrawColor(209, 213, 219);
-  doc.setLineWidth(0.3);
-  doc.line(footerY > 250 ? 15 : 10, footerY, footerY > 250 ? 195 : 287, footerY);
+  const lineL = footerY > 250 ? 15 : 10;
+  const lineR = footerY > 250 ? 195 : 287;
+
+  doc.setDrawColor(30, 64, 175);
+  doc.setLineWidth(0.4);
+  doc.line(lineL, footerY, lineR, footerY);
 
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
