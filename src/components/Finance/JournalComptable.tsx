@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { BookOpen, CheckCircle, ChevronDown, ChevronRight, Search, FileText, Download, Edit2, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { EcritureComptable, LigneEcriture } from '../../types';
 import jsPDF from 'jspdf';
+import { drawPdfHeader } from '../../utils/pdfCompanyHeader';
 
 type StatutFilter = 'ALL' | 'BROUILLON' | 'VALIDE' | 'CLOTURE';
 type TypeFilter = 'ALL' | 'RECETTE' | 'DEPENSE' | 'PAIE' | 'PAIEMENT_SALAIRE' | 'PAIEMENT_CHARGES' | 'AUTRE';
@@ -308,12 +309,8 @@ export default function JournalComptable() {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const year = new Date().getFullYear();
     const date = new Date().toISOString().slice(0, 10);
-    const L = 10, R = 287; let y = 18;
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 64, 175);
-    doc.text('GO AHEAD SARLU', L, y);
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(17, 24, 39);
-    doc.text(`Journal des Écritures Comptables — ${date}`, R, y, { align: 'right' });
-    y += 6; doc.setDrawColor(30, 64, 175); doc.setLineWidth(0.5); doc.line(L, y, R, y); y += 6;
+    const L = 10, R = 287;
+    let y = drawPdfHeader(doc, `Journal des Écritures Comptables — ${date}`, undefined, L, R);
     doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setFillColor(243, 244, 246);
     doc.rect(L, y - 3, R - L, 6, 'F');
     doc.text('Date', L + 1, y); doc.text('N° Pièce', L + 22, y); doc.text('Libellé', L + 50, y);

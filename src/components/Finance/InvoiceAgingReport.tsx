@@ -3,6 +3,7 @@ import { X, Download, FileText, Printer } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { FactureWithPayments, ClientGAS } from '../../types';
 import { exportToExcel } from '../../utils/excelExport';
+import { drawPdfHeader, drawPdfFooter } from '../../utils/pdfCompanyHeader';
 
 interface InvoiceAgingReportProps {
   factures: FactureWithPayments[];
@@ -82,30 +83,7 @@ function exportAgingToPDF(
   let pageNum = 1;
 
   const addHeader = () => {
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 64, 175);
-    doc.text('GO AHEAD SARLU', L, y);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(107, 114, 128);
-    doc.text('Département de Sécurité et Gardiennage  |  RCCM: CD/GOM/RCCM/20-B-00414', L, y + 5);
-
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(17, 24, 39);
-    doc.text(title, R, y, { align: 'right' });
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(107, 114, 128);
-    doc.text(`Imprimé le ${printDate}  |  ${totalInvoices} facture(s) en attente`, R, y + 5, { align: 'right' });
-
-    y += 10;
-    doc.setDrawColor(30, 64, 175);
-    doc.setLineWidth(0.5);
-    doc.line(L, y, R, y);
-    y += 6;
-    doc.setTextColor(17, 24, 39);
+    y = drawPdfHeader(doc, title, `Imprimé le ${printDate}  |  ${totalInvoices} facture(s) en attente`, L, R);
   };
 
   const addColumnHeaders = () => {
@@ -225,13 +203,7 @@ function exportAgingToPDF(
   }
 
   // Footer on last page
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(107, 114, 128);
-  doc.setDrawColor(209, 213, 219);
-  doc.setLineWidth(0.3);
-  doc.line(L, 200, R, 200);
-  doc.text('70, Av Abattoir, Q Kyeshero, Goma - RDC  |  +243 974 821 064  |  gas@goahead.africa', 148, 204, { align: 'center' });
+  drawPdfFooter(doc, 200, 148);
 
   const year = new Date().getFullYear();
   const date = new Date().toISOString().slice(0, 10);

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { BookOpen, Search, Download, TrendingUp, TrendingDown } from 'lucide-react';
 import { GrandLivreEntry } from '../../types';
 import jsPDF from 'jspdf';
+import { drawPdfHeader, drawPdfFooter } from '../../utils/pdfCompanyHeader';
 
 function formatCurrency(amount: number, devise: string) {
   return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${devise}`;
@@ -84,17 +85,7 @@ export default function GrandLivre() {
     const year = new Date().getFullYear();
     const date = new Date().toISOString().slice(0, 10);
     const L = 10, R = 287;
-    let y = 18;
-
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 64, 175);
-    doc.text('GO AHEAD SARLU', L, y);
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(17, 24, 39);
-    doc.text(`Grand Livre — ${date}`, R, y, { align: 'right' });
-    y += 6;
-    doc.setDrawColor(30, 64, 175); doc.setLineWidth(0.5);
-    doc.line(L, y, R, y); y += 6;
+    let y = drawPdfHeader(doc, `Grand Livre — ${date}`, undefined, L, R);
 
     for (const [compte, acc] of grouped) {
       if (y > 185) { doc.addPage(); y = 18; }

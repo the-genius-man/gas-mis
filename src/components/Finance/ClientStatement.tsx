@@ -3,6 +3,7 @@ import { X, Download, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { ClientGAS, FactureWithPayments, PaiementGAS, AvoirGAS, StatementLine } from '../../types';
 import { exportToExcel } from '../../utils/excelExport';
+import { drawPdfHeader, drawPdfFooter } from '../../utils/pdfCompanyHeader';
 
 interface ClientStatementProps {
   client: ClientGAS;
@@ -179,19 +180,8 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
     const year = new Date().getFullYear();
     const date = new Date().toISOString().slice(0, 10);
     const L = 15, R = 195, W = R - L;
-    let y = 18;
 
-    // Header
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 64, 175);
-    doc.text('GO AHEAD SARLU', L, y);
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
-    doc.text('Département de Sécurité et Gardiennage  |  RCCM: CD/GOM/RCCM/20-B-00414', L, y + 5);
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(17, 24, 39);
-    doc.text('RELEVÉ DE COMPTE', R, y, { align: 'right' });
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
-    doc.text(`Période : ${formatDate(dateDebut)} — ${formatDate(dateFin)}`, R, y + 5, { align: 'right' });
-    y += 10;
-    doc.setDrawColor(30, 64, 175); doc.setLineWidth(0.5); doc.line(L, y, R, y); y += 6;
+    let y = drawPdfHeader(doc, 'RELEVÉ DE COMPTE', `Période : ${formatDate(dateDebut)} — ${formatDate(dateFin)}`);
 
     // Client info
     doc.setTextColor(17, 24, 39); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
@@ -274,11 +264,7 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
     doc.text(closingBalance.toFixed(2) + ' ' + devise, R, y + 4, { align: 'right' });
 
     // Footer
-    const footerY = 282;
-    doc.setDrawColor(209, 213, 219); doc.setLineWidth(0.3); doc.line(L, footerY, R, footerY);
-    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
-    doc.text('70, Av Abattoir, Q Kyeshero, Goma - RDC  |  +243 974 821 064  |  gas@goahead.africa', 105, footerY + 4, { align: 'center' });
-    doc.text('BANK OF AFRICA  |  Compte: 04530670005  |  Intitulé: GO AHEAD SARL', 105, footerY + 8, { align: 'center' });
+    drawPdfFooter(doc, 282, 105);
 
     doc.save(`GAS ${year} - Relevé-Client_${client.nom_entreprise.replace(/\s+/g, '-')}_${date}.pdf`);
   };
