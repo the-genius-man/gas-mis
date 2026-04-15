@@ -175,7 +175,7 @@ const ClientStatement: React.FC<ClientStatementProps> = ({ client, allFactures, 
 
   const devise = client.devise_preferee || 'USD';
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const year = new Date().getFullYear();
     const date = new Date().toISOString().slice(0, 10);

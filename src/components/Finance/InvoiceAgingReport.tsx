@@ -104,7 +104,7 @@ async function exportAgingToPDF(
     doc.setTextColor(17, 24, 39);
   };
 
-  const checkPageBreak = (needed: number = 8) => {
+  const checkPageBreak = async (needed: number = 8) => {
     if (y + needed > 195) {
       doc.addPage();
       pageNum++;
@@ -120,7 +120,7 @@ async function exportAgingToPDF(
   let grandDevise = clientSections[0]?.invoices[0]?.devise || 'USD';
 
   for (const { clientName, invoices } of clientSections) {
-    checkPageBreak(14);
+    await checkPageBreak(14);
 
     // Client header bar
     doc.setFillColor(30, 64, 175);
@@ -141,7 +141,7 @@ async function exportAgingToPDF(
     doc.setFontSize(8);
 
     for (let i = 0; i < invoices.length; i++) {
-      checkPageBreak(7);
+      await checkPageBreak(7);
       const f = invoices[i];
       const days = getDaysOverdue(f);
 
@@ -171,7 +171,7 @@ async function exportAgingToPDF(
     }
 
     // Client subtotal row
-    checkPageBreak(7);
+    await checkPageBreak(7);
     doc.setFillColor(239, 246, 255);
     doc.rect(L, y - 3.5, W, 6.5, 'F');
     doc.setFont('helvetica', 'bold');
@@ -188,7 +188,7 @@ async function exportAgingToPDF(
 
   // Grand total
   if (clientSections.length > 1) {
-    checkPageBreak(10);
+    await checkPageBreak(10);
     doc.setDrawColor(30, 64, 175);
     doc.setLineWidth(0.8);
     doc.line(L, y - 2, R, y - 2);

@@ -305,7 +305,7 @@ export default function JournalComptable() {
     valide: ecritures.filter(e => e.statut === 'VALIDE').length,
   }), [ecritures]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const year = new Date().getFullYear();
     const date = new Date().toISOString().slice(0, 10);
