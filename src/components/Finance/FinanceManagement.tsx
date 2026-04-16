@@ -243,88 +243,208 @@ export default function FinanceManagement() {
 
       {/* Dashboard Tab */}
       {activeTab === 'dashboard' && stats && (
-        <div className="space-y-6">
-          {/* Quick Actions - Moved to Top */}
+        <div className="space-y-6 p-6">
+          {/* Header + Quick Actions */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Tableau de Bord Financier</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Tableau de Bord Financier</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
             <div className="flex items-center gap-3">
-              {/* New Expense Button */}
-              <button
-                onClick={() => { 
-                  setEditingDepense(null); 
-                  setShowDepenseForm(true); 
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm"
-              >
-                <TrendingDown className="w-4 h-4" />
-                Nouvelle Dépense
+              <button onClick={() => { setEditingDepense(null); setShowDepenseForm(true); }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm text-sm">
+                <TrendingDown className="w-4 h-4" /> Nouvelle Dépense
               </button>
-
-              {/* New Deposit Button */}
-              <button
-                onClick={() => { 
-                  setEditingEntree(null); 
-                  setShowEntreeForm(true); 
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-              >
-                <TrendingUp className="w-4 h-4" />
-                Nouveau Dépôt
+              <button onClick={() => { setEditingEntree(null); setShowEntreeForm(true); }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm text-sm">
+                <TrendingUp className="w-4 h-4" /> Nouveau Dépôt
               </button>
             </div>
           </div>
 
-          {/* Treasury Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {comptes.map((compte) => (
-              <div key={compte.id} className="bg-white rounded-lg shadow p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className={`p-2 rounded-lg ${
-                    compte.type_compte === 'CAISSE' ? 'bg-green-100 text-green-600' :
-                    compte.type_compte === 'BANQUE' ? 'bg-blue-100 text-blue-600' :
-                    'bg-purple-100 text-purple-600'
-                  }`}>
-                    {getCompteIcon(compte.type_compte)}
+          {/* KPI Row */}
+          {(() => {
+            const now = new Date();
+            const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+            const totalEntreesMois = entrees.filter(e => e.date_entree >= firstOfMonth).reduce((s, e) => s + e.montant, 0);
+            const totalDepensesMois = stats.depensesMois;
+            const totalCreances = unpaidInvoices.reduce((s, f) => s + (f.montant_total_du_client || 0), 0);
+            const totalTresorerie = comptes.reduce((s, c) => s + c.solde_actuel, 0);
+            const netMois = totalEntreesMois - totalDepensesMois;
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-blue-100 rounded-lg"><Wallet className="w-5 h-5 text-blue-600" /></div>
+                    <span className="text-sm text-gray-500">Trésorerie totale</span>
                   </div>
-                  <span className="text-xs font-medium text-gray-500">{compte.devise}</span>
+                  <p className="text-2xl font-bold text-gray-900">{totalTresorerie.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</p>
+                  <p className="text-xs text-gray-400 mt-1">{comptes.length} compte{comptes.length > 1 ? 's' : ''}</p>
                 </div>
-                <h3 className="text-sm font-medium text-gray-600">{compte.nom_compte}</h3>
-                <p className="text-2xl font-bold text-gray-900">
-                  {compte.solde_actuel.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
-                </p>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-green-100 rounded-lg"><TrendingUp className="w-5 h-5 text-green-600" /></div>
+                    <span className="text-sm text-gray-500">Entrées ce mois</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-700">+{totalEntreesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</p>
+                  <p className="text-xs text-gray-400 mt-1">{entrees.filter(e => e.date_entree >= firstOfMonth).length} transaction{entrees.filter(e => e.date_entree >= firstOfMonth).length > 1 ? 's' : ''}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-red-100 rounded-lg"><TrendingDown className="w-5 h-5 text-red-600" /></div>
+                    <span className="text-sm text-gray-500">Dépenses ce mois</span>
+                  </div>
+                  <p className="text-2xl font-bold text-red-700">-{totalDepensesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</p>
+                  <p className="text-xs text-gray-400 mt-1">{depenses.filter(d => d.date_depense >= firstOfMonth).length} dépense{depenses.filter(d => d.date_depense >= firstOfMonth).length > 1 ? 's' : ''}</p>
+                </div>
+                <div className={`bg-white rounded-xl border p-5 ${totalCreances > 0 ? 'border-orange-200' : 'border-gray-200'}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded-lg ${totalCreances > 0 ? 'bg-orange-100' : 'bg-gray-100'}`}>
+                      <FileText className={`w-5 h-5 ${totalCreances > 0 ? 'text-orange-600' : 'text-gray-400'}`} />
+                    </div>
+                    <span className="text-sm text-gray-500">Créances clients</span>
+                  </div>
+                  <p className={`text-2xl font-bold ${totalCreances > 0 ? 'text-orange-700' : 'text-gray-400'}`}>
+                    {totalCreances.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">{unpaidInvoices.length} facture{unpaidInvoices.length > 1 ? 's' : ''} impayée{unpaidInvoices.length > 1 ? 's' : ''}</p>
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
-          {/* Monthly Expenses Summary */}
+          {/* Net result banner */}
+          {(() => {
+            const now = new Date();
+            const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+            const totalEntreesMois = entrees.filter(e => e.date_entree >= firstOfMonth).reduce((s, e) => s + e.montant, 0);
+            const net = totalEntreesMois - stats.depensesMois;
+            return (
+              <div className={`rounded-xl px-6 py-4 flex items-center justify-between border ${net >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                <span className={`font-semibold ${net >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                  Résultat du mois : {net >= 0 ? '+' : ''}{net.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $
+                </span>
+                <span className="text-sm text-gray-500">
+                  {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+            );
+          })()}
+
+          {/* Treasury accounts + Expense breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Dépenses du mois (USD)</h3>
-              <p className="text-3xl font-bold text-red-600">
-                {stats.depensesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $
-              </p>
+            {/* Treasury accounts */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Comptes de Trésorerie</h3>
+              <div className="space-y-3">
+                {comptes.map(compte => (
+                  <div key={compte.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-1.5 rounded-lg ${compte.type_compte === 'CAISSE' ? 'bg-green-100 text-green-600' : compte.type_compte === 'BANQUE' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
+                        {getCompteIcon(compte.type_compte)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{compte.nom_compte}</p>
+                        <p className="text-xs text-gray-400">{compte.type_compte} · {compte.devise}</p>
+                      </div>
+                    </div>
+                    <span className={`text-base font-bold ${compte.solde_actuel >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+                      {compte.solde_actuel.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                ))}
+                {comptes.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Aucun compte configuré</p>}
+              </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Dépenses par catégorie</h3>
+            {/* Expense by category */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Dépenses par Catégorie (ce mois)</h3>
               <div className="space-y-3">
-                {stats.depensesParCategorie
-                  .filter(c => c.total > 0)
-                  .slice(0, 5)
-                  .map((cat, idx) => (
-                    <div key={idx} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">{cat.nom_categorie}</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {cat.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $
-                      </span>
+                {stats.depensesParCategorie.filter(c => c.total > 0).slice(0, 6).map((cat, idx) => {
+                  const maxTotal = Math.max(...stats.depensesParCategorie.map(c => c.total));
+                  const pct = maxTotal > 0 ? (cat.total / maxTotal) * 100 : 0;
+                  return (
+                    <div key={idx}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-gray-600">{cat.nom_categorie}</span>
+                        <span className="text-sm font-semibold text-gray-900">{cat.total.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</span>
+                      </div>
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div className="bg-red-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
                 {stats.depensesParCategorie.filter(c => c.total > 0).length === 0 && (
-                  <p className="text-sm text-gray-500">Aucune dépense ce mois</p>
+                  <p className="text-sm text-gray-400 text-center py-4">Aucune dépense ce mois</p>
                 )}
               </div>
             </div>
           </div>
+
+          {/* Recent transactions */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Transactions Récentes</h3>
+              <span className="text-xs text-gray-400">10 dernières</span>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {[
+                ...entrees.slice(0, 5).map(e => ({ date: e.date_entree, label: e.description, montant: e.montant, type: 'entree' as const, devise: e.devise })),
+                ...depenses.slice(0, 5).map(d => ({ date: d.date_depense, label: d.description, montant: d.montant, type: 'depense' as const, devise: d.devise })),
+              ]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .slice(0, 10)
+                .map((tx, i) => (
+                  <div key={i} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${tx.type === 'entree' ? 'bg-green-100' : 'bg-red-100'}`}>
+                        {tx.type === 'entree'
+                          ? <TrendingUp className="w-4 h-4 text-green-600" />
+                          : <TrendingDown className="w-4 h-4 text-red-600" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{tx.label}</p>
+                        <p className="text-xs text-gray-400">{new Date(tx.date).toLocaleDateString('fr-FR')}</p>
+                      </div>
+                    </div>
+                    <span className={`text-sm font-semibold ${tx.type === 'entree' ? 'text-green-700' : 'text-red-700'}`}>
+                      {tx.type === 'entree' ? '+' : '-'}{tx.montant.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {tx.devise}
+                    </span>
+                  </div>
+                ))}
+              {entrees.length === 0 && depenses.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-8">Aucune transaction enregistrée</p>
+              )}
+            </div>
+          </div>
+
+          {/* Unpaid invoices */}
+          {unpaidInvoices.length > 0 && (
+            <div className="bg-white rounded-xl border border-orange-200 overflow-hidden">
+              <div className="px-5 py-3 border-b border-orange-100 bg-orange-50 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-orange-800 uppercase tracking-wide">Factures Impayées</h3>
+                <span className="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full font-medium">{unpaidInvoices.length}</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {unpaidInvoices.slice(0, 5).map(f => (
+                  <div key={f.id} className="flex items-center justify-between px-5 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{f.numero_facture}</p>
+                      <p className="text-xs text-gray-400">{f.client_nom || 'Client'} · {f.date_echeance ? `Échéance: ${new Date(f.date_echeance).toLocaleDateString('fr-FR')}` : ''}</p>
+                    </div>
+                    <span className="text-sm font-bold text-orange-700">
+                      {f.montant_total_du_client.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {f.devise}
+                    </span>
+                  </div>
+                ))}
+                {unpaidInvoices.length > 5 && (
+                  <p className="text-xs text-gray-400 text-center py-2">+{unpaidInvoices.length - 5} autres factures</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
