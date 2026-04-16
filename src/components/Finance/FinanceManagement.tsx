@@ -16,7 +16,9 @@ import {
   FileText,
   HandCoins,
   BookOpen,
-  BarChart3
+  BarChart3,
+  Scale,
+  Lock
 } from 'lucide-react';
 import { 
   Depense, 
@@ -34,8 +36,10 @@ import FinanceReports from './FinanceReports';
 import DebtLoanManagement from './OhadaDebtLoanManagement';
 import JournalComptable from './JournalComptable';
 import GrandLivre from './GrandLivre';
+import BilanOhada from './BilanOhada';
+import PeriodClosing from './PeriodClosing';
 
-type TabType = 'dashboard' | 'entrees' | 'depenses' | 'debts' | 'journal' | 'grandlivre';
+type TabType = 'dashboard' | 'entrees' | 'depenses' | 'debts' | 'journal' | 'grandlivre' | 'bilan' | 'cloture';
 
 export default function FinanceManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -237,6 +241,8 @@ export default function FinanceManagement() {
             { id: 'debts', label: 'Dettes & Prêts', icon: HandCoins },
             { id: 'journal', label: 'Journal Comptable', icon: BookOpen },
             { id: 'grandlivre', label: 'Grand Livre', icon: BarChart3 },
+            { id: 'bilan', label: 'Bilan OHADA', icon: Scale },
+            { id: 'cloture', label: 'Clôture', icon: Lock },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -566,6 +572,12 @@ export default function FinanceManagement() {
 
       {/* Grand Livre Tab */}
       {activeTab === 'grandlivre' && <GrandLivre />}
+
+      {/* Bilan OHADA Tab */}
+      {activeTab === 'bilan' && <BilanOhada />}
+
+      {/* Clôture Tab */}
+      {activeTab === 'cloture' && <PeriodClosing />}
 
       {/* Depense Form Modal */}
       {showDepenseForm && (

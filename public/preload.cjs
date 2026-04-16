@@ -283,6 +283,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLignesEcriture: (ecritureId) => ipcRenderer.invoke('db-get-lignes-ecriture', ecritureId),
   validerEcriture: (data) => ipcRenderer.invoke('db-valider-ecriture', data),
   updateEcritureComptable: (data) => ipcRenderer.invoke('db-update-ecriture', data),
+  cloturerEcriture: (data) => ipcRenderer.invoke('db-cloturer-ecriture', data),
   getGrandLivre: (filters) => ipcRenderer.invoke('db-get-grand-livre', filters),
   getBilanOhada: (data) => ipcRenderer.invoke('db-get-bilan-ohada', data),
   

@@ -3859,6 +3859,20 @@ ipcMain.handle('db-update-ecriture', async (event, { ecriture, lignes }) => {
   }
 });
 
+// Clôturer an accounting entry (VALIDE → CLOTURE, irreversible)
+ipcMain.handle('db-cloturer-ecriture', async (event, { ecritureId }) => {
+  try {
+    const existing = db.prepare('SELECT statut FROM ecritures_comptables WHERE id = ?').get(ecritureId);
+    if (!existing) return { error: 'Écriture introuvable' };
+    if (existing.statut !== 'VALIDE') return { error: 'Seules les écritures validées peuvent être clôturées' };
+    db.prepare(`UPDATE ecritures_comptables SET statut = 'CLOTURE' WHERE id = ?`).run(ecritureId);
+    return { success: true };
+  } catch (error) {
+    console.error('Error closing ecriture:', error);
+    return { error: error.message };
+  }
+});
+
 // Get grand livre (general ledger) by account
 ipcMain.handle('db-get-grand-livre', async (event, filters = {}) => {
   try {
