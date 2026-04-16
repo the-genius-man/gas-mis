@@ -1,24 +1,8 @@
 import { useState, useEffect } from 'react';
 import { 
-  Wallet, 
-  TrendingDown, 
-  TrendingUp,
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2,
-  DollarSign,
-  Building2,
-  Smartphone,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  RefreshCw,
-  FileText,
-  HandCoins,
-  BookOpen,
-  BarChart3,
-  Scale,
-  Lock
+  Wallet, TrendingDown, TrendingUp, Plus, Search, Edit2, Trash2,
+  DollarSign, Building2, Smartphone, ArrowDownCircle, ArrowUpCircle,
+  RefreshCw, FileText, HandCoins, BookOpen
 } from 'lucide-react';
 import { 
   Depense, 
@@ -38,8 +22,9 @@ import JournalComptable from './JournalComptable';
 import GrandLivre from './GrandLivre';
 import BilanOhada from './BilanOhada';
 import PeriodClosing from './PeriodClosing';
+import ComptabiliteModule from './ComptabiliteModule';
 
-type TabType = 'dashboard' | 'entrees' | 'depenses' | 'debts' | 'journal' | 'grandlivre' | 'bilan' | 'cloture';
+type TabType = 'dashboard' | 'entrees' | 'depenses' | 'debts' | 'comptabilite';
 
 export default function FinanceManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -239,10 +224,7 @@ export default function FinanceManagement() {
             { id: 'entrees', label: 'Entrées', icon: TrendingUp },
             { id: 'depenses', label: 'Dépenses', icon: TrendingDown },
             { id: 'debts', label: 'Dettes & Prêts', icon: HandCoins },
-            { id: 'journal', label: 'Journal Comptable', icon: BookOpen },
-            { id: 'grandlivre', label: 'Grand Livre', icon: BarChart3 },
-            { id: 'bilan', label: 'Bilan OHADA', icon: Scale },
-            { id: 'cloture', label: 'Clôture', icon: Lock },
+            { id: 'comptabilite', label: 'Comptabilité', icon: BookOpen },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -567,17 +549,8 @@ export default function FinanceManagement() {
       {/* Debts Tab */}
       {activeTab === 'debts' && <DebtLoanManagement />}
 
-      {/* Journal Comptable Tab */}
-      {activeTab === 'journal' && <JournalComptable />}
-
-      {/* Grand Livre Tab */}
-      {activeTab === 'grandlivre' && <GrandLivre />}
-
-      {/* Bilan OHADA Tab */}
-      {activeTab === 'bilan' && <BilanOhada />}
-
-      {/* Clôture Tab */}
-      {activeTab === 'cloture' && <PeriodClosing />}
+      {/* Comptabilité Tab */}
+      {activeTab === 'comptabilite' && <ComptabiliteModule />}
 
       {/* Depense Form Modal */}
       {showDepenseForm && (
