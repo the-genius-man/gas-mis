@@ -320,8 +320,8 @@ export default function FinanceManagement() {
             const totalEntreesMois = entrees.filter(e => e.date_entree >= firstOfMonth).reduce((s, e) => s + e.montant, 0);
             const net = totalEntreesMois - stats.depensesMois;
             return (
-              <div className={`rounded-xl px-6 py-4 flex items-center justify-between border ${net >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                <span className={`font-semibold ${net >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+              <div className={`rounded-xl px-6 py-4 flex items-center justify-between border ${net >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+                <span className={`font-semibold ${net >= 0 ? 'text-blue-800' : 'text-red-800'}`}>
                   Résultat du mois : {net >= 0 ? '+' : ''}{net.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $
                 </span>
                 <span className="text-sm text-gray-500">
@@ -422,10 +422,10 @@ export default function FinanceManagement() {
 
           {/* Unpaid invoices */}
           {unpaidInvoices.length > 0 && (
-            <div className="bg-white rounded-xl border border-orange-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-orange-100 bg-orange-50 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-orange-800 uppercase tracking-wide">Factures Impayées</h3>
-                <span className="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full font-medium">{unpaidInvoices.length}</span>
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Factures Impayées</h3>
+                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">{unpaidInvoices.length}</span>
               </div>
               <div className="divide-y divide-gray-50">
                 {unpaidInvoices.slice(0, 5).map(f => (
