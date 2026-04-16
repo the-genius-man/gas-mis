@@ -1,0 +1,25 @@
+{
+  "enabled": true,
+  "name": "Sync Docs on Source Change",
+  "description": "Watches TypeScript, TSX, CSS, and config files. When any source file changes, asks the agent to update README or docs/ accordingly.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "src/**/*.css",
+      "electron/**/*.ts",
+      "electron/**/*.cjs",
+      "public/electron.cjs",
+      "public/preload.cjs",
+      "vite.config.ts",
+      "tailwind.config.js",
+      "package.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file was just edited. Review the change and determine if any documentation needs to be updated. Check the README.md at the root for general project documentation. If there is a /docs folder, check relevant files there too. Update the documentation to reflect any new features, changed APIs, modified module behavior, new dependencies, or structural changes introduced by the edit. Only update docs if the change is meaningful enough to warrant it — skip trivial edits like formatting or minor refactors."
+  }
+}
