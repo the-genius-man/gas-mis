@@ -20,7 +20,7 @@ This feature bridges that gap: upon payroll validation, the system automatically
 - **BROUILLON**: The initial status of a newly created `Ecriture_Comptable`, indicating it is pending accountant review.
 - **VALIDEE**: The status of a `Periode_Paie` after all payslips have been validated by the payroll manager.
 - **Compte 661**: OHADA account "Rémunérations du personnel" — records the gross salary expense (debit).
-- **Compte 422**: OHADA account "Personnel, rémunérations dues" — records net salaries payable to employees (credit).
+- **Compte 422**: OHADA account "Personnel, rémunérations dues" — records net salaries payable to employees (credit at payroll validation; debit when payment is made to clear the liability).
 - **Compte 431**: OHADA account "CNSS" — records CNSS social contributions withheld (credit).
 - **Compte 447**: OHADA account "IPR à payer" — records IPR (income tax) withheld (credit).
 - **Compte 432**: OHADA account "ONEM" — records ONEM contributions withheld (credit).
@@ -28,7 +28,15 @@ This feature bridges that gap: upon payroll validation, the system automatically
 - **Compte 664**: OHADA account "Charges sociales patronales" — records employer social charges (debit).
 - **Compte 431_patronal**: OHADA account "CNSS patronal" — records the employer share of CNSS (credit).
 - **Idempotency**: The property that generating journal entries for a period that already has entries does not create duplicates.
-- **source_id**: A field on `ecritures_comptables` that links the journal entry back to its originating document (here, the `Periode_Paie` id).
+- **source_id**: A field on `ecritures_comptables` that links the journal entry back to its originating document (here, the `Periode_Paie` id or `Paiement_Salaire` id depending on the entry type).
+- **Payment_Generator**: The backend logic responsible for creating OHADA journal entries when an individual salary payment is recorded via `db-payer-salaire`.
+- **Paiement_Salaire**: An individual salary payment record in the `paiements_salaires` table, created when a user pays one employee through the "Salaires Impayés" screen.
+- **Salaire_Impaye**: A record in the `salaires_impayes` table tracking the outstanding salary balance for one employee in a given period, with fields `montant_paye`, `montant_restant`, and `statut` (`IMPAYE` / `PAYE_PARTIEL` / `PAYE_TOTAL`).
+- **Compte 5xx**: OHADA treasury/bank accounts — e.g., 521 "Banque", 571 "Caisse". Used as the credit side when a salary payment is disbursed.
+- **Compte 5711**: OHADA account "Caisse" — default treasury account used when no specific `compte_tresorerie` is linked to a payment.
+- **PAIEMENT_SALAIRE**: The `type_operation` value used on `ecritures_comptables` for individual salary payment journal entries. This value already exists in the database CHECK constraint.
+- **PAYE_TOTAL**: The `statut` value on `salaires_impayes` indicating the employee has been fully paid for the period.
+- **PAYE_PARTIEL**: The `statut` value on `salaires_impayes` indicating the employee has been partially paid for the period.
 
 ---
 
@@ -124,3 +132,37 @@ This feature bridges that gap: upon payroll validation, the system automatically
 4. WHEN the Journal_Generator is skipped due to an existing entry, THE System SHALL include a notification in the payroll validation success message indicating that the entry already existed.
 5. IF a `Bulletin_Paie` has `salaire_brut` equal to zero, THEN THE Journal_Generator SHALL exclude that bulletin from all aggregated totals.
 6. THE Journal_Generator SHALL use a SQLite transaction to ensure that either all `Ligne_Ecriture` records and the `Ecriture_Comptable` header are inserted together, or none are inserted.
+
+---
+
+### Requirement 7: Individual Salary Payment Journal Entry
+
+**User Story:** As a finance manager, when an individual employee salary is paid through the "Salaires Impayés" screen, I want the system to automatically create the corresponding OHADA journal entry, so that each disbursement is recorded in the accounting module without manual data entry.
+
+#### Acceptance Criteria
+
+1. WHEN `db-payer-salaire` records a payment in `paiements_salaires`, THE Payment_Generator SHALL create an `Ecriture_Comptable` of type `PAIEMENT_SALAIRE` in `BROUILLON` status.
+2. WHEN the Payment_Generator creates the salary payment entry, THE Payment_Generator SHALL include the following `Ligne_Ecriture` records:
+   - One DEBIT line on Compte 422 for the amount paid (clears the salary liability created at payroll validation).
+   - One CREDIT line on the treasury account corresponding to `compte_tresorerie_id` if provided (using the OHADA account code stored on that treasury record, e.g., 521 for bank, 571 for cash).
+   - IF no `compte_tresorerie_id` is provided, THEN THE Payment_Generator SHALL use Compte 5711 as the CREDIT account.
+3. WHEN the Payment_Generator creates the salary payment entry, THE Payment_Generator SHALL set `source_id` to the `paiementId` of the newly created `paiements_salaires` record.
+4. WHEN the Payment_Generator creates the salary payment entry, THE Payment_Generator SHALL set `numero_piece` to `"SAL-[YYYY]-[MM]-[matricule]"` where `[YYYY]` is the four-digit year, `[MM]` is the zero-padded two-digit month, and `[matricule]` is the employee's matricule; IF no matricule is available, THE Payment_Generator SHALL use a zero-padded sequential number instead.
+5. WHEN the Payment_Generator creates the salary payment entry, THE Payment_Generator SHALL set `libelle` to `"Paiement salaire [Nom Employé] — [Mois] [Année]"` where `[Nom Employé]` is the employee's full name, `[Mois]` is the French month name, and `[Année]` is the four-digit year.
+6. WHEN the Payment_Generator creates the salary payment entry, THE Payment_Generator SHALL set `date_ecriture` to the date of the payment and `devise` to `USD`.
+7. IF the Payment_Generator encounters a database error during entry creation, THEN THE System SHALL log the error with the `paiementId` and continue the salary payment recording without throwing an exception to the UI, so that the payment itself is never blocked by an accounting failure.
+8. THE Payment_Generator SHALL use a SQLite transaction to ensure that either all `Ligne_Ecriture` records and the `Ecriture_Comptable` header are inserted together, or none are inserted.
+
+---
+
+### Requirement 8: Partial Payment Tracking and Outstanding Balance Visibility
+
+**User Story:** As a finance manager, I want each salary payment journal entry to reflect the remaining balance after payment, and I want to be able to filter the journal by salary disbursements, so that I can track outstanding salary liabilities from the Finance module without switching to the payroll screen.
+
+#### Acceptance Criteria
+
+1. WHEN the Payment_Generator creates a salary payment entry and the corresponding `Salaire_Impaye` record has `statut` equal to `PAYE_PARTIEL` after the payment, THE Payment_Generator SHALL append the remaining balance to the `libelle` in the format `"Paiement salaire [Nom Employé] — [Mois] [Année] (Reste : [montant_restant] USD)"`.
+2. WHEN the Payment_Generator creates a salary payment entry and the corresponding `Salaire_Impaye` record has `statut` equal to `PAYE_TOTAL` after the payment, THE Payment_Generator SHALL set the `libelle` to `"Paiement salaire [Nom Employé] — [Mois] [Année] — Solde final"`.
+3. WHEN the Finance module's journal list is displayed, THE System SHALL allow filtering by `type_operation` equal to `PAIEMENT_SALAIRE` so that the accountant can view all salary disbursement entries in isolation.
+4. WHEN the Finance module's journal list is displayed, THE System SHALL show entries with `type_operation` equal to `PAIEMENT_SALAIRE` with the label "Paiement Salaire" in the type filter and type badge.
+5. WHEN the accountant expands a `PAIEMENT_SALAIRE` entry in the journal, THE System SHALL display the DEBIT line on Compte 422 and the CREDIT line on the treasury account with their respective amounts, account codes, and account labels.
