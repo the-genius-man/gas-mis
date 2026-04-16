@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createAvoir: (avoir) => ipcRenderer.invoke('db-create-avoir', avoir),
   getAvoirsForFacture: (factureId) => ipcRenderer.invoke('db-get-avoirs-for-facture', factureId),
   getAvoirsForClient: (clientId, filters) => ipcRenderer.invoke('db-get-avoirs-for-client', clientId, filters),
+  deleteAvoir: (avoirId) => ipcRenderer.invoke('db-delete-avoir', avoirId),
   
   // Dashboard stats
   getDashboardStats: () => ipcRenderer.invoke('db-get-dashboard-stats'),

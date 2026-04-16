@@ -481,16 +481,31 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
                             )}
                           </div>
                         </div>
-                        <button
-                          onClick={() => {
-                            setPrintingAvoir(avoir);
-                            setTimeout(() => window.print(), 300);
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                          title="Imprimer l'avoir"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              setPrintingAvoir(avoir);
+                              setTimeout(() => window.print(), 300);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                            title="Imprimer l'avoir"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Supprimer l'avoir ${avoir.numero_avoir} ? Cette action est irréversible.`)) return;
+                              const result = await window.electronAPI?.deleteAvoir(avoir.id);
+                              if (result?.error) { alert(result.error); return; }
+                              loadAvoirs();
+                              onRefresh();
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Supprimer l'avoir"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}

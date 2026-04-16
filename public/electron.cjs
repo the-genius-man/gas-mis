@@ -5989,6 +5989,31 @@ ipcMain.handle('db-get-avoirs-for-client', async (event, clientId, filters) => {
   }
 });
 
+// Delete avoir — reverses invoice balance and cleans up journal entry
+ipcMain.handle('db-delete-avoir', async (event, avoirId) => {
+  try {
+    const avoir = db.prepare('SELECT * FROM avoirs WHERE id = ?').get(avoirId);
+    if (!avoir) return { error: 'Avoir introuvable' };
+
+    const deleteAvoir = db.transaction(() => {
+      // Remove avoir
+      db.prepare('DELETE FROM avoirs WHERE id = ?').run(avoirId);
+      // Recompute invoice payment status
+      updateFacturePaymentStatus(avoir.facture_id, db);
+    });
+    deleteAvoir();
+
+    // Clean up linked journal entry
+    db.prepare('DELETE FROM lignes_ecritures WHERE ecriture_id IN (SELECT id FROM ecritures_comptables WHERE source_id = ?)').run(avoirId);
+    db.prepare('DELETE FROM ecritures_comptables WHERE source_id = ?').run(avoirId);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting avoir:', error);
+    return { error: error.message };
+  }
+});
+
 ipcMain.handle('db-get-facture-paiements-summary', (event, factureId) => {
   const facture = db.prepare(`SELECT montant_total_du_client, devise FROM factures_clients WHERE id = ?`).get(factureId);
   const { total_paye } = db.prepare(`SELECT COALESCE(SUM(montant_paye), 0) AS total_paye FROM paiements WHERE facture_id = ?`).get(factureId);
@@ -7273,6 +7298,9 @@ ipcMain.handle('db-delete-depense', async (event, id) => {
     }
 
     db.prepare('DELETE FROM mouvements_tresorerie WHERE source_id = ?').run(id);
+    // Clean up linked journal entry
+    db.prepare('DELETE FROM lignes_ecritures WHERE ecriture_id IN (SELECT id FROM ecritures_comptables WHERE source_id = ?)').run(id);
+    db.prepare('DELETE FROM ecritures_comptables WHERE source_id = ?').run(id);
     db.prepare('DELETE FROM depenses WHERE id = ?').run(id);
     return { success: true };
   } catch (error) {

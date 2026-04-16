@@ -81,6 +81,11 @@ interface ElectronAPI {
   cloturerEcriture: (data: any) => Promise<any>;
   getGrandLivre: (filters?: any) => Promise<any[]>;
   getBilanOhada: (data: any) => Promise<any[]>;
+  // Avoirs (Credit Notes)
+  createAvoir: (avoir: any) => Promise<any>;
+  getAvoirsForFacture: (factureId: string) => Promise<any[]>;
+  getAvoirsForClient: (clientId: string, filters?: any) => Promise<any[]>;
+  deleteAvoir: (avoirId: string) => Promise<any>;
   
   // OHADA Debt & Loan Tracking
   createDettePretOhada: (debtLoan: any) => Promise<any>;
