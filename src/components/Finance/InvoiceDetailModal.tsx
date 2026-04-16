@@ -194,7 +194,7 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportPDF}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
             >
               <Download className="h-4 w-4" />
               Export PDF
