@@ -15,6 +15,7 @@ import FinanceModule from './components/Finance/FinanceModule';
 import InvoicesManagement from './components/Finance/InvoicesManagement';
 import FacturationModule from './components/Finance/FacturationModule';
 import FinanceManagement from './components/Finance/FinanceManagement';
+import ComptabiliteModule from './components/Finance/ComptabiliteModule';
 import SettingsPage from './components/Settings/SettingsPage';
 import UserManagement from './components/Settings/UserManagement';
 import ReportsModule from './components/Reports/ReportsModule';
@@ -99,6 +100,8 @@ function AppContent() {
         return 'Facturation';
       case 'finance':
         return 'Finance';
+      case 'comptabilite':
+        return 'Comptabilité';
       case 'reports':
         return 'Rapports';
       case 'users':
@@ -138,6 +141,8 @@ function AppContent() {
         return 'Factures, paiements et facturation mensuelle';
       case 'finance':
         return 'Gestion des entrées et dépenses';
+      case 'comptabilite':
+        return 'Journal, Grand Livre, Bilan OHADA et Clôture';
       case 'reports':
         return 'Rapports et analyses';
       case 'users':
@@ -343,6 +348,17 @@ function AppContent() {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <h3 className="text-lg font-medium text-gray-900 mb-2">Finance</h3>
+              <p className="text-gray-600">Module disponible en mode Electron</p>
+            </div>
+          </div>
+        );
+      case 'comptabilite':
+        return electronMode ? (
+          <ComptabiliteModule />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Comptabilité</h3>
               <p className="text-gray-600">Module disponible en mode Electron</p>
             </div>
           </div>

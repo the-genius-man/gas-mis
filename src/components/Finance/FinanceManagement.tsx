@@ -24,7 +24,7 @@ import BilanOhada from './BilanOhada';
 import PeriodClosing from './PeriodClosing';
 import ComptabiliteModule from './ComptabiliteModule';
 
-type TabType = 'dashboard' | 'entrees' | 'depenses' | 'debts' | 'comptabilite';
+type TabType = 'dashboard' | 'entrees' | 'depenses' | 'debts';
 
 export default function FinanceManagement() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -224,7 +224,6 @@ export default function FinanceManagement() {
             { id: 'entrees', label: 'Entrées', icon: TrendingUp },
             { id: 'depenses', label: 'Dépenses', icon: TrendingDown },
             { id: 'debts', label: 'Dettes & Prêts', icon: HandCoins },
-            { id: 'comptabilite', label: 'Comptabilité', icon: BookOpen },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -548,9 +547,6 @@ export default function FinanceManagement() {
 
       {/* Debts Tab */}
       {activeTab === 'debts' && <DebtLoanManagement />}
-
-      {/* Comptabilité Tab */}
-      {activeTab === 'comptabilite' && <ComptabiliteModule />}
 
       {/* Depense Form Modal */}
       {showDepenseForm && (

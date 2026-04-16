@@ -11,7 +11,8 @@ import {
   Settings,
   BarChart3,
   UserCog,
-  LogOut
+  LogOut,
+  BookOpen
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { canAccessModule, ROLE_INFO, isOperationsReadOnly } from '../../utils/permissions';
@@ -29,7 +30,8 @@ const menuItems = [
   { id: 'clients', label: 'Clients', icon: Building2, module: 'finance' },
   { id: 'facturation', label: 'Facturation', icon: FileText, module: 'finance' },
   { id: 'finance', label: 'Finance', icon: Wallet, module: 'finance' },
-  { id: 'payroll-module', label: 'Paie', icon: DollarSign, module: 'finance' }, // Changed from 'hr' to 'finance'
+  { id: 'comptabilite', label: 'Comptabilité', icon: BookOpen, module: 'finance' },
+  { id: 'payroll-module', label: 'Paie', icon: DollarSign, module: 'finance' },
   { id: 'reports', label: 'Rapports', icon: BarChart3, module: 'reports' },
   { id: 'users', label: 'Utilisateurs', icon: UserCog, module: 'users' },
   { id: 'settings', label: 'Paramètres', icon: Settings, module: 'settings' },
@@ -51,7 +53,7 @@ export default function Sidebar({ activeModule, onModuleChange }: SidebarProps) 
     }
     
     // Finance modules (clients, facturation, finance, payroll-module) - Operations roles cannot access
-    const financeModules = ['clients', 'facturation', 'finance', 'payroll-module'];
+    const financeModules = ['clients', 'facturation', 'finance', 'comptabilite', 'payroll-module'];
     if (financeModules.includes(item.id)) {
       return userRole === 'ADMIN' || userRole === 'FINANCE_MANAGER';
     }
