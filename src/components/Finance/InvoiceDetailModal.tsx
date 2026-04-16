@@ -191,12 +191,21 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
               </div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors p-2 hover:bg-white/50 rounded-lg"
-          >
-            <X className="h-6 w-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              <Download className="h-4 w-4" />
+              Export PDF
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 transition-colors p-2 hover:bg-white/50 rounded-lg"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
         {/* Payment Progress Bar */}
@@ -535,30 +544,7 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-between items-center">
-          <div className="flex gap-2">
-            <button
-              onClick={handleExportPDF}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export PDF
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Imprimer
-            </button>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              Fermer
-            </button>
+        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end items-center gap-3">
             {facture.statut_paiement !== 'ANNULE' && (
               <button
                 onClick={() => setShowCreditNoteForm(true)}
@@ -577,7 +563,6 @@ export default function InvoiceDetailModal({ facture, client, allInvoices, onClo
                 Enregistrer un Paiement
               </button>
             )}
-          </div>
         </div>
       </div>
 
