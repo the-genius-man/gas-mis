@@ -9,6 +9,33 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Treasury Auto-Resolution: Payment Mode → Treasury Account
+
+### What was done
+- Removed the manual "Compte de Trésorerie" dropdown from both payment UIs (added earlier the same day)
+- Added automatic treasury account resolution in `db-payer-salaire` backend handler based on payment mode
+- Mapping: `ESPECES → CAISSE`, `VIREMENT → BANQUE`, `CHEQUE → BANQUE`, `MOBILE_MONEY → MOBILE_MONEY`
+- The backend queries `comptes_tresorerie WHERE type_compte = ? AND est_actif = 1` to find the matching account
+- If a match is found: treasury balance is decremented, a `mouvements_tresorerie` SORTIE record is created, and the OHADA journal entry uses the correct account code
+- If no match: falls back gracefully (no treasury movement, journal defaults to 5711 Caisse)
+- Fixed a duplicate `effectue_par` key in `EmployeeDetailModal.tsx` caught during build
+- All 72 tests pass, clean build with no TypeScript errors
+
+### Files changed
+- ✅ Modified `public/electron.cjs` — added `MODE_TO_TYPE` mapping and auto-resolution lookup in `db-payer-salaire`; replaced all `paiement.compte_tresorerie_id` references with resolved `compteTresorerieId`
+- ✅ Modified `src/components/Payroll/UnpaidSalariesManagement.tsx` — removed `CompteTresorerie` interface, `comptesTresorerie` state, `loadComptesTresorerie()`, `compteTresorerieId` state, `Landmark` icon import, and treasury selector JSX
+- ✅ Modified `src/components/HR/EmployeeDetailModal.tsx` — removed `compteTresorerieId` and `comptesTresorerie` state, `useEffect` for loading accounts, treasury selector JSX, and fixed duplicate `effectue_par` key
+
+### Why
+- The user correctly identified that asking for both payment mode (Espèces, Virement, etc.) and treasury account was redundant. The payment mode already implies which treasury account to use. Auto-resolving in the backend simplifies the UI (one fewer field) while ensuring treasury balances, movements, and OHADA journal entries are all correctly recorded.
+
+### Notes
+- The auto-resolution runs only when `compte_tresorerie_id` is not explicitly provided — if a caller passes it directly, it's still honoured (backward compatible)
+- Uses `LIMIT 1` with `ORDER BY nom_compte` — if multiple accounts of the same type exist, the first alphabetically is used. This is a reasonable default for a single-company system.
+- The `paiements_salaires` table still stores the resolved `compte_tresorerie_id`, so the payment history correctly reflects which treasury account was debited
+
+---
+
 ## 2026-04-22 — Treasury Account UX Review: Auto-Resolution Proposal
 
 ### What was done
