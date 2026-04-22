@@ -3680,6 +3680,26 @@ ipcMain.handle('db-payer-salaire', async (event, paiement) => {
       throw new Error('Le montant du paiement dépasse le montant restant');
     }
 
+    // Auto-resolve treasury account from payment mode if not explicitly provided
+    let compteTresorerieId = paiement.compte_tresorerie_id || null;
+    if (!compteTresorerieId && paiement.mode_paiement) {
+      const MODE_TO_TYPE = {
+        'ESPECES': 'CAISSE',
+        'VIREMENT': 'BANQUE',
+        'CHEQUE': 'BANQUE',
+        'MOBILE_MONEY': 'MOBILE_MONEY',
+      };
+      const typeCherche = MODE_TO_TYPE[paiement.mode_paiement];
+      if (typeCherche) {
+        const compteAuto = db.prepare(
+          'SELECT id FROM comptes_tresorerie WHERE type_compte = ? AND est_actif = 1 ORDER BY nom_compte LIMIT 1'
+        ).get(typeCherche);
+        if (compteAuto) {
+          compteTresorerieId = compteAuto.id;
+        }
+      }
+    }
+
     const paiementId = paiement.id || crypto.randomUUID();
     
     // Insert payment record
@@ -3696,7 +3716,7 @@ ipcMain.handle('db-payer-salaire', async (event, paiement) => {
       paiement.date_paiement,
       paiement.mode_paiement,
       paiement.reference_paiement || null,
-      paiement.compte_tresorerie_id || null,
+      compteTresorerieId,
       paiement.effectue_par || 'system',
       paiement.notes || null
     );
@@ -3727,14 +3747,14 @@ ipcMain.handle('db-payer-salaire', async (event, paiement) => {
       );
     }
 
-    // Update treasury account if specified
-    if (paiement.compte_tresorerie_id) {
-      const compte = db.prepare('SELECT solde_actuel FROM comptes_tresorerie WHERE id = ?').get(paiement.compte_tresorerie_id);
+    // Update treasury account if resolved
+    if (compteTresorerieId) {
+      const compte = db.prepare('SELECT solde_actuel FROM comptes_tresorerie WHERE id = ?').get(compteTresorerieId);
       const soldeAvant = compte?.solde_actuel || 0;
       const soldeApres = soldeAvant - paiement.montant_paye;
 
       db.prepare('UPDATE comptes_tresorerie SET solde_actuel = ? WHERE id = ?')
-        .run(soldeApres, paiement.compte_tresorerie_id);
+        .run(soldeApres, compteTresorerieId);
 
       // Record treasury movement
       const mouvementId = crypto.randomUUID();
@@ -3745,7 +3765,7 @@ ipcMain.handle('db-payer-salaire', async (event, paiement) => {
         ) VALUES (?, ?, ?, 'SORTIE', ?, ?, ?, 'PAIEMENT_SALAIRE', ?, ?, ?)
       `).run(
         mouvementId,
-        paiement.compte_tresorerie_id,
+        compteTresorerieId,
         paiement.date_paiement,
         paiement.montant_paye,
         paiement.devise || 'USD',
@@ -3763,7 +3783,7 @@ ipcMain.handle('db-payer-salaire', async (event, paiement) => {
         id: paiementId,
         montant_paye: paiement.montant_paye,
         date_paiement: paiement.date_paiement,
-        compte_tresorerie_id: paiement.compte_tresorerie_id || null,
+        compte_tresorerie_id: compteTresorerieId,
       };
       const salaireImpayeAvecNouveauRestant = {
         ...salaireImpaye,

@@ -9,6 +9,29 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Treasury Account UX Review: Auto-Resolution Proposal
+
+### What was done
+- Reviewed the UX of the treasury account selector added in the previous session
+- Identified that asking the user to pick both `mode_paiement` (Espèces, Virement, Chèque, Mobile Money) and `compte_tresorerie` is redundant — the payment mode already implies which treasury account to use
+- Investigated the `comptes_tresorerie` table and confirmed `type_compte` values are `CAISSE`, `BANQUE`, and `MOBILE_MONEY` (from `FinanceManagement.tsx` rendering logic)
+- Proposed replacing the manual treasury selector with automatic resolution in the backend: `ESPECES → CAISSE`, `VIREMENT/CHEQUE → BANQUE`, `MOBILE_MONEY → MOBILE_MONEY`
+- No code changes made this session — awaiting user confirmation to proceed with the auto-resolution implementation
+
+### Files changed
+- No source files modified — investigation and design discussion only
+
+### Why
+- The user correctly pointed out that choosing both payment mode and treasury account is redundant friction. The payment mode already carries enough information to determine the correct treasury account. Auto-resolving simplifies the UI (one fewer field) while still ensuring treasury balances, movements, and OHADA journal entries are all correctly recorded.
+
+### Notes
+- Proposed mapping: `ESPECES → type_compte='CAISSE'`, `VIREMENT → type_compte='BANQUE'`, `CHEQUE → type_compte='BANQUE'`, `MOBILE_MONEY → type_compte='MOBILE_MONEY'`
+- Implementation plan: remove the treasury selector from both UIs, add a ~10-line auto-resolution lookup in `db-payer-salaire` before the existing treasury update block
+- Fallback: if no matching treasury account is found, defaults to 5711 (Caisse) with no treasury movement — same as the original behaviour before the selector was added
+- Could not query the live database directly due to `better-sqlite3` native module version mismatch (compiled for Electron's Node, not system Node)
+
+---
+
 ## 2026-04-22 — Treasury Account Selector Added to Both Payment UIs
 
 ### What was done

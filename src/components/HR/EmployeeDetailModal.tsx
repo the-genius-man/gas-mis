@@ -839,19 +839,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ salary, employeeName, onClo
   const [datePaiement, setDatePaiement] = useState(new Date().toISOString().split('T')[0]);
   const [modePaiement, setModePaiement] = useState('ESPECES');
   const [referencePaiement, setReferencePaiement] = useState('');
-  const [compteTresorerieId, setCompteTresorerieId] = useState('');
-  const [comptesTresorerie, setComptesTresorerie] = useState<{ id: string; nom_compte: string; type_compte: string; solde_actuel: number; devise: string; compte_ohada: string | null }[]>([]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (window.electronAPI) {
-      window.electronAPI.getComptesTresorerie()
-        .then((data: any[]) => setComptesTresorerie(data || []))
-        .catch(() => {/* non-blocking */});
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -877,7 +867,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ salary, employeeName, onClo
         date_paiement: datePaiement,
         mode_paiement: modePaiement,
         reference_paiement: referencePaiement || null,
-        compte_tresorerie_id: compteTresorerieId || null,
         effectue_par: 'user',
         notes: notes || null
       });
@@ -998,28 +987,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ salary, employeeName, onClo
               placeholder="N° de transaction, chèque, etc."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-          </div>
-
-          {/* Treasury Account */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Compte de Trésorerie
-            </label>
-            <select
-              value={compteTresorerieId}
-              onChange={(e) => setCompteTresorerieId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">— Caisse par défaut (5711) —</option>
-              {comptesTresorerie.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nom_compte} ({c.compte_ohada || c.type_compte}) — {c.solde_actuel.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {c.devise}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Sélectionner un compte met à jour son solde et crée un mouvement de trésorerie.
-            </p>
           </div>
 
           {/* Notes */}
