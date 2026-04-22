@@ -268,9 +268,10 @@ export default function FinanceManagement() {
             const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
             const totalEntreesMois = entrees.filter(e => e.date_entree >= firstOfMonth).reduce((s, e) => s + e.montant, 0);
             const totalDepensesMois = stats.depensesMois;
+            const totalSortiesMois = stats.totalSortiesMois || 0;
             const totalCreances = unpaidInvoices.reduce((s, f) => s + (f.montant_total_du_client || 0), 0);
             const totalTresorerie = comptes.reduce((s, c) => s + c.solde_actuel, 0);
-            const netMois = totalEntreesMois - totalDepensesMois;
+            const netMois = totalEntreesMois - totalSortiesMois;
             return (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -292,10 +293,14 @@ export default function FinanceManagement() {
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-red-100 rounded-lg"><TrendingDown className="w-5 h-5 text-red-600" /></div>
-                    <span className="text-sm text-gray-500">Dépenses ce mois</span>
+                    <span className="text-sm text-gray-500">Sorties ce mois</span>
                   </div>
-                  <p className="text-2xl font-bold text-red-700">-{totalDepensesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</p>
-                  <p className="text-xs text-gray-400 mt-1">{depenses.filter(d => d.date_depense >= firstOfMonth).length} dépense{depenses.filter(d => d.date_depense >= firstOfMonth).length > 1 ? 's' : ''}</p>
+                  <p className="text-2xl font-bold text-red-700">-{totalSortiesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {totalDepensesMois > 0 ? `Dépenses: ${totalDepensesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}` : ''}
+                    {totalDepensesMois > 0 && (stats.paiementsSalairesMois || 0) > 0 ? ' · ' : ''}
+                    {(stats.paiementsSalairesMois || 0) > 0 ? `Salaires: ${(stats.paiementsSalairesMois || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}` : ''}
+                  </p>
                 </div>
                 <div className={`bg-white rounded-xl border p-5 ${totalCreances > 0 ? 'border-orange-200' : 'border-gray-200'}`}>
                   <div className="flex items-center gap-3 mb-3">
@@ -318,7 +323,8 @@ export default function FinanceManagement() {
             const now = new Date();
             const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
             const totalEntreesMois = entrees.filter(e => e.date_entree >= firstOfMonth).reduce((s, e) => s + e.montant, 0);
-            const net = totalEntreesMois - stats.depensesMois;
+            const totalSorties = stats.totalSortiesMois || 0;
+            const net = totalEntreesMois - totalSorties;
             return (
               <div className={`rounded-xl px-6 py-4 flex items-center justify-between border ${net >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
                 <span className={`font-semibold ${net >= 0 ? 'text-blue-800' : 'text-red-800'}`}>
@@ -380,6 +386,27 @@ export default function FinanceManagement() {
                   <p className="text-sm text-gray-400 text-center py-4">Aucune dépense ce mois</p>
                 )}
               </div>
+
+              {/* Salary & charges outflows */}
+              {((stats.paiementsSalairesMois || 0) > 0 || (stats.paiementsChargesMois || 0) > 0) && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Paiements Paie & Charges</h4>
+                  <div className="space-y-2">
+                    {(stats.paiementsSalairesMois || 0) > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Paiements salaires</span>
+                        <span className="text-sm font-semibold text-purple-700">{(stats.paiementsSalairesMois || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</span>
+                      </div>
+                    )}
+                    {(stats.paiementsChargesMois || 0) > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Charges sociales</span>
+                        <span className="text-sm font-semibold text-orange-700">{(stats.paiementsChargesMois || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

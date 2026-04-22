@@ -7689,11 +7689,35 @@ ipcMain.handle('db-get-finance-stats', async () => {
       ORDER BY total DESC
     `).all(firstDayOfMonth);
 
+    // Salary payment outflows this month (from mouvements_tresorerie)
+    const paiementsSalairesMois = db.prepare(`
+      SELECT COALESCE(SUM(montant), 0) as total
+      FROM mouvements_tresorerie
+      WHERE date_mouvement >= ? AND type_source = 'PAIEMENT_SALAIRE' AND type_mouvement = 'SORTIE' AND devise = 'USD'
+    `).get(firstDayOfMonth);
+
+    // Social charges payment outflows this month
+    const paiementsChargesMois = db.prepare(`
+      SELECT COALESCE(SUM(montant), 0) as total
+      FROM mouvements_tresorerie
+      WHERE date_mouvement >= ? AND type_source = 'PAIEMENT_CHARGES' AND type_mouvement = 'SORTIE' AND devise = 'USD'
+    `).get(firstDayOfMonth);
+
+    // Total all outflows this month
+    const totalSortiesMois = db.prepare(`
+      SELECT COALESCE(SUM(montant), 0) as total
+      FROM mouvements_tresorerie
+      WHERE date_mouvement >= ? AND type_mouvement = 'SORTIE' AND devise = 'USD'
+    `).get(firstDayOfMonth);
+
     return {
       totalCaisseUSD,
       totalCaisseCDF,
       totalBanque,
       depensesMois: depensesMois?.total || 0,
+      paiementsSalairesMois: paiementsSalairesMois?.total || 0,
+      paiementsChargesMois: paiementsChargesMois?.total || 0,
+      totalSortiesMois: totalSortiesMois?.total || 0,
       depensesParCategorie,
       comptes
     };

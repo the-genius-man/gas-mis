@@ -9,6 +9,33 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Finance Dashboard: Salary Payment Visibility Analysis
+
+### What was done
+- Investigated why salary payments don't appear in the finance dashboard's monthly totals
+- Read `db-get-finance-stats` and `FinanceManagement.tsx` to trace how dashboard numbers are computed
+- Confirmed treasury balances (`comptes_tresorerie.solde_actuel`) are already correct — they reflect salary payments via the auto-resolution implemented earlier
+- Identified the gap: "Résultat du mois" and "Dépenses par Catégorie" only query the `depenses` table, so salary outflows are invisible in those sections
+- Proposed three options to the user:
+  - **Option A (recommended)**: Update `db-get-finance-stats` to also sum salary outflows from `mouvements_tresorerie WHERE type_source = 'PAIEMENT_SALAIRE'` — show them as a separate line item alongside operational expenses
+  - **Option B**: Add a new "Sorties du mois" dashboard card summing all `mouvements_tresorerie` SORTIE records
+  - **Option C**: Insert `depenses` records for salary payments (rejected — double-counts the expense)
+- Awaiting user decision before implementing
+
+### Files changed
+- No source files modified — investigation and design discussion only
+
+### Why
+- The user noticed that salary payments leave the caisse/banque but don't appear in the dashboard's expense totals. The treasury balances are correct (they get decremented), but the "Résultat du mois" calculation only sums `depenses` rows, making it look like more cash is available than there actually is.
+
+### Notes
+- Dashboard data flow: `db-get-finance-stats` → `depensesMois` = `SUM(montant) FROM depenses WHERE statut='VALIDEE'` — salary payments are in `mouvements_tresorerie` and `paiements_salaires`, not `depenses`
+- "Résultat du mois" = `totalEntreesMois - stats.depensesMois` — this is the number that's misleading because it doesn't subtract salary outflows
+- The "Comptes de Trésorerie" section already shows correct balances (reads `solde_actuel` directly)
+- Option A is cleanest: no data duplication, accounting stays correct, dashboard reflects reality
+
+---
+
 ## 2026-04-22 — Salary Payments vs Dépenses: Accounting Clarification
 
 ### What was done
