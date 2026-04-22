@@ -9,6 +9,28 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Salary Payments vs Dépenses: Accounting Clarification
+
+### What was done
+- Investigated why salary payments don't appear in the Dépenses screen
+- Confirmed this is correct OHADA accounting behaviour — no code changes made
+- Explained the two-step salary accounting flow to the user and awaited their decision on whether to add salary payments to Dépenses
+
+### Files changed
+- No source files modified — accounting clarification only
+
+### Why
+- User reported that salary payments don't show under Dépenses. This is actually correct: in OHADA, salary payments are liability settlements (DEBIT 422 / CREDIT 5xx), not new expenses. The expense is recognized at payroll validation (DEBIT 661 / CREDIT 422). Salary payments correctly appear in Journal Comptable (PAIEMENT_SALAIRE), Mouvements de Trésorerie (SORTIE), and Grand Livre (accounts 422 + 5xx).
+
+### Notes
+- The `depenses` table tracks operational expenses (office supplies, fuel, rent, etc.) — class 6 charges with direct cash outflows
+- Salary payments are class 4 liability clearances — they reduce the 422 balance, not create a new charge
+- The two-step flow: (1) payroll validation creates the expense (661→422), (2) salary payment clears the liability (422→5xx)
+- If the user wants a unified "all cash outflows" view, salary payments could be added to Dépenses — but this would be a business UX decision, not an accounting correction
+- Awaiting user decision before making any changes
+
+---
+
 ## 2026-04-22 — Treasury Auto-Resolution: Payment Mode → Treasury Account
 
 ### What was done
