@@ -269,11 +269,12 @@ export default function FinanceManagement() {
             const totalEntreesMois = entrees.filter(e => e.date_entree >= firstOfMonth).reduce((s, e) => s + e.montant, 0);
             const totalDepensesMois = stats.depensesMois;
             const totalSortiesMois = stats.totalSortiesMois || 0;
+            const totalPaiementsSalaires = (stats.paiementsSalairesMois || 0) + (stats.paiementsChargesMois || 0);
             const totalCreances = unpaidInvoices.reduce((s, f) => s + (f.montant_total_du_client || 0), 0);
             const totalTresorerie = comptes.reduce((s, c) => s + c.solde_actuel, 0);
             const netMois = totalEntreesMois - totalSortiesMois;
             return (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-blue-100 rounded-lg"><Wallet className="w-5 h-5 text-blue-600" /></div>
@@ -293,13 +294,20 @@ export default function FinanceManagement() {
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-red-100 rounded-lg"><TrendingDown className="w-5 h-5 text-red-600" /></div>
-                    <span className="text-sm text-gray-500">Sorties ce mois</span>
+                    <span className="text-sm text-gray-500">Dépenses ce mois</span>
                   </div>
-                  <p className="text-2xl font-bold text-red-700">-{totalSortiesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</p>
+                  <p className="text-2xl font-bold text-red-700">-{totalDepensesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</p>
+                  <p className="text-xs text-gray-400 mt-1">{depenses.filter(d => d.date_depense >= firstOfMonth).length} dépense{depenses.filter(d => d.date_depense >= firstOfMonth).length > 1 ? 's' : ''}</p>
+                </div>
+                <div className="bg-white rounded-xl border border-purple-200 p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-purple-100 rounded-lg"><DollarSign className="w-5 h-5 text-purple-600" /></div>
+                    <span className="text-sm text-gray-500">Paie & Charges</span>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-700">-{totalPaiementsSalaires.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} $</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {totalDepensesMois > 0 ? `Dépenses: ${totalDepensesMois.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}` : ''}
-                    {totalDepensesMois > 0 && (stats.paiementsSalairesMois || 0) > 0 ? ' · ' : ''}
-                    {(stats.paiementsSalairesMois || 0) > 0 ? `Salaires: ${(stats.paiementsSalairesMois || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}` : ''}
+                    {(stats.paiementsSalairesMois || 0) > 0 ? `Salaires: ${(stats.paiementsSalairesMois || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}` : 'Aucun paiement'}
+                    {(stats.paiementsChargesMois || 0) > 0 ? ` · Charges: ${(stats.paiementsChargesMois || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })}` : ''}
                   </p>
                 </div>
                 <div className={`bg-white rounded-xl border p-5 ${totalCreances > 0 ? 'border-orange-200' : 'border-gray-200'}`}>

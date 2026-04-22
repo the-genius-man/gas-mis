@@ -9,6 +9,26 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Fix: Sorties du Mois Showing $0
+
+### What was done
+- Fixed "Sorties ce mois" showing $0 on the finance dashboard despite salary payments existing in the database
+- Root cause: the queries were reading from `mouvements_tresorerie`, but older salary payments (made before the treasury auto-resolution fix) had `compte_tresorerie_id = null`, so no treasury movement records were ever created for them
+- Changed the data source from `mouvements_tresorerie` to `paiements_salaires` and `paiements_charges_sociales` — these tables always have records regardless of whether a treasury account was resolved
+- `totalSortiesMois` is now computed as `depenses + salary payments + social charges` instead of querying `mouvements_tresorerie`
+
+### Files changed
+- ✅ Modified `public/electron.cjs` — replaced 3 `mouvements_tresorerie` queries with direct queries on `paiements_salaires` (column `montant_paye`) and `paiements_charges_sociales` (column `montant_paye`); `totalSortiesMois` is now a computed sum instead of a separate query
+
+### Why
+- Salary payments made before the auto-resolution feature was added had no `mouvements_tresorerie` rows, making them invisible to the dashboard. Querying the payment tables directly ensures all payments are counted regardless of when they were made or whether a treasury account was linked.
+
+### Notes
+- The `mouvements_tresorerie` table is still used for treasury balance tracking and the Mouvements de Trésorerie screen — it just isn't the right source for dashboard totals since it only has records when a treasury account was resolved
+- `totalSortiesMois` = `depensesMois` + `paiementsSalairesMois` + `paiementsChargesMois` — this is a clean additive breakdown with no double-counting
+
+---
+
 ## 2026-04-22 — Q&A: Implementation Location Clarification
 
 ### What was done
