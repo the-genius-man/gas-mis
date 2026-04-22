@@ -9,6 +9,24 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Payroll Journal Feature: Unit Test Run
+
+### What was done
+- Ran the full test suite (`npm run test`) to verify the payroll → finance journal link implementation
+- All 72 tests passed across 4 test files in 3.49s
+
+### Files changed
+- No source files modified — read-only verification run
+
+### Why
+- Confirm that the 26 new property-based tests introduced in the previous session (Properties 1–6 across `tests/payroll-journal.property.test.cjs` and `tests/salary-payment-journal.property.test.cjs`) pass cleanly in isolation, and that no regressions were introduced in the existing test suites
+
+### Notes
+- Test breakdown: 13 tests (payroll journal properties), 13 tests (salary payment journal properties), 41 tests (BulkInvoiceWizard), 5 tests (RoteurManagement)
+- No failures, no skipped tests, exit code 0
+
+---
+
 ## 2026-04-22 — Payroll → Finance Journal Link: Full Implementation
 
 ### What was done
