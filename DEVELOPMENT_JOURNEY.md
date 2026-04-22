@@ -9,6 +9,28 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Salary Payment Flow: Code Investigation & Documentation
+
+### What was done
+- Investigated the full salary payment procedure by reading source code directly (no changes made)
+- Traced the flow from both UI entry points through the backend handler to all affected database tables and OHADA accounts
+- Identified a gap: both payment UIs (`UnpaidSalariesManagement.tsx` and `EmployeeDetailModal` → `PaymentModal`) hardcode or omit `compte_tresorerie_id`, meaning treasury balance updates and `mouvements_tresorerie` records are never created in practice
+
+### Files changed
+- No source files modified — read-only investigation
+
+### Why
+- Developer needed to understand the end-to-end payment procedure: which screens are involved, what data is collected, what database writes occur, and which OHADA accounts are debited/credited
+
+### Notes
+- **Two UI entry points**: Payroll → "Salaires Impayés" (`UnpaidSalariesManagement.tsx`) and HR → Employee Detail Modal (`PaymentModal`)
+- **Six backend steps** in `db-payer-salaire`: validate → insert `paiements_salaires` → update `salaires_impayes` (status + balances) → update `bulletins_paie` (if PAYE_TOTAL) → update treasury + insert `mouvements_tresorerie` (if `compte_tresorerie_id` provided) → generate OHADA journal entry (non-blocking)
+- **Accounts affected**: DEBIT 422 (clears salary liability) / CREDIT 5xx (cash outflow, defaults to 5711 Caisse)
+- **Known gap**: `EmployeeDetailModal.PaymentModal` hardcodes `compte_tresorerie_id: null`; `UnpaidSalariesManagement` doesn't expose the treasury account selector either — so treasury movements are never recorded from either UI. The journal entry still generates (defaulting to 5711), but `comptes_tresorerie.solde_actuel` is never decremented and no `mouvements_tresorerie` row is created
+- This gap is worth addressing if treasury reconciliation is needed
+
+---
+
 ## 2026-04-22 — Payroll Journal Feature: Unit Test Run
 
 ### What was done

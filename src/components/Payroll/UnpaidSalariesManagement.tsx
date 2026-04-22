@@ -4,18 +4,28 @@ import {
   Calendar,
   DollarSign,
   Search,
-  Filter,
   CreditCard,
   CheckCircle,
   Clock,
   User,
   Eye,
-  X
+  X,
+  Landmark,
 } from 'lucide-react';
 import { SalaireImpaye, PaiementSalaire } from '../../types';
 
+interface CompteTresorerie {
+  id: string;
+  nom_compte: string;
+  type_compte: string;
+  solde_actuel: number;
+  devise: string;
+  compte_ohada: string | null;
+}
+
 export default function UnpaidSalariesManagement() {
   const [salairesImpayes, setSalairesImpayes] = useState<SalaireImpaye[]>([]);
+  const [comptesTresorerie, setComptesTresorerie] = useState<CompteTresorerie[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
@@ -30,10 +40,12 @@ export default function UnpaidSalariesManagement() {
   const [datePaiement, setDatePaiement] = useState(new Date().toISOString().split('T')[0]);
   const [modePaiement, setModePaiement] = useState<'ESPECES' | 'VIREMENT' | 'CHEQUE' | 'MOBILE_MONEY'>('VIREMENT');
   const [referencePaiement, setReferencePaiement] = useState('');
+  const [compteTresorerieId, setCompteTresorerieId] = useState<string>('');
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
     loadSalairesImpayes();
+    loadComptesTresorerie();
   }, []);
 
   const loadSalairesImpayes = async () => {
@@ -49,11 +61,21 @@ export default function UnpaidSalariesManagement() {
       const data = await window.electronAPI.getSalairesImpayes({});
       console.log('Salaires impayes loaded:', data);
       setSalairesImpayes(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading unpaid salaries:', error);
       alert(`Erreur lors du chargement des salaires impayés:\n${error.message || error}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadComptesTresorerie = async () => {
+    if (!window.electronAPI) return;
+    try {
+      const data = await window.electronAPI.getComptesTresorerie();
+      setComptesTresorerie(data || []);
+    } catch (error) {
+      console.error('Error loading comptes tresorerie:', error);
     }
   };
 
@@ -94,6 +116,7 @@ export default function UnpaidSalariesManagement() {
         date_paiement: datePaiement,
         mode_paiement: modePaiement,
         reference_paiement: referencePaiement || undefined,
+        compte_tresorerie_id: compteTresorerieId || undefined,
         notes: notes || undefined,
         effectue_par: 'current_user'
       });
@@ -102,7 +125,7 @@ export default function UnpaidSalariesManagement() {
       setShowPaymentModal(false);
       resetPaymentForm();
       loadSalairesImpayes();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error recording payment:', error);
       alert('Erreur lors de l\'enregistrement du paiement');
     }
@@ -113,6 +136,7 @@ export default function UnpaidSalariesManagement() {
     setDatePaiement(new Date().toISOString().split('T')[0]);
     setModePaiement('VIREMENT');
     setReferencePaiement('');
+    setCompteTresorerieId('');
     setNotes('');
     setSelectedSalaire(null);
   };
@@ -419,6 +443,30 @@ export default function UnpaidSalariesManagement() {
                   placeholder="Ex: VIR-2026-001"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="flex items-center gap-1">
+                    <Landmark className="w-4 h-4" />
+                    Compte de Trésorerie
+                  </span>
+                </label>
+                <select
+                  value={compteTresorerieId}
+                  onChange={(e) => setCompteTresorerieId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— Caisse par défaut (5711) —</option>
+                  {comptesTresorerie.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nom_compte} ({c.compte_ohada || c.type_compte}) — Solde: {c.solde_actuel.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} {c.devise}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Sélectionner un compte met à jour son solde et crée un mouvement de trésorerie.
+                </p>
               </div>
 
               <div>
