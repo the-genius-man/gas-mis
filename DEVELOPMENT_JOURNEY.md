@@ -9,6 +9,27 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Dashboard Fix: Restore Dépenses Tile + Add Paie & Charges Tile
+
+### What was done
+- Restored the original "Dépenses ce mois" KPI tile (red, shows operational expenses from `depenses` table) — it had been incorrectly replaced with a combined "Sorties" tile in a previous session
+- Added a new "Paie & Charges" KPI tile (purple) showing salary payments + social charges from `paiements_salaires` and `paiements_charges_sociales`
+- Dashboard now has 5 tiles: Trésorerie totale, Entrées ce mois, Dépenses ce mois, Paie & Charges, Créances clients
+- Grid changed from `lg:grid-cols-4` to `lg:grid-cols-5` to accommodate the new tile
+- "Résultat du mois" banner still subtracts all outflows (dépenses + salaires + charges) for an accurate net result
+
+### Files changed
+- ✅ Modified `src/components/Finance/FinanceManagement.tsx` — restored "Dépenses ce mois" tile, added "Paie & Charges" tile with purple styling and `DollarSign` icon, updated grid layout to 5 columns
+
+### Why
+- The previous change incorrectly replaced the Dépenses tile with a combined Sorties tile, which showed $0 because it was reading from the wrong data source. The user expected to see operational expenses in their own tile and salary expenditures in a separate tile.
+
+### Notes
+- The "Paie & Charges" tile subtitle breaks down: `Salaires: X` and `Charges: Y` when both are non-zero
+- No backend changes needed — the `paiementsSalairesMois` and `paiementsChargesMois` fields were already being returned by `db-get-finance-stats`
+
+---
+
 ## 2026-04-22 — Fix: Sorties du Mois Showing $0
 
 ### What was done
