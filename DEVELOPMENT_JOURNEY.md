@@ -9,6 +9,31 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Treasury Account Selector Added to Both Payment UIs
+
+### What was done
+- Fixed the gap where salary payments never updated treasury balances or created `mouvements_tresorerie` records
+- Added a "Compte de Trésorerie" dropdown to the payment modal in `UnpaidSalariesManagement.tsx` (Payroll module)
+- Added a "Compte de Trésorerie" dropdown to the `PaymentModal` component in `EmployeeDetailModal.tsx` (HR module)
+- Both dropdowns load all active treasury accounts on mount via `getComptesTresorerie()`, showing account name, OHADA code, current balance, and currency
+- Both default to "Caisse par défaut (5711)" (empty selection) — selecting an account passes `compte_tresorerie_id` to `db-payer-salaire`
+- When a treasury account is selected, the backend now: decrements `comptes_tresorerie.solde_actuel`, inserts a `mouvements_tresorerie` SORTIE record, and uses the correct OHADA account code (e.g. 521 Banque, 571 Caisse) in the journal entry CREDIT line instead of always defaulting to 5711
+- Build verified clean — no TypeScript errors
+
+### Files changed
+- ✅ Modified `src/components/Payroll/UnpaidSalariesManagement.tsx` — added `CompteTresorerie` interface, `comptesTresorerie` state, `loadComptesTresorerie()`, `compteTresorerieId` form state, treasury selector in payment modal, `Landmark` icon import; removed unused `Filter` import
+- ✅ Modified `src/components/HR/EmployeeDetailModal.tsx` — added `compteTresorerieId` and `comptesTresorerie` state to `PaymentModal`, `useEffect` to load accounts on mount, treasury selector in form, changed hardcoded `compte_tresorerie_id: null` to `compteTresorerieId || null`
+
+### Why
+- Both payment UIs previously hardcoded `compte_tresorerie_id: null` or omitted it entirely. This meant the backend's treasury update branch was never reached — `comptes_tresorerie.solde_actuel` was never decremented, no `mouvements_tresorerie` row was created, and the OHADA journal entry always credited account 5711 (Caisse) regardless of how the payment was actually made. Treasury reconciliation was impossible.
+
+### Notes
+- The treasury selector is optional — leaving it blank preserves the previous behaviour (journal entry defaults to 5711, no treasury movement recorded). This is intentional for cases where the payment method doesn't correspond to a tracked treasury account.
+- The helper text "Sélectionner un compte met à jour son solde et crée un mouvement de trésorerie." is shown below the selector in both modals to make the side-effect visible to the user.
+- The `EmployeeDetailModal.PaymentModal` loads treasury accounts in a `useEffect` with a silent catch — failure to load accounts is non-blocking and the modal still works without them.
+
+---
+
 ## 2026-04-22 — Salary Payment Flow: Code Investigation & Documentation
 
 ### What was done
