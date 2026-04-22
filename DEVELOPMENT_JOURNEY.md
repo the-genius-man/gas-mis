@@ -9,6 +9,61 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Payroll → Finance Journal Link: Full Implementation
+
+### What was done
+- Implemented all required tasks (1–7, 9) from the `payroll-finance-journal-link` spec
+- Added `generatePayrollJournalEntry(periodeId, db)` standalone helper in `public/electron.cjs`:
+  - Aggregates payslip totals and builds OHADA lines: DEBIT 661 / CREDIT 422, 431, 447, 432, 433
+  - Includes idempotency check (skips if PAIE entry already exists for the period)
+  - Balance verification with 0.01 tolerance; aborts and logs if unbalanced
+  - Inserts header + all `lignes_ecritures` in a single SQLite transaction
+- Added `generateSalaryPaymentJournalEntry(paiement, salaireImpaye, nouveauStatut, db)` standalone helper:
+  - Builds DEBIT 422 / CREDIT 5xx lines for individual salary disbursements
+  - Resolves treasury OHADA account from `comptes_tresorerie.compte_ohada`; defaults to `5711`
+  - Libelle adapts to payment status: `(Reste : X USD)` for PAYE_PARTIEL, `— Solde final` for PAYE_TOTAL
+- Wired `generatePayrollJournalEntry` into `db-validate-payslips` (non-blocking try/catch)
+- Wired `generateSalaryPaymentJournalEntry` into `db-payer-salaire` (non-blocking try/catch)
+- Added `db-generate-payroll-journal-entry` IPC handler for manual trigger from payroll UI:
+  - Validates period status (VALIDEE or VERROUILLEE)
+  - Full idempotency: blocks replacement of VALIDE/CLOTURE entries; prompts confirmation for BROUILLON
+  - Deletes existing BROUILLON entry + its `lignes_ecritures` before regenerating when confirmed
+- Exposed `generatePayrollJournalEntry` in `public/preload.cjs`
+- Updated `PayrollManagement.tsx`:
+  - Added "Générer écriture comptable" button (BookOpen icon) for VALIDEE/VERROUILLEE periods
+  - Handles confirmation dialog for replacing existing BROUILLON entries
+  - Updated `handleValidatePayslips` success message to include journal entry feedback
+- Verified `JournalComptable.tsx` already had full PAIE and PAIEMENT_SALAIRE support (TYPE_LABELS, TYPE_COLORS, filter dropdown, expanded view)
+- Created 6 property-based tests (72 total passing):
+  - Property 1: Journal entry balance invariant (DEBIT = CREDIT for any valid payslip array)
+  - Property 2: Idempotency detection (all 3 statut cases: BROUILLON, VALIDE, CLOTURE)
+  - Property 3: Error isolation — journal failure never blocks payroll validation
+  - Property 4: PAIEMENT_SALAIRE entry always balanced (DEBIT 422 = CREDIT 5xx)
+  - Property 5: Libelle suffix matches payment status (PAYE_PARTIEL/PAYE_TOTAL)
+  - Property 6: Journal generation failure never blocks salary payment
+
+### Files changed
+- ✅ Modified `public/electron.cjs` — added `MOIS_FR` constant, `generatePayrollJournalEntry`, `generateSalaryPaymentJournalEntry`, `db-generate-payroll-journal-entry` IPC handler; wired both helpers into `db-validate-payslips` and `db-payer-salaire`
+- ✅ Modified `public/preload.cjs` — exposed `generatePayrollJournalEntry` in `electronAPI`
+- ✅ Modified `src/components/Payroll/PayrollManagement.tsx` — added journal entry button, `handleGenerateJournalEntry` handler, journal feedback in validation success message
+- ✅ Created `tests/payroll-journal.property.test.cjs` — Properties 1, 2, 3
+- ✅ Created `tests/salary-payment-journal.property.test.cjs` — Properties 4, 5, 6
+- ✅ Modified `vitest.config.ts` — updated include/exclude patterns for new test files
+
+### Why
+- Payroll and Finance were completely disconnected: validating a payroll period or paying an employee created no accounting records. Accountants had to manually re-enter all payroll data into the OHADA journal — a slow, error-prone process.
+- This implementation closes the loop: payroll validation auto-creates the salary expense entry (661/422/431/447/432/433), and each individual salary payment auto-creates the disbursement entry (422/5xx). The Grand Livre account 422 now balances correctly across the full lifecycle.
+
+### Notes
+- Both helper functions are plain functions (not IPC handlers) — called internally, never exposed directly
+- Task 8 (employer social charges entry) was intentionally skipped — it's marked optional in the spec and was not requested
+- `JournalComptable.tsx` already had PAIE and PAIEMENT_SALAIRE support from a prior session — no changes needed there
+- All 6 correctness properties are pure (no SQLite dependency) — they test the mathematical/logical invariants extracted from the helper functions
+- The `vitest.config.ts` exclude list was already set up to skip tests requiring `better-sqlite3` (native module version mismatch in the test environment)
+- No schema migrations needed — `ecritures_comptables` already has `type_operation`, `source_id`, and all required columns
+
+---
+
 ## 2026-04-16 — Payroll → Finance Journal Link Spec Extended (Individual Salary Payments)
 
 ### What was done
