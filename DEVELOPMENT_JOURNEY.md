@@ -9,6 +9,31 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Tax Settings: Analysis and Gaps Identified
+
+### What was done
+- Read the full `TaxSettings.tsx` component to understand what it manages
+- Identified two gaps:
+  - **Gap 1 (UI orphaned)**: `TaxSettings` is imported in `FinanceManagement.tsx` but `<TaxSettings />` is never rendered — there's no tab or route to reach it. Quick fix: wire it into the Settings page or Finance tabs.
+  - **Gap 2 (No TVA on invoices)**: Invoice creation doesn't apply any tax rates. The `factures_clients` table has no tax breakdown fields. However, security services in DRC are generally TVA-exempt, so this may not be needed.
+- Confirmed that payroll calculations already use tax settings correctly — `PayslipEditForm.tsx` reads CNSS/ONEM/INPP/IPR rates from the database
+- The component itself is fully functional: editable CNSS (5%), ONEM (1.5%), INPP (0.5%) rates, IPR progressive brackets display, save/reset/diagnostic buttons
+- Awaiting user decision on whether to wire TaxSettings into the Settings page
+
+### Files changed
+- No source files modified — analysis only
+
+### Why
+- User asked for an explanation of the tax settings feature and what remains to be done
+
+### Notes
+- `TaxSettings` manages payroll tax rates only (social contributions + IPR) — it does not manage TVA or invoice taxes
+- The component has a warning banner: "Les modifications affecteront tous les futurs calculs de paie. Les périodes déjà calculées ne seront pas affectées."
+- IPR brackets are hardcoded in the UI display (11 tranches, 0%–45%) but the actual calculation reads from the `tax_settings` table
+- Gap 1 is a 5-minute fix (add a tab or route). Gap 2 is a business decision (DRC TVA exemption for security services).
+
+---
+
 ## 2026-04-22 — Finance Backlog: Final Status Update
 
 ### What was done

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import TaxSettings from '../Finance/TaxSettings';
 import {
   Settings as SettingsIcon,
   Save,
@@ -58,7 +59,7 @@ export default function SettingsPage() {
   const [selectedActionIds, setSelectedActionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'quick-actions' | 'appearance' | 'security' | 'maintenance'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'quick-actions' | 'appearance' | 'security' | 'maintenance' | 'tax-settings'>('general');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -355,6 +356,21 @@ export default function SettingsPage() {
                 <span>Sécurité</span>
               </div>
             </button>
+            {currentUserRole === 'ADMIN' && (
+              <button
+                onClick={() => setActiveTab('tax-settings')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'tax-settings'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  <span>Paramètres Fiscaux</span>
+                </div>
+              </button>
+            )}
             {currentUserRole === 'ADMIN' && (
               <button
                 onClick={() => setActiveTab('maintenance')}
@@ -723,6 +739,11 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Tax Settings Tab */}
+          {activeTab === 'tax-settings' && currentUserRole === 'ADMIN' && (
+            <TaxSettings />
           )}
 
           {/* Maintenance Tab */}
