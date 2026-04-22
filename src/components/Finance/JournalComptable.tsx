@@ -20,6 +20,18 @@ const STATUT_COLORS: Record<string, string> = {
   CLOTURE: 'bg-gray-100 text-gray-700',
 };
 
+const TYPE_COLORS: Record<string, string> = {
+  RECETTE: 'bg-green-50 text-green-700',
+  DEPENSE: 'bg-red-50 text-red-700',
+  PAIE: 'bg-purple-100 text-purple-800',
+  PAIEMENT_SALAIRE: 'bg-teal-100 text-teal-800',
+  PAIEMENT_CHARGES: 'bg-orange-100 text-orange-800',
+  CREATION_DETTE: 'bg-rose-50 text-rose-700',
+  CREATION_PRET: 'bg-cyan-50 text-cyan-700',
+  PAIEMENT_DETTE_PRET: 'bg-indigo-50 text-indigo-700',
+  AUTRE: 'bg-gray-100 text-gray-700',
+};
+
 function formatCurrency(amount: number, devise: string) {
   return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${devise}`;
 }
@@ -402,7 +414,7 @@ export default function JournalComptable() {
                   <td className="px-4 py-3 font-mono text-xs text-gray-600">{e.numero_piece || '—'}</td>
                   <td className="px-4 py-3 text-gray-900 font-medium">{e.libelle}</td>
                   <td className="px-4 py-3">
-                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TYPE_COLORS[e.type_operation] || 'bg-blue-50 text-blue-700'}`}>
                       {TYPE_LABELS[e.type_operation] || e.type_operation}
                     </span>
                   </td>

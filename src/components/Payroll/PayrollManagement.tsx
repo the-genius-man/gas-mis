@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Calculator, Check, Lock, Eye, RefreshCw, Edit2, FileText, Trash2 } from 'lucide-react';
+import { Plus, Calculator, Check, Lock, Eye, RefreshCw, Edit2, FileText, Trash2, BookOpen } from 'lucide-react';
 import { PeriodePaie, BulletinPaie } from '../../types';
 import PayslipDetail from './PayslipDetail';
 import PayslipEditForm from './PayslipEditForm';
@@ -16,6 +16,7 @@ export default function PayrollManagement() {
   const [editingPayslip, setEditingPayslip] = useState<BulletinPaie | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [journalLoading, setJournalLoading] = useState(false);
 
   // Form state for new period
   const [newPeriod, setNewPeriod] = useState({
@@ -137,7 +138,7 @@ export default function PayrollManagement() {
     }
     
     try {
-      await window.electronAPI.validatePayslips({
+      const result = await window.electronAPI.validatePayslips({
         periodeId: selectedPeriod.id,
         valideePar: 'current_user' // TODO: get from auth context
       });
@@ -151,7 +152,14 @@ export default function PayrollManagement() {
       }
       
       loadPayslips(selectedPeriod.id);
-      alert('Bulletins validés avec succès');
+
+      let successMessage = 'Bulletins validés avec succès.';
+      if (result?.journalEntry?.success) {
+        successMessage += ` Écriture comptable ${result.journalEntry.numeroPiece} créée en brouillon.`;
+      } else if (result?.journalEntry?.skipped) {
+        successMessage += ' Écriture comptable déjà existante — non recréée.';
+      }
+      alert(successMessage);
     } catch (error: any) {
       console.error('Error validating payslips:', error);
       alert(error.message || 'Erreur lors de la validation');
@@ -231,6 +239,57 @@ export default function PayrollManagement() {
     } catch (error: any) {
       console.error('Error updating payslip:', error);
       throw error;
+    }
+  };
+
+  const handleGenerateJournalEntry = async () => {
+    if (!selectedPeriod || !window.electronAPI) return;
+
+    setJournalLoading(true);
+    try {
+      const response = await window.electronAPI.generatePayrollJournalEntry({ periodeId: selectedPeriod.id });
+
+      if (response.requiresConfirmation) {
+        const numeroPiece = response.numeroPiece || '';
+        const confirmed = window.confirm(
+          `Une écriture brouillon existe déjà (${numeroPiece}). La remplacer ?`
+        );
+        if (confirmed) {
+          const replaceResponse = await window.electronAPI.generatePayrollJournalEntry({
+            periodeId: selectedPeriod.id,
+            replaceExisting: true
+          });
+          if (replaceResponse.success) {
+            alert(`Écriture comptable ${replaceResponse.numeroPiece} créée en brouillon. Consultez le Journal Comptable pour la valider.`);
+          } else if (replaceResponse.error) {
+            alert(`Erreur : ${replaceResponse.error}`);
+          }
+        }
+        return;
+      }
+
+      if (response.error) {
+        const errorMsg: string = response.error || '';
+        if (
+          errorMsg.includes('validée') ||
+          errorMsg.includes('clôturée') ||
+          errorMsg.includes('already_exists')
+        ) {
+          alert('Écriture comptable déjà validée/clôturée — aucune modification possible.');
+        } else {
+          alert(`Erreur : ${errorMsg}`);
+        }
+        return;
+      }
+
+      if (response.success) {
+        alert(`Écriture comptable ${response.numeroPiece} créée en brouillon. Consultez le Journal Comptable pour la valider.`);
+      }
+    } catch (error: any) {
+      console.error('Error generating journal entry:', error);
+      alert(error.message || 'Erreur lors de la génération de l\'écriture comptable');
+    } finally {
+      setJournalLoading(false);
     }
   };
 
@@ -817,6 +876,16 @@ export default function PayrollManagement() {
                       >
                         <Lock className="w-4 h-4" />
                         Verrouiller
+                      </button>
+                    )}
+                    {(selectedPeriod.statut === 'VALIDEE' || selectedPeriod.statut === 'VERROUILLEE') && (
+                      <button
+                        onClick={handleGenerateJournalEntry}
+                        disabled={journalLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        {journalLoading ? 'Génération...' : 'Générer écriture comptable'}
                       </button>
                     )}
                     {payslips.length > 0 && (

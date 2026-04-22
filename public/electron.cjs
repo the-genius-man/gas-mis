@@ -1735,6 +1735,232 @@ function createWindow() {
 }
 
 // ============================================================================
+// PAYROLL → FINANCE JOURNAL LINK — STANDALONE HELPERS
+// ============================================================================
+
+const MOIS_FR = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+];
+
+/**
+ * Generate an OHADA-compliant PAIE journal entry for a payroll period.
+ * This is a plain function (not an IPC handler) called internally.
+ *
+ * @param {string} periodeId - The periodes_paie.id to generate the entry for
+ * @param {import('better-sqlite3').Database} database - The SQLite database instance
+ * @returns {{ success: true, numeroPiece: string, ecritureId: string }
+ *          | { skipped: true, reason: string }}
+ */
+function generatePayrollJournalEntry(periodeId, database) {
+  // Idempotency check: skip if a PAIE entry already exists for this period
+  const existing = database.prepare(
+    'SELECT id, statut, numero_piece FROM ecritures_comptables WHERE source_id = ? AND type_operation = \'PAIE\''
+  ).get(periodeId);
+
+  if (existing) {
+    if (existing.statut === 'VALIDE' || existing.statut === 'CLOTURE') {
+      console.log(`[generatePayrollJournalEntry] Écriture ${existing.numero_piece} déjà ${existing.statut} — ignorée`);
+      return { skipped: true, reason: 'already_exists', statut: existing.statut };
+    }
+    if (existing.statut === 'BROUILLON') {
+      console.log(`[generatePayrollJournalEntry] Écriture brouillon ${existing.numero_piece} déjà existante — ignorée`);
+      return { skipped: true, reason: 'brouillon_exists', ecritureId: existing.id };
+    }
+  }
+
+  // 1. Fetch the payroll period
+  const periode = database.prepare('SELECT * FROM periodes_paie WHERE id = ?').get(periodeId);
+  if (!periode) {
+    console.error(`[generatePayrollJournalEntry] Période introuvable: ${periodeId}`);
+    return { skipped: true, reason: 'periode_not_found' };
+  }
+
+  const { mois, annee } = periode;
+
+  // 2. Fetch all payslips with salaire_brut > 0
+  const bulletins = database.prepare(
+    'SELECT * FROM bulletins_paie WHERE periode_paie_id = ? AND salaire_brut > 0'
+  ).all(periodeId);
+
+  if (bulletins.length === 0) {
+    console.warn(`[generatePayrollJournalEntry] Aucun bulletin avec salaire_brut > 0 pour la période ${periodeId}`);
+    return { skipped: true, reason: 'no_bulletins' };
+  }
+
+  // 3. Aggregate totals
+  let totalBrut = 0, totalNet = 0, totalCNSS = 0, totalIPR = 0, totalONEM = 0, totalINPP = 0;
+  for (const b of bulletins) {
+    totalBrut += b.salaire_brut || 0;
+    totalNet  += b.salaire_net  || 0;
+    totalCNSS += b.cnss         || 0;
+    totalIPR  += b.ipr          || 0;
+    totalONEM += b.onem         || 0;
+    totalINPP += b.inpp         || 0;
+  }
+
+  // 4. Build journal lines
+  const lignes = [];
+
+  // DEBIT 661 — Rémunérations du personnel (gross salary expense)
+  lignes.push({ compte: '661', libelle: 'Rémunérations du personnel', sens: 'DEBIT',  montant: totalBrut });
+
+  // CREDIT 422 — Personnel, rémunérations dues (net salaries payable)
+  lignes.push({ compte: '422', libelle: 'Personnel, rémunérations dues', sens: 'CREDIT', montant: totalNet });
+
+  // CREDIT 431 — CNSS (only if > 0)
+  if (totalCNSS > 0) {
+    lignes.push({ compte: '431', libelle: 'CNSS', sens: 'CREDIT', montant: totalCNSS });
+  }
+
+  // CREDIT 447 — IPR à payer (only if > 0)
+  if (totalIPR > 0) {
+    lignes.push({ compte: '447', libelle: 'IPR à payer', sens: 'CREDIT', montant: totalIPR });
+  }
+
+  // CREDIT 432 — ONEM (only if > 0)
+  if (totalONEM > 0) {
+    lignes.push({ compte: '432', libelle: 'ONEM', sens: 'CREDIT', montant: totalONEM });
+  }
+
+  // CREDIT 433 — INPP (only if > 0)
+  if (totalINPP > 0) {
+    lignes.push({ compte: '433', libelle: 'INPP', sens: 'CREDIT', montant: totalINPP });
+  }
+
+  // 5. Verify balance (DEBIT = CREDIT within 0.01 tolerance)
+  const sumDebit  = lignes.filter(l => l.sens === 'DEBIT').reduce((s, l) => s + l.montant, 0);
+  const sumCredit = lignes.filter(l => l.sens === 'CREDIT').reduce((s, l) => s + l.montant, 0);
+
+  if (Math.abs(sumDebit - sumCredit) >= 0.01) {
+    console.error(
+      `[generatePayrollJournalEntry] Écriture déséquilibrée pour période ${periodeId}: ` +
+      `DÉBIT=${sumDebit.toFixed(2)}, CRÉDIT=${sumCredit.toFixed(2)}`
+    );
+    return { skipped: true, reason: 'unbalanced' };
+  }
+
+  // 6. Build header metadata
+  const moisPadded = String(mois).padStart(2, '0');
+  const numeroPiece = `PAIE-${annee}-${moisPadded}`;
+  const nomMois = MOIS_FR[mois - 1];
+  const libelle = `Paie ${nomMois} ${annee} — ${bulletins.length} employés`;
+
+  // Last day of the payroll month
+  const lastDay = new Date(annee, mois, 0); // day 0 of next month = last day of current month
+  const dateEcriture = lastDay.toISOString().split('T')[0];
+
+  // 7. Insert header + lines in a single transaction
+  const ecritureId = crypto.randomUUID();
+
+  const insertEcriture = database.transaction(() => {
+    database.prepare(`
+      INSERT INTO ecritures_comptables (
+        id, date_ecriture, numero_piece, libelle,
+        type_operation, source_id, montant_total, devise, statut
+      ) VALUES (?, ?, ?, ?, 'PAIE', ?, ?, 'USD', 'BROUILLON')
+    `).run(ecritureId, dateEcriture, numeroPiece, libelle, periodeId, totalBrut);
+
+    const insertLigne = database.prepare(`
+      INSERT INTO lignes_ecritures (id, ecriture_id, compte_comptable, libelle_compte, sens, montant, devise)
+      VALUES (?, ?, ?, ?, ?, ?, 'USD')
+    `);
+
+    for (const ligne of lignes) {
+      insertLigne.run(crypto.randomUUID(), ecritureId, ligne.compte, ligne.libelle, ligne.sens, ligne.montant);
+    }
+  });
+
+  insertEcriture();
+
+  console.log(`✅ [generatePayrollJournalEntry] Écriture ${numeroPiece} créée (id=${ecritureId}) pour période ${periodeId}`);
+  return { success: true, numeroPiece, ecritureId };
+}
+
+/**
+ * Generate an OHADA-compliant PAIEMENT_SALAIRE journal entry for an individual salary payment.
+ * This is a plain function (not an IPC handler) called internally by db-payer-salaire.
+ *
+ * @param {object} paiement - The paiements_salaires record (id, montant_paye, date_paiement, compte_tresorerie_id)
+ * @param {object} salaireImpaye - The salaires_impayes record (montant_restant, mois, annee, nom_complet, matricule)
+ * @param {string} nouveauStatut - The updated statut after payment ('PAYE_PARTIEL' | 'PAYE_TOTAL')
+ * @param {import('better-sqlite3').Database} database - The SQLite database instance
+ * @returns {{ success: true, numeroPiece: string, ecritureId: string }
+ *          | { skipped: true, reason: string }}
+ */
+function generateSalaryPaymentJournalEntry(paiement, salaireImpaye, nouveauStatut, database) {
+  const { id: paiementId, montant_paye, date_paiement, compte_tresorerie_id } = paiement;
+  const { montant_restant, mois, annee, nom_complet, matricule } = salaireImpaye;
+
+  // 1. Resolve the CREDIT treasury account (OHADA code)
+  let compteTresorerieOhada = '5711'; // default: Caisse
+  if (compte_tresorerie_id) {
+    const tresorerie = database.prepare(
+      'SELECT compte_ohada FROM comptes_tresorerie WHERE id = ?'
+    ).get(compte_tresorerie_id);
+    if (tresorerie && tresorerie.compte_ohada) {
+      compteTresorerieOhada = tresorerie.compte_ohada;
+    }
+  }
+
+  // 2. Build journal lines
+  const lignes = [
+    { compte: '422',               libelle: 'Personnel, rémunérations dues', sens: 'DEBIT',  montant: montant_paye },
+    { compte: compteTresorerieOhada, libelle: 'Trésorerie',                  sens: 'CREDIT', montant: montant_paye },
+  ];
+
+  // 3. Build libelle based on payment status
+  const nomMois = MOIS_FR[mois - 1];
+  let libelle;
+  if (nouveauStatut === 'PAYE_PARTIEL') {
+    libelle = `Paiement salaire ${nom_complet} — ${nomMois} ${annee} (Reste : ${montant_restant} USD)`;
+  } else if (nouveauStatut === 'PAYE_TOTAL') {
+    libelle = `Paiement salaire ${nom_complet} — ${nomMois} ${annee} — Solde final`;
+  } else {
+    libelle = `Paiement salaire ${nom_complet} — ${nomMois} ${annee}`;
+  }
+
+  // 4. Build numero_piece: SAL-YYYY-MM-{matricule} or SAL-YYYY-MM-{fallback}
+  let dateObj;
+  try {
+    dateObj = new Date(date_paiement);
+    if (isNaN(dateObj.getTime())) throw new Error('invalid date');
+  } catch (_) {
+    dateObj = new Date();
+  }
+  const yyyy = String(dateObj.getFullYear());
+  const mm   = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const pieceRef = matricule ? matricule : String(Date.now());
+  const numeroPiece = `SAL-${yyyy}-${mm}-${pieceRef}`;
+
+  // 5. Insert header + 2 lignes_ecritures in a single transaction
+  const ecritureId = crypto.randomUUID();
+
+  const insertEcriture = database.transaction(() => {
+    database.prepare(`
+      INSERT INTO ecritures_comptables (
+        id, date_ecriture, numero_piece, libelle,
+        type_operation, source_id, montant_total, devise, statut
+      ) VALUES (?, ?, ?, ?, 'PAIEMENT_SALAIRE', ?, ?, 'USD', 'BROUILLON')
+    `).run(ecritureId, date_paiement, numeroPiece, libelle, paiementId, montant_paye);
+
+    const insertLigne = database.prepare(`
+      INSERT INTO lignes_ecritures (id, ecriture_id, compte_comptable, libelle_compte, sens, montant, devise)
+      VALUES (?, ?, ?, ?, ?, ?, 'USD')
+    `);
+
+    for (const ligne of lignes) {
+      insertLigne.run(crypto.randomUUID(), ecritureId, ligne.compte, ligne.libelle, ligne.sens, ligne.montant);
+    }
+  });
+
+  insertEcriture();
+
+  console.log(`✅ [generateSalaryPaymentJournalEntry] Écriture ${numeroPiece} créée (id=${ecritureId}) pour paiement ${paiementId}`);
+  return { success: true, numeroPiece, ecritureId };
+}
+
+// ============================================================================
 // RÔTEUR MANAGEMENT HANDLERS
 // ============================================================================
 
@@ -3115,7 +3341,15 @@ ipcMain.handle('db-validate-payslips', async (event, { periodeId, valideePar }) 
     
     console.log(`OHADA tracking created: ${bulletins.length} unpaid salaries, 4 social charges`);
     
-    return { success: true };
+    // Generate OHADA journal entry for this payroll period
+    let journalEntry = null;
+    try {
+      journalEntry = generatePayrollJournalEntry(periodeId, db);
+    } catch (journalErr) {
+      console.error(`[db-validate-payslips] Erreur génération écriture comptable (non bloquante):`, journalErr);
+    }
+    
+    return { success: true, journalEntry };
   } catch (error) {
     console.error('Error validating payslips:', error);
     throw error;
@@ -3141,6 +3375,47 @@ ipcMain.handle('db-lock-payroll-period', async (event, { periodeId, verrouilleeP
   } catch (error) {
     console.error('Error locking payroll period:', error);
     throw error;
+  }
+});
+
+// Manual trigger: generate (or regenerate) OHADA journal entry for a validated payroll period
+ipcMain.handle('db-generate-payroll-journal-entry', async (event, { periodeId, replaceExisting }) => {
+  try {
+    // 1. Verify the period exists and has an eligible status
+    const period = db.prepare('SELECT id, statut FROM periodes_paie WHERE id = ?').get(periodeId);
+    if (!period || (period.statut !== 'VALIDEE' && period.statut !== 'VERROUILLEE')) {
+      return { error: 'Période introuvable ou non validée' };
+    }
+
+    // 2. Idempotency check
+    const existing = db.prepare(
+      "SELECT id, statut, numero_piece FROM ecritures_comptables WHERE source_id = ? AND type_operation = 'PAIE'"
+    ).get(periodeId);
+
+    if (existing) {
+      if (existing.statut === 'VALIDE' || existing.statut === 'CLOTURE') {
+        // Cannot replace a validated or closed entry
+        return { error: 'Écriture déjà validée/clôturée — remplacement impossible', statut: existing.statut };
+      }
+
+      if (existing.statut === 'BROUILLON') {
+        if (replaceExisting !== true) {
+          // Ask the caller to confirm before replacing
+          return { requiresConfirmation: true, existingId: existing.id, numeroPiece: existing.numero_piece };
+        }
+
+        // User confirmed replacement — delete the existing BROUILLON entry
+        db.prepare('DELETE FROM lignes_ecritures WHERE ecriture_id = ?').run(existing.id);
+        db.prepare('DELETE FROM ecritures_comptables WHERE id = ?').run(existing.id);
+      }
+    }
+
+    // 3. Generate a fresh journal entry
+    const result = generatePayrollJournalEntry(periodeId, db);
+    return result;
+  } catch (err) {
+    console.error('[db-generate-payroll-journal-entry] Erreur:', err);
+    return { error: err.message };
   }
 });
 
@@ -3481,7 +3756,25 @@ ipcMain.handle('db-payer-salaire', async (event, paiement) => {
       );
     }
 
-    return { success: true, id: paiementId };
+    // Generate OHADA journal entry for this salary payment
+    let journalEntry = null;
+    try {
+      const paiementRecord = {
+        id: paiementId,
+        montant_paye: paiement.montant_paye,
+        date_paiement: paiement.date_paiement,
+        compte_tresorerie_id: paiement.compte_tresorerie_id || null,
+      };
+      const salaireImpayeAvecNouveauRestant = {
+        ...salaireImpaye,
+        montant_restant: nouveauMontantRestant,
+      };
+      journalEntry = generateSalaryPaymentJournalEntry(paiementRecord, salaireImpayeAvecNouveauRestant, nouveauStatut, db);
+    } catch (journalErr) {
+      console.error(`[db-payer-salaire] Erreur génération écriture comptable (non bloquante):`, journalErr);
+    }
+
+    return { success: true, id: paiementId, journalEntry };
   } catch (error) {
     console.error('Error recording salary payment:', error);
     throw error;

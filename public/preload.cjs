@@ -228,6 +228,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getEmployeeAdvances: (filters) => ipcRenderer.invoke('db-get-employee-advances', filters),
   createAdvance: (data) => ipcRenderer.invoke('db-create-advance', data),
   getAdvanceRepayments: (avanceId) => ipcRenderer.invoke('db-get-advance-repayments', avanceId),
+  generatePayrollJournalEntry: (data) => ipcRenderer.invoke('db-generate-payroll-journal-entry', data),
   
   // ============================================================================
   // USER AUTHENTICATION & MANAGEMENT
