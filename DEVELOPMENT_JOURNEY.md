@@ -9,6 +9,30 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Finance Dashboard: Salary & Charges Outflows Now Visible
+
+### What was done
+- Updated `db-get-finance-stats` to return three new fields: `paiementsSalairesMois`, `paiementsChargesMois`, and `totalSortiesMois` — all queried from `mouvements_tresorerie` for the current month
+- Renamed the KPI card from "Dépenses ce mois" to "Sorties ce mois" — now shows total cash outflows with a subtitle breaking down operational expenses vs salary payments
+- Updated "Résultat du mois" banner to subtract `totalSortiesMois` (all outflows) instead of just `depensesMois` — the monthly result now reflects the real cash position
+- Added a "Paiements Paie & Charges" section below the expense categories breakdown — shows salary payment and social charges totals when they exist for the month
+- All 72 tests pass, clean build
+
+### Files changed
+- ✅ Modified `public/electron.cjs` — added 3 new queries to `db-get-finance-stats`: salary payments from `mouvements_tresorerie WHERE type_source = 'PAIEMENT_SALAIRE'`, social charges from `type_source = 'PAIEMENT_CHARGES'`, and total SORTIE movements; added all three to the return object
+- ✅ Modified `src/components/Finance/FinanceManagement.tsx` — KPI card shows `totalSortiesMois` with expense/salary subtitle; "Résultat du mois" uses `totalSortiesMois`; added "Paiements Paie & Charges" sub-section in the expense breakdown panel
+
+### Why
+- The finance dashboard's "Dépenses ce mois" and "Résultat du mois" only counted rows from the `depenses` table, making salary payments invisible. Treasury balances were correct (they get decremented), but the dashboard numbers didn't match — creating a confusing discrepancy for the finance team. Now all cash outflows are reflected consistently.
+
+### Notes
+- The `depenses` table is still used for operational expense tracking — it was not modified
+- Salary outflows come from `mouvements_tresorerie` (created by `db-payer-salaire` when a treasury account is resolved), not from `depenses` — this avoids double-counting
+- The "Paiements Paie & Charges" section only renders when there are non-zero values — no visual clutter when no salary payments have been made
+- This completes the full payroll → finance integration chain: payroll validation → journal entry → salary payment → treasury movement → dashboard visibility
+
+---
+
 ## 2026-04-22 — Finance Dashboard: Salary Payment Visibility Analysis
 
 ### What was done
