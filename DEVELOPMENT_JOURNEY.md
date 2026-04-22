@@ -9,6 +9,23 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Q&A: Implementation Location Clarification
+
+### What was done
+- Answered user question about where the finance dashboard outflows feature was implemented
+- Confirmed the two files: `public/electron.cjs` (backend stats query) and `src/components/Finance/FinanceManagement.tsx` (dashboard UI)
+
+### Files changed
+- No source files modified — Q&A only
+
+### Why
+- User needed to know which files to review for the salary/charges outflows feature added in the previous session
+
+### Notes
+- No code changes, no cleanup needed
+
+---
+
 ## 2026-04-22 — Finance Dashboard: Salary & Charges Outflows Now Visible
 
 ### What was done
