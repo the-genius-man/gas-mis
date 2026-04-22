@@ -9,6 +9,34 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Finance Feature Gap Analysis
+
+### What was done
+- Audited 6 items from a feature backlog against the current codebase to determine what's done vs remaining
+- Read source code for BilanOhada, PeriodClosing, TaxSettings, avoir handler, payroll journal link, and dashboard components
+- Produced a status table:
+  - ✅ Bilan OHADA — fully implemented (component + IPC + tab in ComptabiliteModule)
+  - ✅ Period closing (Clôture) — fully implemented (PeriodClosing.tsx + cloturerEcriture IPC + tab)
+  - ✅ Payroll → Finance link — fully implemented (today's session)
+  - ✅ Dashboard receivables + salary outflows — done
+  - ⚠️ Avoir → Entrées link — journal entry created but no `entrees` record (cash-flow tracking incomplete)
+  - ❌ Tax settings integration — TaxSettings component imported but never rendered; no TVA on invoices
+  - ❌ Dashboard journal entry counts — not shown
+  - ❌ Dashboard period-over-period comparisons — not implemented
+
+### Files changed
+- No source files modified — read-only audit
+
+### Why
+- User provided a feature backlog and needed to know what's already built vs what still needs work, to prioritize next steps
+
+### Notes
+- TaxSettings has two gaps: (1) the component is orphaned — imported in FinanceManagement.tsx but `<TaxSettings />` is never rendered in any tab, (2) invoice calculations don't apply TVA/tax rates at all
+- Avoir creates a journal entry (Débit 706 / Crédit 411) but doesn't insert into the `entrees` table — so it's invisible in the Entrées tab and the dashboard's "Entrées ce mois" total
+- Tax settings IPC handlers (`getTaxSettings`, `updateTaxSetting`, `resetTaxSettings`) work and are used by `PayslipEditForm.tsx` for payroll tax calculations — the gap is only on the invoice/finance side
+
+---
+
 ## 2026-04-22 — Dashboard Fix: Restore Dépenses Tile + Add Paie & Charges Tile
 
 ### What was done
