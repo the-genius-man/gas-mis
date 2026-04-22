@@ -9,6 +9,30 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Avoir → Entrées: No Fix Needed (Accounting Correct)
+
+### What was done
+- Investigated the "Avoir → Entrées link" gap from the feature backlog
+- Read the `db-create-avoir` handler and the `entrees` insertion pattern to understand the data flow
+- Concluded that the avoir implementation is already correct and complete — no code changes needed
+- An avoir (credit note) is an accounting adjustment, not a cash transaction: it reduces what the client owes but no money enters the caisse/bank
+- The avoir already creates an OHADA journal entry (Débit 706 Services / Crédit 411 Clients) which is the correct treatment
+- Creating an `entrees` record would be wrong — it would inflate "Entrées ce mois" with money never received
+
+### Files changed
+- No source files modified — analysis only
+
+### Why
+- The original backlog item assumed avoirs should create `entrees` records. After reviewing the code and the accounting semantics, this turned out to be a misunderstanding. The `entrees` table is exclusively for actual cash inflows (client payments that increase treasury balances). An avoir is a paper adjustment — no cash moves.
+
+### Notes
+- The `entrees` table is populated by `db-add-paiement-gas` (client invoice payments) and `db-add-entree` (manual deposits) — both involve real cash entering a treasury account
+- The avoir correctly: (1) reduces `solde_restant` on the invoice, (2) updates `statut_paiement`, (3) creates a journal entry — all without touching treasury
+- This item can be removed from the backlog as "already complete"
+- Updated gap analysis: Avoir → Entrées is now ✅ Done (was ⚠️)
+
+---
+
 ## 2026-04-22 — Finance Feature Gap Analysis
 
 ### What was done
