@@ -9,6 +9,29 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Remaining Dashboard Enhancements: Implementation Plan
+
+### What was done
+- Reviewed the two remaining dashboard gaps (excluding tax settings) and provided implementation plans
+- **Journal entry counts**: add a `GROUP BY statut` query to `db-get-finance-stats`, return `journalCounts` object, display as a compact card showing BROUILLON/VALIDE/CLOTURE counts
+- **Period-over-period comparisons**: compute previous month totals for entrées, dépenses, and salary payments in `db-get-finance-stats`, return as `prev*` fields, display percentage change indicators (↑/↓) below each KPI tile
+- Both require only changes to `public/electron.cjs` (additional queries) and `src/components/Finance/FinanceManagement.tsx` (UI elements) — no new tables, schema changes, or IPC handlers
+- Awaiting user confirmation to proceed with implementation
+
+### Files changed
+- No source files modified — design discussion only
+
+### Why
+- User asked for a concrete implementation plan for the remaining non-tax dashboard items before committing to the work
+
+### Notes
+- Journal counts query: `SELECT statut, COUNT(*) as count FROM ecritures_comptables GROUP BY statut`
+- Period comparison: duplicate the existing month queries with `date >= firstOfPrevMonth AND date < firstOfCurrentMonth`
+- UI: percentage change = `((current - previous) / previous) * 100`, displayed as colored text below each KPI number
+- Both are additive changes — no existing functionality is modified
+
+---
+
 ## 2026-04-22 — Avoir → Entrées: No Fix Needed (Accounting Correct)
 
 ### What was done
