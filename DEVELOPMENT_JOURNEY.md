@@ -9,6 +9,33 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Finance Backlog: Final Status Update
+
+### What was done
+- Verified that journal entry counts are already displayed in the Comptabilité module — `JournalComptable.tsx` shows total, brouillon, and validées counts in summary cards at the top of the journal view
+- Confirmed period-over-period comparisons are deferred to the departmental reports module (not a finance dashboard item)
+- Updated the backlog status: all finance items are now either complete or intentionally deferred
+
+### Files changed
+- No source files modified — verification only
+
+### Why
+- User clarified that journal counts exist in Comptabilité (not the main dashboard) and that period comparisons belong in the reports module, not the finance dashboard
+
+### Notes
+- Final finance backlog status:
+  - ✅ Bilan OHADA — done (BilanOhada.tsx + ComptabiliteModule tab)
+  - ✅ Period closing (Clôture) — done (PeriodClosing.tsx + ComptabiliteModule tab)
+  - ✅ Payroll → Finance link — done (today's main implementation)
+  - ✅ Avoir → Entrées — done (correctly no `entrees` record needed)
+  - ✅ Dashboard receivables + salary outflows — done
+  - ✅ Journal entry counts — done (in Comptabilité, not main dashboard)
+  - 🔜 Period-over-period comparisons — deferred to departmental reports module
+  - 🔜 Tax settings integration — deferred (excluded by user)
+- The finance module is effectively feature-complete for current needs
+
+---
+
 ## 2026-04-22 — Remaining Dashboard Enhancements: Implementation Plan
 
 ### What was done
