@@ -1,17 +1,19 @@
 import { useState } from 'react';
-import { BookOpen, BarChart3, Scale, Lock } from 'lucide-react';
+import { BookOpen, BarChart3, Scale, Lock, Settings } from 'lucide-react';
 import JournalComptable from './JournalComptable';
 import GrandLivre from './GrandLivre';
 import BilanOhada from './BilanOhada';
 import PeriodClosing from './PeriodClosing';
+import TaxSettings from './TaxSettings';
 
-type Tab = 'journal' | 'grandlivre' | 'bilan' | 'cloture';
+type Tab = 'journal' | 'grandlivre' | 'bilan' | 'cloture' | 'fiscalite';
 
 const tabs = [
   { id: 'journal' as Tab, label: 'Journal Comptable', icon: BookOpen },
   { id: 'grandlivre' as Tab, label: 'Grand Livre', icon: BarChart3 },
   { id: 'bilan' as Tab, label: 'Bilan OHADA', icon: Scale },
   { id: 'cloture' as Tab, label: 'Clôture', icon: Lock },
+  { id: 'fiscalite' as Tab, label: 'Paramètres Fiscaux', icon: Settings },
 ];
 
 export default function ComptabiliteModule() {
@@ -49,6 +51,7 @@ export default function ComptabiliteModule() {
         {activeTab === 'grandlivre' && <GrandLivre />}
         {activeTab === 'bilan' && <BilanOhada />}
         {activeTab === 'cloture' && <PeriodClosing />}
+        {activeTab === 'fiscalite' && <TaxSettings />}
       </div>
     </div>
   );

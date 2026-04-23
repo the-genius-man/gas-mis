@@ -9,6 +9,28 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Tax Settings Wired into Settings Page
+
+### What was done
+- Wired the orphaned `TaxSettings` component into the Settings page as a new "Paramètres Fiscaux" tab
+- Tab is visible only to ADMIN users (same guard as the Maintenance tab)
+- The component was already fully functional — CNSS, ONEM, INPP rate editing, IPR bracket display, save/reset/diagnostic — it just had no route to reach it
+- TVA on invoices confirmed not needed by the business (DRC security services are TVA-exempt)
+- Build passes cleanly
+
+### Files changed
+- ✅ Modified `src/components/Settings/SettingsPage.tsx` — imported `TaxSettings` from `../Finance/TaxSettings`, added `'tax-settings'` to the `activeTab` union type, added tab button with `DollarSign` icon before Maintenance tab (ADMIN-only), added `<TaxSettings />` rendering block
+
+### Why
+- The TaxSettings component was imported in FinanceManagement.tsx but never rendered anywhere — it was completely inaccessible. Payroll calculations already read tax rates from the database, but there was no UI to view or modify them. Now admins can access it from Settings → Paramètres Fiscaux.
+
+### Notes
+- This closes the last item from the finance feature backlog — all items are now either implemented or intentionally deferred (TVA)
+- The TaxSettings component manages payroll tax rates only (CNSS 5%, ONEM 1.5%, INPP 0.5%, IPR brackets) — not invoice taxes
+- The orphaned import in `FinanceManagement.tsx` still exists but is harmless (tree-shaken in production build)
+
+---
+
 ## 2026-04-22 — Tax Settings: Analysis and Gaps Identified
 
 ### What was done
