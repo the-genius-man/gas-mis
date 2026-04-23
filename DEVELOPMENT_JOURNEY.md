@@ -9,6 +9,28 @@ This file is the living record of the GAS-MIS development journey, maintained au
 
 ---
 
+## 2026-04-22 — Tax Settings Moved to Comptabilité Module
+
+### What was done
+- Moved TaxSettings from Settings page to the Comptabilité module where it belongs
+- Added "Paramètres Fiscaux" as the 5th tab in ComptabiliteModule (after Journal, Grand Livre, Bilan OHADA, Clôture)
+- Removed the tax-settings tab, import, and rendering from SettingsPage — restored it to its original 5 tabs
+- Build passes cleanly
+
+### Files changed
+- ✅ Modified `src/components/Finance/ComptabiliteModule.tsx` — imported `TaxSettings` and `Settings` icon, added `'fiscalite'` to Tab type, added tab definition, added `<TaxSettings />` rendering
+- ✅ Modified `src/components/Settings/SettingsPage.tsx` — removed `TaxSettings` import, removed `'tax-settings'` from activeTab type, removed tab button and rendering block
+
+### Why
+- User correctly pointed out that tax rates (CNSS, ONEM, INPP, IPR) are accounting configuration, not app settings. They belong alongside the Journal Comptable, Grand Livre, and Bilan OHADA in the Comptabilité module.
+
+### Notes
+- Comptabilité now has 5 tabs: Journal Comptable, Grand Livre, Bilan OHADA, Clôture, Paramètres Fiscaux
+- The orphaned import of TaxSettings in FinanceManagement.tsx still exists but is harmless (tree-shaken)
+- No RBAC guard on the Comptabilité tab itself — access is controlled at the module level by the sidebar permissions
+
+---
+
 ## 2026-04-22 — Tax Settings Wired into Settings Page
 
 ### What was done
